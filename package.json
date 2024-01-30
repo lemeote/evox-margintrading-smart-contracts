@@ -1,0 +1,25 @@
+{
+  "name": "rextest",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "npx hardhat run test/test.js",
+    "deploy": "npx hardhat run scripts/deploy.js",
+    "compile": "npx hardhat compile"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "@solarity/hardhat-markup": "^1.0.4",
+    "hardhat": "^2.19.4",
+    "hardhat-deploy": "^0.11.45"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.1",
+    "hardhat-abi-exporter": "^2.10.1",
+    "hardhat-gas-reporter": "^1.0.9",
+    "hardhat-gui": "^0.0.14"
+  }
+}
