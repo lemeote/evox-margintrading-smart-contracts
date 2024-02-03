@@ -2,7 +2,7 @@
 pragma solidity =0.8.20;
 
 import "../interfaces/IDataHub.sol";
-
+import "hardhat/console.sol";
 
 library REX_LIBRARY {
     function createArray(address user) public pure returns (address[] memory) {
@@ -48,7 +48,10 @@ library REX_LIBRARY {
         uint256 maximumInterestRate = assetdata.interestRateInfo[2];
 
         if (borrowProportion <= assetdata.optimalBorrowProportion) {
-     
+            console.log("optimal interest rate", optimalInterestRate);
+            console.log("minimum interest rate", minimumInterestRate);
+            console.log("borrow proportion", borrowProportion );
+            console.log(" optimal borrow proportion",optimalBorrowProportion);
             interestRate = min(
                 optimalInterestRate,
                 minimumInterestRate +
@@ -110,6 +113,8 @@ library REX_LIBRARY {
         uint256 liabilities,
         uint256 deposit_amount
     ) public pure returns (uint256) {
+        console.log(deposit_amount * 10 ** 18);
+        console.log("liabitlies passed",liabilities);
         return ((deposit_amount * 10 ** 18) / liabilities); /// fetch decimals integration?
     }
 
@@ -117,6 +122,7 @@ library REX_LIBRARY {
         IDataHub.AssetData memory assetdata,
         uint256 liabilities
     ) public view returns (uint256) {
+        console.log("current asset fee", assetdata.initialMarginFee);
         return (assetdata.initialMarginFee * liabilities) / 10 ** 18;
     }
 
@@ -125,6 +131,9 @@ library REX_LIBRARY {
         uint256 amount
     ) public view returns (uint256) {
         uint256 maintenance = assetdata.MaintenanceMarginRequirement; // 10 * 18 -> this function will output a 10*18 number
+        console.log("mmr for asset", maintenance);
+        console.log("amount", amount);
+        console.log("maintenance", (maintenance * (amount)) / 10 ** 18);
         return (maintenance * (amount)) / 10 ** 18;
     } // 13 deimcals to big
 

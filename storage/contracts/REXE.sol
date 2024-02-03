@@ -12,4 +12,8 @@ contract REXE is ERC20 {
     }
 
 
+function mint(address guy, uint256 wad) public {
+    _mint(guy, wad);
+}
+
 }

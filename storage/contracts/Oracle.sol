@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
 import "./interfaces/IDepositVault.sol";
 import "./interfaces/IExecutor.sol";
+import "hardhat/console.sol";
 
 contract Oracle is Ownable  {
     /** Data Hub + Deposit Vault  */
@@ -14,25 +15,22 @@ contract Oracle is Ownable  {
     IExecutor public Executor;
     IDepositVault public DepositVault;
 
-    address public USDT = address(0xa513E6E4b8f2a923D98304ec87F64353C4D5C853);
+    address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
 
     /** Constructor  */
     constructor(
-         address initialOwner,
+        address initialOwner,
         address _DataHub,
         address _deposit_vault,
         address _executor
-    ) Ownable(initialOwner)  {
+    ) Ownable(initialOwner) {
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_deposit_vault);
         Executor = IExecutor(_executor);
     }
 
     /** Mapping's  */
-    mapping(bytes32 => string) public queryParamMap;
-    mapping(uint256=> bool) public QueryApproval;
-    mapping(bytes32 => bool) public incomingFulfillments;
-    mapping(bytes32 => int256) public fulfilledData;
+
 
     modifier checkRoleAuthority() {
         require(msg.sender == address(Executor), "Nice Try Buster");
@@ -53,7 +51,7 @@ contract Oracle is Ownable  {
         // bool margin;
     }
 
-    mapping(uint256 => Order) public OrderDetails;
+    mapping(int => Order) public OrderDetails;
 
     /** event's  */
     event ValueUpdated(string result);
@@ -101,40 +99,34 @@ contract Oracle is Ownable  {
         uint256[][2] memory trade_amounts,
         uint256[] memory TakerliabilityAmounts,
         uint256[] memory MakerliabilityAmounts
-       // address[3] memory airnode_details,
-       // bytes32 endpointId,
-       // bytes calldata parameters
     ) external checkRoleAuthority {
 
-        uint256 orderId = 1;
 
-        OrderDetails[orderId].taker_token = pair[0];
-        OrderDetails[orderId].maker_token = pair[1];
-        OrderDetails[orderId].taker_amounts = trade_amounts[0];
-        OrderDetails[orderId].maker_amounts = trade_amounts[1];
+        OrderDetails[1].taker_token = pair[0];
+        OrderDetails[1].maker_token = pair[1];
+        OrderDetails[1].taker_amounts = trade_amounts[0];
+        OrderDetails[1].maker_amounts = trade_amounts[1];
 
-        OrderDetails[orderId].takers = participants[0];
-        OrderDetails[orderId].makers = participants[1];
-        OrderDetails[orderId].takerliabilityAmounts = TakerliabilityAmounts;
-        OrderDetails[orderId].makerliabilityAmounts = MakerliabilityAmounts;
+        OrderDetails[1].takers = participants[0];
+        OrderDetails[1].makers = participants[1];
+        OrderDetails[1].takerliabilityAmounts = TakerliabilityAmounts;
+        OrderDetails[1].makerliabilityAmounts = MakerliabilityAmounts;
 
 
-        fulfill(orderId);
-
+        fulfill(1);
 
         emit QueryCalled("Query sent, please wait");
     }
- 
+
 
     /// The AirnodeRrpV0.sol protocol contract will callback here.
     function fulfill(
-        uint256 requestId
-    ) internal  {
-        if (requestId == 1) {
+       int requestId
+    ) internal {
             address[2] memory pair;
             pair[0] = OrderDetails[requestId].taker_token;
             pair[1] = OrderDetails[requestId].maker_token;
-   
+
             /// call static -> spoof airnode address  -> in process trade
 
             // if this reverts then revert
@@ -173,9 +165,7 @@ contract Oracle is Ownable  {
                         ])
                 );
             }
-     }else{
-        QueryApproval[requestId] = false;
-     }
+  
     }
 
 

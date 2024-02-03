@@ -8,6 +8,7 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./libraries/REX_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
+import "hardhat/console.sol";
 
 contract Utility is Ownable {
     IDataHub public Datahub;
@@ -40,7 +41,7 @@ contract Utility is Ownable {
         address user,
         address token
     ) external view returns (bool) {
-        (, , , bool margined, ) = Datahub.ReadUserData(user, token);
+        (, , , , bool margined, ) = Datahub.ReadUserData(user, token);
         return margined;
     }
 
@@ -84,6 +85,7 @@ contract Utility is Ownable {
         address token,
         uint256 amount
     ) external view returns (uint256) {
+
         IDataHub.AssetData memory assetLogs = Datahub.returnAssetLogs(token);
 
         uint256 secondsElapsedInCurrentHour = block.timestamp % 3600;
@@ -98,11 +100,26 @@ contract Utility is Ownable {
             amount
         );
 
+
+        console.log(
+            "output form interest rate in the handle hourly fee function",
+            REX_LIBRARY.calculateInterestRate(amount, assetLogs)
+        );
         uint256 interestRateForHour = REX_LIBRARY.calculateInterestRate(
             amount,
             assetLogs
         ) / 8760;
 
+        console.log("interest Rate for the hour", interestRateForHour);
+
+        console.log("percentage of hour remaining", percentageOfHourRemaining);
+
+        console.log(
+            "handleHourlyFee output ",
+            initialMarginFee +
+                ((interestRateForHour * percentageOfHourRemaining) / 100) *
+                (amount / 10 ** 18)
+        );
         return
             initialMarginFee +
             ((interestRateForHour * percentageOfHourRemaining) / 100) *
@@ -114,7 +131,7 @@ contract Utility is Ownable {
         address token,
         uint256 amount
     ) external view returns (uint256) {
-        (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
+        (uint256 assets, , , , , ) = Datahub.ReadUserData(user, token);
         return amount > assets ? amount - assets : 0;
     }
 
@@ -124,7 +141,7 @@ contract Utility is Ownable {
     ) external view returns (uint256) {
         uint256 bulkAssets;
         for (uint256 i = 0; i < users.length; i++) {
-            (uint256 assets, , , , ) = Datahub.ReadUserData(users[i], token);
+            (uint256 assets, , , , , ) = Datahub.ReadUserData(users[i], token);
 
             bulkAssets += assets;
         }
@@ -135,7 +152,7 @@ contract Utility is Ownable {
         address user,
         address token
     ) external view returns (uint256) {
-        (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
+        (uint256 assets, , , , , ) = Datahub.ReadUserData(user, token);
         return assets;
     }
 
@@ -143,7 +160,7 @@ contract Utility is Ownable {
         address user,
         address token
     ) external view returns (uint256) {
-        (, uint256 liabilities, , , ) = Datahub.ReadUserData(user, token);
+        (, uint256 liabilities, , , , ) = Datahub.ReadUserData(user, token);
         return liabilities;
     }
 
@@ -151,7 +168,7 @@ contract Utility is Ownable {
         address user,
         address token
     ) external view returns (uint256) {
-        (, , uint256 pending, , ) = Datahub.ReadUserData(user, token);
+        (, , , uint256 pending, , ) = Datahub.ReadUserData(user, token);
         return pending;
     }
 

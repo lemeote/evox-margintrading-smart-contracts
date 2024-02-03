@@ -8,6 +8,7 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
 import "./libraries/REX_LIBRARY.sol";
+import "hardhat/console.sol";
 
 contract REX_EXCHANGE is Ownable {
     /** Address's  */
@@ -22,6 +23,8 @@ contract REX_EXCHANGE is Ownable {
 
     address public FeeWallet =
         address(0x1167E56ABcf9d2dF6354e03610E301B8a2934955);
+
+
 
     /** Constructor  */
     constructor(
@@ -53,7 +56,6 @@ contract REX_EXCHANGE is Ownable {
         uint256[] memory MakerliabilityAmounts = new uint256[](
             participants[1].length
         );
-
         // this checks if the asset they are trying to trade isn't pass max borrow
         for (uint256 i = 0; i < pair.length; i++) {
             uint256 newLiabilitiesIssued = REX_LIBRARY.calculateTotal(
@@ -64,6 +66,14 @@ contract REX_EXCHANGE is Ownable {
                 : 0;
 
             if (newLiabilitiesIssued > 0) {
+                console.log(
+                    REX_LIBRARY.calculateBorrowProportionAfterTrades(
+                        Datahub.returnAssetLogs(pair[i]),
+                        newLiabilitiesIssued
+                    ),
+                    "borrow proportion after trade"
+                );
+
                 require(
                     REX_LIBRARY.calculateBorrowProportionAfterTrades(
                         Datahub.returnAssetLogs(pair[i]),
@@ -75,7 +85,7 @@ contract REX_EXCHANGE is Ownable {
         }
 
         for (uint256 i = 0; i < participants[0].length; i++) {
-            (uint256 assets, , , , ) = Datahub.ReadUserData(
+            (uint256 assets, , , , , ) = Datahub.ReadUserData(
                 participants[0][i],
                 pair[0]
             );
@@ -120,7 +130,7 @@ contract REX_EXCHANGE is Ownable {
         }
 
         for (uint256 i = 0; i < participants[1].length; i++) {
-            (uint256 assets, , , , ) = Datahub.ReadUserData(
+            (uint256 assets, , , , , ) = Datahub.ReadUserData(
                 participants[1][i],
                 pair[1]
             );
@@ -257,7 +267,6 @@ contract REX_EXCHANGE is Ownable {
                 Datahub.addMaintenanceMarginRequirement(
                     users[i],
                     out_token,
-                    in_token,
                     REX_LIBRARY.calculateMaintenanceRequirementForTrade(
                         returnAssetLogs(in_token),
                         amountToAddToLiabilities
@@ -268,7 +277,7 @@ contract REX_EXCHANGE is Ownable {
                 amounts_in_token[i] <=
                 Utilities.returnliabilities(users[i], in_token)
             ) {
-                Modifymmr(users[i], in_token, out_token, amounts_in_token[i]);
+                modifyMMR(users[i], in_token, amounts_in_token[i]);
 
                 Datahub.removeLiabilities(
                     users[i],
@@ -288,6 +297,26 @@ contract REX_EXCHANGE is Ownable {
                         returnAssetLogs(in_token)
                     )
                 );
+
+                /// take the difference of amount out token and MMR
+                /*
+                    Datahub.removeMaintenanceMarginRequirement(
+                        users[i],
+                        out_token,
+                        Datahub.returnMMROfUser(users[i], out_token)
+                    );
+                } else {
+                    Datahub.removeMaintenanceMarginRequirement(
+                        users[i],
+                        out_token,
+                        Utilities.returnMaintenanceRequirementForTrade(
+                            out_token,
+                            amounts_out_token[i]
+                        )
+                    );
+                }
+                */
+                ///////////////////////////////////////////////////////////////////////////////////////////////////////////
             } else {
                 uint256 subtractedFromLiabilites = Utilities.returnliabilities(
                     users[i],
@@ -301,12 +330,7 @@ contract REX_EXCHANGE is Ownable {
                         amounts_in_token[i] -
                         Utilities.returnliabilities(users[i], in_token);
 
-                    Modifymmr(
-                        users[i],
-                        in_token,
-                        out_token,
-                        amounts_in_token[i]
-                    );
+                    modifyMMR(users[i], in_token, amounts_in_token[i]);
 
                     Datahub.removeLiabilities(
                         users[i],
@@ -329,18 +353,22 @@ contract REX_EXCHANGE is Ownable {
                     );
                 }
 
-                amounts_out_token[i] >
+                if (
+                    amounts_out_token[i] >
                     Utilities.returnPending(users[i], out_token)
-                    ? Datahub.removePendingBalances(
+                ) {
+                    Datahub.removePendingBalances(
                         users[i],
                         out_token,
                         Utilities.returnPending(users[i], out_token)
-                    )
-                    : Datahub.removePendingBalances(
+                    );
+                } else {
+                    Datahub.removePendingBalances(
                         users[i],
                         out_token,
                         amounts_out_token[i]
                     );
+                }
 
                 Datahub.addAssets(users[i], in_token, input_amount);
 
@@ -349,68 +377,36 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
-    function Modifymmr(
-        address user,
-        address in_token,
-        address out_token,
-        uint256 amount
-    ) private {
-        IDataHub.AssetData memory assetLogsOutToken = returnAssetLogs(
-            out_token
-        );
-        IDataHub.AssetData memory assetLogsInToken = returnAssetLogs(in_token);
-        if (amount <= Utilities.returnliabilities(user, in_token)) {
-            uint256 StartingDollarMMR = (amount *
-                assetLogsOutToken.MaintenanceMarginRequirement) / 10 ** 18; // check to make sure this is right
-            if (StartingDollarMMR > Datahub.returnPairMMROfUser(user, in_token, out_token)) {
-                uint256 overage = (StartingDollarMMR - Datahub.returnPairMMROfUser(user, in_token, out_token)) /
-                    assetLogsInToken.MaintenanceMarginRequirement;
 
-                Datahub.removeMaintenanceMarginRequirement(
-                    user,
-                    in_token,
-                    out_token,
-                    Datahub.returnPairMMROfUser(user, in_token, out_token)
+
+    function modifyMMR(address user, address token, uint256 amount) private {
+        uint256 liabilities = Utilities.returnliabilities(user, token);
+
+        uint256 mmr = Datahub.returnMMROfUser(user, token);
+
+        if (amount <= liabilities) {
+            // if amount in is less
+            uint256 liabilityMultiplier = REX_LIBRARY
+                .calculatedepositLiabilityRatio(
+                    Utilities.returnliabilities(user, token),
+                    amount
                 );
 
-                uint256 liabilityMultiplier = REX_LIBRARY
-                    .calculatedepositLiabilityRatio(
-                        Utilities.returnliabilities(user, in_token),
-                        overage
-                    );
-
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                for (uint256 i = 0; i < tokens.length; i++) {
-                    Datahub.alterMMR(
-                        user,
-                        in_token,
-                        tokens[i],
-                        liabilityMultiplier
-                    );
-                }
-            } else {
-                Datahub.removeMaintenanceMarginRequirement(
-                    user,
-                    in_token,
-                    out_token,
-                    StartingDollarMMR
-                );
-            }
-        } else {
             for (
                 uint256 i = 0;
                 i < Datahub.returnUsersAssetTokens(user).length;
                 i++
             ) {
                 address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-                Datahub.removeMaintenanceMarginRequirement(
-                    user,
-                    in_token,
-                    tokens[i],
-                    Datahub.returnPairMMROfUser(user, in_token, tokens[i])
-                );
+
+                if (Datahub.returnMMROfUser(user, tokens[i]) > 0) {
+                    Datahub.alterMMR(user, tokens[i], liabilityMultiplier);
+                }
             }
+        }
+        // checks to see if the user has liabilities of that asset
+        else {
+            Datahub.removeMaintenanceMarginRequirement(user, token, mmr); // remove all mmr
         }
     }
 
@@ -449,161 +445,3 @@ contract REX_EXCHANGE is Ownable {
 
     receive() external payable {}
 }
-
-/*
-    function modifyMMR(address user, address in_token, address out_token, uint256 amount) private {
-        uint256 liabilities = Utilities.returnliabilities(user, in_token);
-
-        uint256 mmr = Datahub.returnMMROfUser(user, in_token, out_token);
-
-        // amount <= liabilities && mmr == 0
-        // amount > liab && mmr !=0
-        /// amount > liab && mmr = 0
-        // amount <= liab $$ mmr != 0
-
-        if(amount <= liabilities){
-                    // if amount in is less
-            uint256 liabilityMultiplier = REX_LIBRARY
-                .calculatedepositLiabilityRatio(
-                    Utilities.returnliabilities(user, in_token),
-                    amount
-                );
-
-            for (
-                uint256 i = 0;
-                i < Datahub.returnUsersAssetTokens(user).length;
-                i++
-            ) {
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                if (Datahub.returnMMROfUser(user, in_token, tokens[i]) > 0) {
-                    Datahub.alterMMR(user, in_token, tokens[i], liabilityMultiplier);
-                }
-            }
-        
-            // do this
-            if(mmr == 0){
-
-            }else{
-                // mmr > 0
-            }
-
-        }else{
-                    for (
-                uint256 i = 0;
-                i < Datahub.returnUsersAssetTokens(user).length;
-                i++
-            ) {
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                  Datahub.removeMaintenanceMarginRequirement(user,in_token, tokens[i], mmr);
-            }
-        }
-
-        if (amount <= liabilities && mmr == 0) {
-            // if amount in is less
-            uint256 liabilityMultiplier = REX_LIBRARY
-                .calculatedepositLiabilityRatio(
-                    Utilities.returnliabilities(user, in_token),
-                    amount
-                );
-
-            for (
-                uint256 i = 0;
-                i < Datahub.returnUsersAssetTokens(user).length;
-                i++
-            ) {
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                if (Datahub.returnMMROfUser(user, in_token, tokens[i]) > 0) {
-                    Datahub.alterMMR(user, in_token, tokens[i], liabilityMultiplier);
-                }
-            }
-        }
-        // checks to see if the user has liabilities of that asset
-        else {
-            Datahub.removeMaintenanceMarginRequirement(user,in_token, out_token, mmr); // remove all mmr
-        }
-    }
-
-
-
- StartingDollarMMR = Amount * BTC.MMR
-    
-if(StartingDollarMMR>Dollar.BTC.MMR){
-        (StartingDollarMMR - Dollar.BTC.MMR)/MMR) spread out throughout the remaining MMRs.
-        ZERO OUT StartingDollarMMR
-}
-
-else{
-        Dollar.BTC.MMR -= StartingDollarMMR
-}   
-*/
-/*
-    function modifyMMR(
-        address user,
-        address in_token,
-        address out_token,
-        uint256 amount
-    ) private {
-        uint256 liabilities = Utilities.returnliabilities(user, in_token);
-
-        uint256 mmr = Datahub.returnMMROfUser(user, in_token, out_token);
-
-        if (amount <= liabilities) {
-            // if amount in is less
-            uint256 liabilityMultiplier = REX_LIBRARY
-                .calculatedepositLiabilityRatio(
-                    Utilities.returnliabilities(user, in_token),
-                    amount
-                );
-
-            for (
-                uint256 i = 0;
-                i < Datahub.returnUsersAssetTokens(user).length;
-                i++
-            ) {
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                // amount in * maintentance of out
-                //  if thats bigger than mmr
-                // alter instead of subtract
-                // uint256 amounts = amount in * maintentance of out
-                // amounts -= Datahub.returnMMROfUser(user, in_token, out_token)
-                // 0 the mmr  - Datahub.returnMMROfUser(user, in_token, out_token)
-
-                // take amounts value and use that for the rest
-
-                if (Datahub.returnMMROfUser(user, in_token, out_token) == 0) {
-                    if (
-                        Datahub.returnMMROfUser(user, in_token, tokens[i]) > 0
-                    ) {
-                        Datahub.alterMMR(
-                            user,
-                            in_token,
-                            tokens[i],
-                            liabilityMultiplier
-                        );
-                    }
-                } else {
-                    // just modify like above the USDT-BTC pair and end it?
-                }
-            }
-        } else {
-            for (
-                uint256 i = 0;
-                i < Datahub.returnUsersAssetTokens(user).length;
-                i++
-            ) {
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                Datahub.removeMaintenanceMarginRequirement(
-                    user,
-                    in_token,
-                    tokens[i],
-                    mmr
-                );
-            }
-        }
-    }
-*/

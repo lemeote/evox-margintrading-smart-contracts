@@ -3,6 +3,7 @@ pragma solidity =0.8.20;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./libraries/REX_LIBRARY.sol";
 import "./interfaces/IDataHub.sol";
 import "hardhat/console.sol";
 contract DataHub is Ownable {
@@ -10,24 +11,21 @@ contract DataHub is Ownable {
         require(
             msg.sender == owner() ||
                 msg.sender == deposit_vault ||
-                msg.sender == executor ||
-                msg.sender == oracle,
+                msg.sender == executor || msg.sender == oracle,
             "Unauthorized"
         );
         _;
     }
 
-    constructor(
-        address initialOwner,
-        address _executor,
-        address _deposit_vault,
-        address _oracle
-    ) Ownable(initialOwner) {
+    constructor(address initialOwner, address _executor, address _deposit_vault, address _oracle)  Ownable(initialOwner) {
         executor = _executor;
         deposit_vault = _deposit_vault;
         oracle = _oracle;
+ 
+
     }
 
+  
     address public executor;
     address public deposit_vault;
     address public oracle;
@@ -76,13 +74,10 @@ contract DataHub is Ownable {
 
     function alterMMR(
         address user,
-        address in_token,
-        address out_token,
+        address token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].maintenance_margin_requirement[in_token][
-            out_token
-        ] *= amount;
+        userdata[user].maintenance_margin_requirement[token] *= amount;
     }
 
     function alterLiabilities(
@@ -111,24 +106,18 @@ contract DataHub is Ownable {
 
     function addMaintenanceMarginRequirement(
         address user,
-        address in_token,
-        address out_token,
+        address token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].maintenance_margin_requirement[in_token][
-            out_token
-        ] += amount;
+        userdata[user].maintenance_margin_requirement[token] += amount;
     }
 
     function removeMaintenanceMarginRequirement(
         address user,
-        address in_token,
-        address out_token,
+        address token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].maintenance_margin_requirement[in_token][
-            out_token
-        ] -= amount;
+        userdata[user].maintenance_margin_requirement[token] -= amount;
     }
 
     function addPendingBalances(
@@ -154,15 +143,18 @@ contract DataHub is Ownable {
         userdata[user].margined = onOrOff;
     }
 
-    function removeAssetToken(
-        address user,
-        address tokenToRemove
-    ) external checkRoleAuthority {
+
+    function returnMMROfUser(address user, address token) external view returns(uint256){
+        uint256 mmr = userdata[user].maintenance_margin_requirement[token];
+        return mmr;
+    }
+
+    function removeAssetToken(address user) external checkRoleAuthority {
         IDataHub.UserData storage userData = userdata[user];
 
         for (uint256 i = 0; i < userData.tokens.length; i++) {
             address token = userData.tokens[i];
-            if (token == tokenToRemove) {
+            if (userData.tokens[i] == token) {
                 userData.tokens[i] = userData.tokens[
                     userData.tokens.length - 1
                 ];
@@ -172,9 +164,8 @@ contract DataHub is Ownable {
         }
     }
 
-    function returnUsersAssetTokens(
-        address user
-    ) external view returns (address[] memory) {
+
+    function returnUsersAssetTokens(address user) external view returns(address[] memory){
         IDataHub.UserData storage userData = userdata[user];
         return userData.tokens;
     }
@@ -206,21 +197,11 @@ contract DataHub is Ownable {
         return tokenFound;
     }
 
-    function FetchAssetInitilizationStatus(
+
+   function FetchAssetInitilizationStatus(
         address token
     ) external view returns (bool) {
         return assetInitialized[token];
-    }
-
-    function returnPairMMROfUser(
-        address user,
-        address in_token,
-        address out_token
-    ) external view returns (uint256) {
-        uint256 mmr = userdata[user].maintenance_margin_requirement[in_token][
-            out_token
-        ];
-        return mmr;
     }
 
     function ReadUserData(
@@ -229,15 +210,18 @@ contract DataHub is Ownable {
     )
         external
         view
-        returns (uint256, uint256, uint256, bool, address[] memory)
+        returns (uint256, uint256, uint256, uint256, bool, address[] memory)
     {
         uint256 assets = userdata[user].asset_info[token]; // tracks their portfolio (margined, and depositted)
         uint256 liabilities = userdata[user].liability_info[token];
+        uint256 mmr = userdata[user].maintenance_margin_requirement[token];
         uint256 pending = userdata[user].pending_balances[token];
         bool margined = userdata[user].margined;
         address[] memory tokens = userdata[user].tokens;
-        return (assets, liabilities, pending, margined, tokens);
+        return (assets, liabilities, mmr, pending, margined, tokens);
     }
+
+
 
     function settotalAssetSupply(
         address token,
@@ -292,8 +276,8 @@ contract DataHub is Ownable {
         uint256[] memory interestRateInfo
     ) external onlyOwner {
         require(!assetInitialized[token]);
-
-        assetdata[token] = IDataHub.AssetData({
+  
+            assetdata[token] = IDataHub.AssetData({
             initialMarginFee: initialMarginFee,
             assetPrice: assetPrice,
             liquidationFee: liquidationFee,
@@ -307,9 +291,11 @@ contract DataHub is Ownable {
             interestRate: interestRate,
             interestRateInfo: interestRateInfo
         });
-
-        assetInitialized[token] = true;
+    
+            assetInitialized[token] = true;
+        
     }
+
 
     function toggleInterestRates(
         address token,
@@ -346,9 +332,8 @@ contract DataHub is Ownable {
         return;
     }
 
-    function changeMarginStatus(
-        address user
-    ) external checkRoleAuthority returns (bool) {
+
+    function changeMarginStatus(address user) external checkRoleAuthority  returns (bool) {
         bool isMargined = false;
         for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
             if (userdata[user].liability_info[userdata[user].tokens[j]] > 0) {
@@ -357,11 +342,13 @@ contract DataHub is Ownable {
                 break;
             }
         }
-
+        
         userdata[user].margined = isMargined;
         return isMargined;
     }
 
+
+ 
     function calculateTotalAssetValue(
         address user
     ) public view returns (uint256) {
@@ -370,12 +357,12 @@ contract DataHub is Ownable {
             address token = userdata[user].tokens[i];
             sumOfAssets +=
                 (assetdata[token].assetPrice *
-                    userdata[user].asset_info[token]) /
-                10 ** 18; // want to get like a whole normal number so balance and price correction
+                userdata[user].asset_info[token]) / 10**18;  // want to get like a whole normal number so balance and price correction
         }
         return sumOfAssets;
     }
 
+    
     function calculateLiabilitiesValue(
         address user
     ) public view returns (uint256) {
@@ -384,49 +371,42 @@ contract DataHub is Ownable {
             address token = userdata[user].tokens[i];
             sumOfliabilities +=
                 (assetdata[token].assetPrice *
-                    userdata[user].liability_info[token]) /
-                10 ** 18; // want to get like a whole normal number so balance and price correction
+                userdata[user].liability_info[token]) / 10**18;// want to get like a whole normal number so balance and price correction
         }
         return sumOfliabilities;
     }
 
-    // add pending balances in here?
     function calculateTotalPortfolioValue(
         address user
     ) external view returns (uint256) {
         return calculateTotalAssetValue(user) - calculateLiabilitiesValue(user);
     }
 
+
     function calculateAMMRForUser(
-        address user
+        address user,
+        address in_token,
+        address out_token
     ) external view returns (uint256) {
-        uint256 AMMR;
-        for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
-            uint256 liabilities = userdata[user].liability_info[token];
-            if (liabilities > 0) {
-                for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
-                    address token_2 = userdata[user].tokens[j];
-                    if (
-                        userdata[user].maintenance_margin_requirement[token][
-                            token_2
-                        ] > 0
-                    ) {
-
-                  
-                          console.log(token);
-                              console.log(token_2);
-                           console.log(assetdata[token].assetPrice);
-                        AMMR += (assetdata[token].assetPrice * userdata[user].maintenance_margin_requirement[
-                            token
-                        ][token_2]) / 10 **18;
-                    }
-                }
-            }
-        }
-        return AMMR;
-
+        return ((REX_LIBRARY.calculateMaintenanceRequirementForTrade(
+            assetdata[out_token],
+            userdata[user].liability_info[in_token]
+        ) * assetdata[in_token].assetPrice) / 10 ** 18);
     }
+
+
+    function toggleAMMR(
+        address user,
+        bool plus,
+        uint256 amount
+    ) external checkRoleAuthority {
+        if (plus) {
+            userdata[user].AggregateMaintenanceMarginRequirement += amount;
+        } else {
+            userdata[user].AggregateMaintenanceMarginRequirement -= amount;
+        }
+    }
+
 
     receive() external payable {}
 }

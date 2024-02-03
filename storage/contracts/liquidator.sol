@@ -30,33 +30,37 @@ contract Liquidator is Ownable {
     constructor(
         address initialOwner,
         address _DataHub,
-        address _deposit_vault,
-        address oracle,
-        address _utility,
         address _executor
     ) Ownable(initialOwner) {
         Datahub = IDataHub(_DataHub);
-        DepositVault = IDepositVault(_deposit_vault);
-        Oracle = IOracle(oracle);
-        Utilities = IUtilityContract(_utility);
         Executor = IExecutor(_executor);
-    }
-
-    modifier checkRoleAuthority() {
-        require(msg.sender == address(Oracle), "Unauthorized");
-        _;
     }
 
     mapping(address => uint256) FeesCollected; // token --> amount
 
+
+    /// @notice This checks if the user is liquidatable
+    /// @dev add in the users address to check their Aggregate Maintenance Margin Requirement and see if its higher that their Total Portfolio value
+    function CheckForLiquidation(address user) public view returns (bool) {
+        if (
+            Datahub.calculateAMMRForUser(user) >
+            Datahub.calculateTotalPortfolioValue(user)
+        ) {
+            return true;
+            // liquidate this fucker
+        } else {
+            return false;
+            // safe for now
+        }
+    }
+
     function Liquidate(
-        //  bytes32 requestId,
         address user,
         address[2] memory tokens, // liability tokens first, tokens to liquidate after
         uint256 spendingCap,
         bool long
     ) public {
-        require(Utilities.CheckForLiquidation(user));
+        require(CheckForLiquidation(user), "not liquidatable");
         require(tokens.length == 2);
 
         IDataHub.AssetData memory assetLogsToken0 = Executor
@@ -64,13 +68,13 @@ contract Liquidator is Ownable {
         IDataHub.AssetData memory assetLogsToken1 = Executor
             .returnAssetLogsExternal(tokens[1]);
 
-        (uint256 assetstoken0, uint256 liabilitiestoken0, , , , ) = Datahub
+        (uint256 assetstoken0, uint256 liabilitiestoken0,  , , ) = Datahub
             .ReadUserData(user, tokens[0]);
 
-        (uint256 assetstoken1, , , , , ) = Datahub
+        (uint256 assetstoken1, ,  , , ) = Datahub
             .ReadUserData(user, tokens[1]);
 
-        require(assetstoken0 > spendingCap);
+        require(assetstoken0 > spendingCap, "assets of token 0 are not above spending cap");
 
         uint256[] memory taker_amounts = new uint256[](1);
         uint256[] memory maker_amounts = new uint256[](1);
@@ -92,7 +96,6 @@ contract Liquidator is Ownable {
                 amountToLiquidate) / 100) *
             20;
 
-        //uint256 priceOfUsersLiabilities = assetdata[tokens[0]].assetPrice * userdata[user].liability_info[tokens[0]];
 
         if (long) {
             uint256 discountedAmount = (((assetLogsToken1.assetPrice *
@@ -127,15 +130,7 @@ contract Liquidator is Ownable {
 
             /// MAKE SURE TO CHECK ALL MATH ON THIS -> CHATGPT MIGHT HAVE FUCKD US
         }
-        /*
-      address[2] memory pair,
-        address[] memory takers,
-        address[] memory makers,
-        uint256[] memory taker_amounts,
-        uint256[] memory maker_amounts,
-        uint256[] memory TakerliabilityAmounts,
-        uint256[] memory MakerliabilityAmounts
-        */
+
         Executor.TransferBalances(
             tokens,
             REX_LIBRARY.createArray(msg.sender),

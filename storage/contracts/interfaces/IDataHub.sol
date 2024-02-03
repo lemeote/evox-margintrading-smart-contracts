@@ -5,10 +5,11 @@ interface IDataHub {
     struct UserData {
         mapping(address => uint256) asset_info; // tracks their portfolio (margined, and depositted)
         mapping(address => uint256) liability_info; // tracks what they owe per token * price
-        mapping(address => mapping(address => uint256)) maintenance_margin_requirement; // tracks the MMR per token the user has in liabilities
+        mapping(address => uint256) maintenance_margin_requirement; // tracks the MMR per token the user has in liabilities
         mapping(address => uint256) pending_balances;
-        bool margined; // if user has open margin positions this is true
+        uint256 AggregateMaintenanceMarginRequirement;
         address[] tokens; // these are the tokens that comprise their portfolio ( assets, and liabilites, margined funds)
+        bool margined; // if user has open margin positions this is true
     }
 
     struct AssetData {
@@ -27,11 +28,23 @@ interface IDataHub {
         uint256[] interestRateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
     }
 
-    function addAssets(address user, address token, uint256 amount) external;
+    function addAssets(
+        address user,
+        address token,
+        uint256 amount
+    ) external;
 
-    function removeAssets(address user, address token, uint256 amount) external;
+    function removeAssets(
+        address user,
+        address token,
+        uint256 amount
+    ) external;
 
-    function alterAssets(address user, address token, uint256 amount) external;
+    function alterAssets(
+        address user,
+        address token,
+        uint256 amount
+    ) external;
 
     function alterLiabilities(
         address user,
@@ -39,7 +52,11 @@ interface IDataHub {
         uint256 amount
     ) external;
 
-    function alterMMR(address user, address in_token, address out_token, uint256 amount) external;
+    function alterMMR(
+        address user,
+        address token,
+        uint256 amount
+    ) external;
 
     function addLiabilities(
         address user,
@@ -55,15 +72,13 @@ interface IDataHub {
 
     function addMaintenanceMarginRequirement(
         address user,
-        address in_token,
-        address out_token,
+        address token,
         uint256 amount
     ) external;
 
     function removeMaintenanceMarginRequirement(
         address user,
-        address in_token,
-        address out_token,
+        address token,
         uint256 amount
     ) external;
 
@@ -81,20 +96,23 @@ interface IDataHub {
 
     function SetMarginStatus(address user, bool onOrOff) external;
 
-    function checkIfAssetIsPresent(
-        address[] memory users,
-        address token
-    ) external returns (bool);
+    function checkIfAssetIsPresent(address[] memory users, address token)
+        external
+        returns (bool);
 
-    function ReadUserData(
-        address user,
-        address token
-    )
+    function ReadUserData(address user, address token)
         external
         view
-        returns (uint256, uint256, uint256, bool, address[] memory);
+        returns (
+            uint256,
+            uint256,
+            uint256,
+            uint256,
+            bool,
+            address[] memory
+        );
 
-    function removeAssetToken(address user, address token) external;
+    function removeAssetToken(address user) external;
 
     function settotalAssetSupply(
         address token,
@@ -104,13 +122,15 @@ interface IDataHub {
 
     function toggleInterestRate(address token, uint256 value) external;
 
-    function returnAssetLogs(
-        address token
-    ) external view returns (AssetData memory);
+    function returnAssetLogs(address token)
+        external
+        view
+        returns (AssetData memory);
 
-    function FetchAssetInitilizationStatus(
-        address token
-    ) external view returns (bool);
+    function FetchAssetInitilizationStatus(address token)
+        external
+        view
+        returns (bool);
 
     function setTotalBorrowedAmount(
         address token,
@@ -126,10 +146,10 @@ interface IDataHub {
         uint256 BalanceToLeave
     ) external;
 
-    function returnMaintenanceRequirementForTrade(
-        address token,
-        uint256 amount
-    ) external view returns (uint256);
+    function returnMaintenanceRequirementForTrade(address token, uint256 amount)
+        external
+        view
+        returns (uint256);
 
     function calculateMarginRequirement(
         address user,
@@ -138,23 +158,21 @@ interface IDataHub {
         uint256 userAssets
     ) external view returns (bool);
 
-   function calculateAMMRForUser(
-        address user
-    ) external view returns (uint256);
     
-    function calculateTotalPortfolioValue(
-        address user
-    ) external view returns (uint256);
-
-    function changeMarginStatus(address user) external returns (bool);
-
-    function returnUsersAssetTokens(
-        address user
-    ) external view returns (address[] memory);
-
-    function returnPairMMROfUser(
+    function calculateAMMRForUser(
         address user,
         address in_token,
         address out_token
     ) external view returns (uint256);
+
+    function toggleAMMR(address user, bool plus, uint256 amount) external;
+
+    function calculateTotalPortfolioValue(address user)
+        external
+        view
+        returns (uint256);
+
+    function changeMarginStatus(address user) external   returns (bool);
+        function returnUsersAssetTokens(address user) external view returns(address[] memory);
+            function returnMMROfUser(address user, address token) external view returns(uint256);
 }

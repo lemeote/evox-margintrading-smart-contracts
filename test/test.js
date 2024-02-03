@@ -29,12 +29,9 @@ async function main() {
 
   console.log("REX Library deployed to", await REX_LIB.getAddress());
 
-  const DATAHUB = await hre.ethers.getContractFactory("DataHub", {
-    libraries: {
-      REX_LIBRARY: await REX_LIB.getAddress(),
-    },
-  });
-  const Deploy_dataHub = await DATAHUB.deploy(initialOwner, executor, depositvault, oracle);
+  const  Deploy_dataHub  = await hre.ethers.deployContract("DataHub", [initialOwner, executor, depositvault, oracle]);
+
+  ///const Deploy_dataHub = await DATAHUB.deploy(initialOwner, executor, depositvault, oracle);
 
   await Deploy_dataHub.waitForDeployment();
 
@@ -181,7 +178,7 @@ async function main() {
 
   const contractABI = tokenabi.abi; // token abi for approvals 
   // taker deposit amounts 
-  const deposit_amount = "20000000000000000000"
+  const deposit_amount = "10000000000000000000"
 
   const TOKENCONTRACT = new hre.ethers.Contract(await USDT.getAddress(), contractABI, signers[0]);
   // Wait for approval transaction to finish
@@ -190,20 +187,20 @@ async function main() {
 
   const transfer = await TOKENCONTRACT.transfer(signers[1].address, "200000000000000000000" );
 
-  transfer.wait();
+  await transfer.wait();
 
 
   console.log("Deposit with account:", signers[0].address);
 
   const DVault = new hre.ethers.Contract(await Deploy_depositVault.getAddress(), depositABI.abi, signers[0]);
 
-  DVault.deposit_token(
+  await DVault.deposit_token(
     await USDT.getAddress(),
     deposit_amount
   )
+  console.log("deposit 1 complete")
 
-
-  const deposit_amount_2 = "200000000000000000000"
+  const deposit_amount_2 = "20000000000000000000"
 
   const TOKENCONTRACT_2 = new hre.ethers.Contract(await REXE.getAddress(), tokenabi.abi, signers[1]);
   // Wait for approval transaction to finish
@@ -218,6 +215,8 @@ async function main() {
     await REXE.getAddress(),
     deposit_amount_2
   )
+
+  console.log("deposit 2 complete")
   const TOKENCONTRACT_3 = new hre.ethers.Contract(await USDT.getAddress(), tokenabi.abi, signers[1]);
 
   const approvalTx_3 = await TOKENCONTRACT_3.approve(await Deploy_depositVault.getAddress(), deposit_amount_2);
@@ -227,7 +226,7 @@ async function main() {
   await DVM.deposit_token(
     await USDT.getAddress(),
     deposit_amount_2)
-
+    console.log("deposit 3 complete")
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
   ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -242,8 +241,8 @@ async function main() {
     "maker_out_token": await REXE.getAddress(), //0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
     "takers": signers[0].address, //0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
     "makers": signers[1].address, //0x70997970c51812dc3a010c7d01b50e0d17dc79c8
-    "taker_out_token_amount": "24000000000000000000", // 12000000000000000000
-    "maker_out_token_amount": "12000000000000000000", // 12000000000000000000    (12 tokens leaving takers wallet)
+    "taker_out_token_amount": "12000000000000000000", // 12000000000000000000
+    "maker_out_token_amount": "6000000000000000000", // 12000000000000000000    (12 tokens leaving takers wallet)
   }
 /// 
   const pair = [Data.taker_out_token, Data.maker_out_token];
@@ -263,13 +262,11 @@ async function main() {
   )
   console.log(assetsbulk, "userassets")
 
-  const logs = await DataHub.returnAssetLogs(await REXE.getAddress()) // rexe
-
-
   console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
   console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
   console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
   console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
+
 
 
   await EX.SubmitOrder(pair, participants, trade_amounts)
@@ -279,14 +276,18 @@ async function main() {
   console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
   console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
 
+  console.log(await DataHub.calculateAMMRForUser(signers[0].address), "ammr");
+  console.log(await DataHub.returnPairMMROfUser(signers[0].address, USDT, REXE), "mmr");
 
+
+/*
   const NEWData = {
     "taker_out_token": await REXE.getAddress() ,  //0x0165878A594ca255338adfa4d48449f69242Eb8F 
     "maker_out_token": await USDT.getAddress(), //0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
     "takers": signers[0].address, //0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
     "makers": signers[1].address, //0x70997970c51812dc3a010c7d01b50e0d17dc79c8
     "taker_out_token_amount": "6000000000000000000", // 12000000000000000000
-    "maker_out_token_amount": "15000000000000000000", // 12000000000000000000    (12 tokens leaving takers wallet)
+    "maker_out_token_amount": "12000000000000000000", // 12000000000000000000    (12 tokens leaving takers wallet)
   }
 /// 
   const NEWpair = [NEWData.taker_out_token, NEWData.maker_out_token];
@@ -300,7 +301,7 @@ async function main() {
  console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
  console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
  console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
-
+*/
 }
 //npx hardhat run scripts/deploy.js 
 main().then(() => process.exit(0))

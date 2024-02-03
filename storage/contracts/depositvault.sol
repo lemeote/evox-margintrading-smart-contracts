@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol" as ERC20;
 import "@openzeppelin/contracts/interfaces/IERC20.sol" as IERC20;
 import "./libraries/REX_LIBRARY.sol";
+import "hardhat/console.sol";
 
 //  userId[totalHistoricalUsers] = msg.sender;
 contract DepositVault is Ownable {
@@ -37,31 +38,17 @@ contract DepositVault is Ownable {
         }
     }
 
-    function modifyMMROnDeposit(
-        address user,
-        address in_token,
-        uint256 amount
-    ) private {
-        address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-       (, uint256 liabilities, , , ) = Datahub.ReadUserData(msg.sender, in_token);
-        for (uint256 i = 0; i < tokens.length; i++) {
-
-            uint256 liabilityMultiplier = REX_LIBRARY
-                .calculatedepositLiabilityRatio(liabilities, amount);
-            Datahub.alterMMR(user, in_token, tokens[i], liabilityMultiplier);
-        }
-    }
-
     /* DEPOSIT FUNCTION */
     /// @notice This deposits tokens and inits the user struct, and asset struct if new assets.
     /// @dev Explain to a developer any extra details
     /// @param token - the address of the token to be depositted
     /// @param amount - the amount of tokens to be depositted
+    /// @return returns a bool to let the user know if deposit was successful.
 
     function deposit_token(
         address token,
         uint256 amount
-    ) external returns(bool) {
+    ) external returns (bool) {
         require(
             Datahub.FetchAssetInitilizationStatus(token) == true,
             "this asset is not available to be depositted or traded"
@@ -72,24 +59,19 @@ contract DepositVault is Ownable {
         Datahub.settotalAssetSupply(token, amount, true);
         Datahub.toggleInterestRate(
             token,
-            REX_LIBRARY.calculateInterestRate(0, Datahub.returnAssetLogs(token))
+            REX_LIBRARY.calculateInterestRate(0,Datahub.returnAssetLogs(token))
         );
-   
-        (, uint256 liabilities, , ,address[] memory tokens ) = Datahub.ReadUserData(msg.sender, token);
 
-        if(tokens.length == 0){
-            totalHistoricalUsers += 1;
-        }
-
-        /// 
+        (, uint256 liabilities, uint256 mmr, , , ) = Datahub.ReadUserData(
+            msg.sender,
+            token
+        );
         // checks to see if user is in the sytem and inits their struct if not
         if (liabilities > 0) {
             // checks to see if the user has liabilities of that asset
 
             if (amount <= liabilities) {
                 // if the amount is less or equal to their current liabilities -> lower their liabilities using the multiplier
-                
-                modifyMMROnDeposit(msg.sender, token, amount);
 
                 uint256 liabilityMultiplier = REX_LIBRARY
                     .calculatedepositLiabilityRatio(liabilities, amount);
@@ -100,23 +82,22 @@ contract DepositVault is Ownable {
                     ((10 ** 18) - liabilityMultiplier)
                 );
 
-        return true;
+                Datahub.alterMMR(msg.sender, token, ((10 ** 18) - liabilityMultiplier));
             } else {
-
-                modifyMMROnDeposit(msg.sender, token, amount);
                 // if amount depositted is bigger that liability info 0 it out
                 uint256 amountAddedtoAssets = amount - liabilities; // amount - outstanding liabilities
-
 
                 Datahub.addAssets(msg.sender, token, amountAddedtoAssets); // add to assets
 
                 Datahub.removeLiabilities(msg.sender, token, liabilities); // remove all liabilities
 
- 
+                Datahub.removeMaintenanceMarginRequirement(
+                    msg.sender,
+                    token,
+                    mmr
+                ); // remove all mmr
 
-                Datahub.changeMarginStatus(msg.sender);
-
-                return true;
+               Datahub.changeMarginStatus(msg.sender);
             }
         } else {
             address[] memory users = new address[](1);
@@ -124,10 +105,11 @@ contract DepositVault is Ownable {
 
             Datahub.checkIfAssetIsPresent(users, token);
             Datahub.addAssets(msg.sender, token, amount);
-
-            return true;
         }
 
+        console.log("DEPOSIT COMPLETE");
+
+        return true;
     }
 
     /* WITHDRAW FUNCTION */
@@ -143,10 +125,7 @@ contract DepositVault is Ownable {
         address token,
         uint256 amount
     ) external returns (bool) {
-        (uint256 assets, ,uint256 pending, , ) = Datahub.ReadUserData(
-            msg.sender,
-            token
-        );
+        (uint256 assets, , ,uint256 pending , , ) = Datahub.ReadUserData(msg.sender, token);
 
         require(pending == 0);
         require(amount <= assets);
@@ -158,21 +137,19 @@ contract DepositVault is Ownable {
         uint256 AssetPriceCalulation = (assetInformation.assetPrice * amount) /
             10 ** 18; // this is 10*18 dnominated price of asset amount
 
-        uint256 usersAMMR = Datahub.calculateAMMRForUser(
-            msg.sender
-        );
+        uint256 usersAMMR = Datahub.calculateAMMRForUser(msg.sender);
 
         uint256 usersTPV = Datahub.calculateTotalPortfolioValue(msg.sender);
 
         bool UnableToWithdraw = usersAMMR + AssetPriceCalulation > usersTPV;
-        // if the users AMMR + price of the withdraw is bigger than their TPV dont let them withdraw this
+        // if the users AMMR + price of the withdraw is bigger than their TPV dont let them withdraw this 
 
         require(!UnableToWithdraw);
 
         if (amount == assets) {
-            // remove assets and asset token from their portfolio
+            // remove asset token from their portfolio
+            Datahub.removeAssetToken(msg.sender);
             Datahub.removeAssets(msg.sender, token, amount);
-            Datahub.removeAssetToken(msg.sender, token);
         } else {
             Datahub.removeAssets(msg.sender, token, amount);
         }
@@ -184,11 +161,11 @@ contract DepositVault is Ownable {
 
         IDataHub.AssetData memory assetLogs = Datahub.returnAssetLogs(token);
 
-        // recalculate interest rate because total asset supply is changing
+        // recalculate interest rate because total asset supply is changing 
         if (assetLogs.totalBorrowedAmount > 0) {
             Datahub.toggleInterestRate(
                 token,
-                REX_LIBRARY.calculateInterestRate(0, assetLogs)
+                REX_LIBRARY.calculateInterestRate(0,assetLogs)
             );
         }
         return true;
@@ -202,7 +179,7 @@ contract DepositVault is Ownable {
         address token,
         address user
     ) public view returns (uint256[3] memory) {
-        (uint256 assets, uint256 liabilities, uint256 pending, , ) = Datahub
+        (uint256 assets, uint256 liabilities, , uint256 pending, , ) = Datahub
             .ReadUserData(user, token);
         return [assets, liabilities, pending];
     }

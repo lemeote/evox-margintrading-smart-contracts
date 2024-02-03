@@ -8,9 +8,5 @@ interface IOracle {
         uint256[][2] memory trade_amounts,
         uint256[] memory TakerliabilityAmounts,
         uint256[] memory  MakerliabilityAmounts
-     //   address[3] memory airnode_details,
-      //  bytes32 endpointId,
-      //  bytes calldata parameters
-        
     ) external;
 }
