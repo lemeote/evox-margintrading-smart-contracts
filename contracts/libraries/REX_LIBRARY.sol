@@ -71,15 +71,18 @@ library REX_LIBRARY {
 */
     function calculateInterestRate(
         uint256 amount,
-        IDataHub.AssetData memory assetlogs
+        IDataHub.AssetData memory assetlogs,
+        IDataHub.interestDetails memory interestRateInfo
     ) public view returns (uint256) {
         uint256 borrowProportion = ((assetlogs.totalBorrowedAmount) +
             amount * 10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
         uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
-        uint256 minimumInterestRate = assetlogs.interestRateInfo[0];
-        uint256 optimalInterestRate = assetlogs.interestRateInfo[1];
-        uint256 maximumInterestRate = assetlogs.interestRateInfo[2];
+
+        
+        uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
+        uint256 optimalInterestRate = interestRateInfo.rateInfo[1];
+        uint256 maximumInterestRate = interestRateInfo.rateInfo[2];
 
         if (borrowProportion <= optimalBorrowProportion) {
             uint256 rate = optimalInterestRate - minimumInterestRate;

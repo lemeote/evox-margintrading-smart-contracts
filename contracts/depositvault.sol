@@ -29,6 +29,10 @@ contract DepositVault is Ownable {
         return Token.decimals();
     }
 
+        function fetchtotalHistoricalUsers() external view returns(uint256){
+            return totalHistoricalUsers;
+        }
+
     function fetchstatus(address user) external view returns (bool) {
         if (userInitialized[user] == true) {
             return true;
@@ -79,6 +83,7 @@ contract DepositVault is Ownable {
 
         if(tokens.length == 0){
             totalHistoricalUsers += 1;
+            Datahub.alterUsersInterestRateIndex( msg.sender);
         }
 
         /// 

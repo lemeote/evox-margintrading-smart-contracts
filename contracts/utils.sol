@@ -65,19 +65,44 @@ contract Utility is Ownable {
         }
     }
 
-    /// @notice This checks if the user is liquidatable
-    /// @dev add in the users address to check their Aggregate Maintenance Margin Requirement and see if its higher that their Total Portfolio value
-    function CheckForLiquidation(address user) external view returns (bool) {
-        if (
-            Datahub.calculateAMMRForUser(user) >
-            Datahub.calculateTotalPortfolioValue(user)
+    function chargeInterest(
+        address token,
+        uint256 liabilities,
+        uint256 rateIndex
+    ) public view returns (uint256) {
+        uint256 interestBulk;
+
+        uint256 lastRateChange = Datahub
+            .fetchRates(token, Datahub.fetchCurrentRateIndex(token))
+            .lastUpdatedTime;
+
+        uint256 currentTime = block.timestamp;
+
+        for (
+            uint256 i = rateIndex;
+            i < Datahub.fetchCurrentRateIndex(token);
+            i++
         ) {
-            return true;
-            // liquidate this fucker
-        } else {
-            return false;
-            // safe for now
+            interestBulk += Datahub.fetchRates(token, i).interestRate;
+
+            if (currentTime - lastRateChange > 1 hours) {
+                interestBulk +=
+                    Datahub.fetchRates(token, i).interestRate *
+                    (currentTime - lastRateChange / 1 hours);
+            }
         }
+
+        uint256 interestAverage = interestBulk /
+            (Datahub.fetchCurrentRateIndex(token) -
+                rateIndex +
+                (currentTime - lastRateChange / 1 hours));
+
+        uint256 interestCharged = liabilities *
+            ((1 + interestAverage) **
+                (Datahub.fetchCurrentRateIndex(token) - rateIndex)) -
+            liabilities;
+
+        return interestCharged;
     }
 
     function handleHourlyFee(
@@ -100,7 +125,8 @@ contract Utility is Ownable {
 
         uint256 interestRateForHour = REX_LIBRARY.calculateInterestRate(
             amount,
-            assetLogs
+            assetLogs,
+            Datahub.fetchRates(token, Datahub.fetchCurrentRateIndex(token))
         ) / 8760;
 
         return

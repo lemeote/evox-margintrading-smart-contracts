@@ -22,11 +22,15 @@ interface IUtilityContract {
         address token
     ) external view returns (uint256);
 
-    function CheckForLiquidation(address user) external view returns (bool);
-
     function handleHourlyFee(
         address asset,
         uint256 amount
+    ) external view returns (uint256);
+
+        function chargeInterest(
+        address token,
+        uint256 liabilities,
+        uint256 rateIndex
     ) external view returns (uint256);
 
     function calculateAmountToAddToLiabilities(

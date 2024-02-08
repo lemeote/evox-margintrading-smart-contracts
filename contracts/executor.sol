@@ -23,6 +23,8 @@ contract REX_EXCHANGE is Ownable {
     address public FeeWallet =
         address(0x1167E56ABcf9d2dF6354e03610E301B8a2934955);
 
+    address public liquidator;
+
     /** Constructor  */
     constructor(
         address initialOwner,
@@ -30,15 +32,23 @@ contract REX_EXCHANGE is Ownable {
         address _deposit_vault,
         address oracle,
         address _utility
-    ) Ownable(initialOwner) {
+    )
+        // address _liquidator
+        Ownable(initialOwner)
+    {
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_deposit_vault);
         Oracle = IOracle(oracle);
         Utilities = IUtilityContract(_utility);
+
+        // liquidator = _liquidator;
     }
 
     modifier checkRoleAuthority() {
-        require(msg.sender == address(Oracle), "Unauthorized");
+        require(
+            msg.sender == address(Oracle) || msg.sender == liquidator,
+            "Unauthorized"
+        );
         _;
     }
 
@@ -185,26 +195,22 @@ contract REX_EXCHANGE is Ownable {
         Datahub.checkIfAssetIsPresent(takers, pair[1]);
         Datahub.checkIfAssetIsPresent(makers, pair[0]);
         // checks if the asset is in the users portfolio already or not and adds it if it isnt
-        for (uint256 i = 0; i < makers.length; i++) {
-            executeTrade(
-                makers,
-                taker_amounts,
-                maker_amounts,
-                MakerliabilityAmounts,
-                pair[1],
-                pair[0]
-            );
-        }
-        for (uint256 i = 0; i < takers.length; i++) {
-            executeTrade(
-                takers,
-                maker_amounts,
-                taker_amounts,
-                TakerliabilityAmounts,
-                pair[0],
-                pair[1]
-            );
-        }
+        executeTrade(
+            makers,
+            taker_amounts,
+            maker_amounts,
+            MakerliabilityAmounts,
+            pair[1],
+            pair[0]
+        );
+        executeTrade(
+            takers,
+            maker_amounts,
+            taker_amounts,
+            TakerliabilityAmounts,
+            pair[0],
+            pair[1]
+        );
     }
 
     function executeTrade(
@@ -234,23 +240,40 @@ contract REX_EXCHANGE is Ownable {
                     )
                 );
 
+                uint256 interestCharge = Utilities.chargeInterest(
+                    out_token,
+                    Utilities.returnliabilities(users[i], out_token),
+                    Datahub.viewUsersInterestRateIndex(users[i])
+                );
+
+                amountToAddToLiabilities += interestCharge;
+
                 Datahub.addLiabilities(
                     users[i],
                     out_token,
                     amountToAddToLiabilities
                 );
 
+                Datahub.alterUsersInterestRateIndex(users[i]);
+
+                // include bulk uncharged interest into this
+                // need to do a similar thing to TPV and AMMR for the individual user
+
                 Datahub.setTotalBorrowedAmount(
                     out_token,
                     amountToAddToLiabilities,
                     true
                 );
-                /// here
+                // add rate change information cause the rates will change
                 Datahub.toggleInterestRate(
                     out_token,
                     REX_LIBRARY.calculateInterestRate(
                         amountToAddToLiabilities,
-                        returnAssetLogs(out_token)
+                        returnAssetLogs(out_token),
+                        Datahub.fetchRates(
+                            out_token,
+                            Datahub.fetchCurrentRateIndex(out_token)
+                        )
                     )
                 );
 
@@ -270,11 +293,24 @@ contract REX_EXCHANGE is Ownable {
             ) {
                 Modifymmr(users[i], in_token, out_token, amounts_in_token[i]);
 
+                uint256 interestCharge = Utilities.chargeInterest(
+                    in_token,
+                    Utilities.returnliabilities(users[i], in_token),
+                    Datahub.viewUsersInterestRateIndex(users[i])
+                );
+
+                // under flow possiblities
+
                 Datahub.removeLiabilities(
                     users[i],
                     in_token,
-                    amounts_in_token[i]
+                    (amounts_in_token[i] - interestCharge)
                 );
+
+                Datahub.alterUsersInterestRateIndex(users[i]);
+
+                // add rate change information cause the rates will change
+
                 Datahub.setTotalBorrowedAmount(
                     out_token,
                     amounts_in_token[i],
@@ -285,7 +321,11 @@ contract REX_EXCHANGE is Ownable {
                     in_token,
                     REX_LIBRARY.calculateInterestRate(
                         amountToAddToLiabilities,
-                        returnAssetLogs(in_token)
+                        returnAssetLogs(in_token),
+                        Datahub.fetchRates(
+                            in_token,
+                            Datahub.fetchCurrentRateIndex(in_token)
+                        )
                     )
                 );
             } else {
@@ -307,11 +347,20 @@ contract REX_EXCHANGE is Ownable {
                         out_token,
                         amounts_in_token[i]
                     );
+                    // add rate change information cause the rates will change
+
+                    uint256 interestCharge = Utilities.chargeInterest(
+                        in_token,
+                        Utilities.returnliabilities(users[i], in_token),
+                        Datahub.viewUsersInterestRateIndex(users[i])
+                    );
+                    // under flow possiblities
+                    Datahub.alterUsersInterestRateIndex(users[i]);
 
                     Datahub.removeLiabilities(
                         users[i],
                         in_token,
-                        subtractedFromLiabilites
+                        (subtractedFromLiabilites - interestCharge)
                     );
 
                     Datahub.setTotalBorrowedAmount(
@@ -324,7 +373,11 @@ contract REX_EXCHANGE is Ownable {
                         in_token,
                         REX_LIBRARY.calculateInterestRate(
                             0,
-                            returnAssetLogs(in_token)
+                            returnAssetLogs(in_token),
+                            Datahub.fetchRates(
+                                in_token,
+                                Datahub.fetchCurrentRateIndex(in_token)
+                            )
                         )
                     );
                 }
@@ -362,8 +415,12 @@ contract REX_EXCHANGE is Ownable {
         if (amount <= Utilities.returnliabilities(user, in_token)) {
             uint256 StartingDollarMMR = (amount *
                 assetLogsOutToken.MaintenanceMarginRequirement) / 10 ** 18; // check to make sure this is right
-            if (StartingDollarMMR > Datahub.returnPairMMROfUser(user, in_token, out_token)) {
-                uint256 overage = (StartingDollarMMR - Datahub.returnPairMMROfUser(user, in_token, out_token)) /
+            if (
+                StartingDollarMMR >
+                Datahub.returnPairMMROfUser(user, in_token, out_token)
+            ) {
+                uint256 overage = (StartingDollarMMR -
+                    Datahub.returnPairMMROfUser(user, in_token, out_token)) /
                     assetLogsInToken.MaintenanceMarginRequirement;
 
                 Datahub.removeMaintenanceMarginRequirement(

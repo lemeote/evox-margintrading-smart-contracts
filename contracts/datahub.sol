@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
 import "hardhat/console.sol";
+
 contract DataHub is Ownable {
     modifier checkRoleAuthority() {
         require(
@@ -32,6 +33,8 @@ contract DataHub is Ownable {
     address public deposit_vault;
     address public oracle;
 
+    uint256 public CurrentRateIndex;
+
     function AlterAdminRoles(
         address _deposit_vault,
         address _executor,
@@ -48,7 +51,32 @@ contract DataHub is Ownable {
 
     mapping(address => IDataHub.AssetData) public assetdata;
 
+    mapping(address => mapping(uint256 => IDataHub.interestDetails)) interestInfo;
+
     uint256 private MAX_INT = type(uint256).max;
+
+    function fetchRates(
+        address token,
+        uint256 index
+    ) external view returns (IDataHub.interestDetails memory) {
+        return interestInfo[token][index];
+    }
+
+    function fetchCurrentRateIndex() external view returns (uint256) {
+        return CurrentRateIndex;
+    }
+
+    function alterUsersInterestRateIndex(
+        address user
+    ) external checkRoleAuthority {
+        userdata[user].interestRateIndex = CurrentRateIndex;
+    }
+
+    function viewUsersInterestRateIndex(
+        address user
+    ) external view returns (uint256) {
+        return userdata[user].interestRateIndex;
+    }
 
     function addAssets(
         address user,
@@ -265,9 +293,18 @@ contract DataHub is Ownable {
 
     function toggleInterestRate(
         address token,
+        uint256 index,
         uint256 value
     ) external checkRoleAuthority {
-        assetdata[token].interestRate = value;
+
+        interestInfo[token][index].interestRate = value;
+        // assetdata[token].interestRate = value;
+    }
+
+    function initInterest(address token, uint256 index, uint256[] memory rateInfo, uint256 interestRate ) external checkRoleAuthority{
+        interestInfo[token][index].lastUpdatedTime = block.timestamp;
+        interestInfo[token][index].rateInfo = rateInfo;
+        interestInfo[token][index].interestRate = interestRate;
     }
 
     function toggleAssetPrice(
@@ -287,9 +324,7 @@ contract DataHub is Ownable {
         uint256 initialMarginRequirement,
         uint256 MaintenanceMarginRequirement,
         uint256 optimalBorrowProportion,
-        uint256 maximumBorrowProportion,
-        uint256 interestRate,
-        uint256[] memory interestRateInfo
+        uint256 maximumBorrowProportion
     ) external onlyOwner {
         require(!assetInitialized[token]);
 
@@ -303,27 +338,13 @@ contract DataHub is Ownable {
             totalBorrowedAmount: 0,
             optimalBorrowProportion: optimalBorrowProportion,
             maximumBorrowProportion: maximumBorrowProportion,
-            totalDepositors: 0,
-            interestRate: interestRate,
-            interestRateInfo: interestRateInfo
+            totalDepositors: 0
         });
 
         assetInitialized[token] = true;
     }
 
-    function toggleInterestRates(
-        address token,
-        uint256 optimalBorrowProportion,
-        uint256 maximumBorrowProportion,
-        uint256[] memory interestRateInfo
-    ) public onlyOwner {
-        assetdata[token].optimalBorrowProportion = optimalBorrowProportion;
-        assetdata[token].maximumBorrowProportion = maximumBorrowProportion;
-        assetdata[token].interestRateInfo[0] = interestRateInfo[0];
-        assetdata[token].interestRateInfo[1] = interestRateInfo[1];
-        assetdata[token].interestRateInfo[2] = interestRateInfo[2];
-    }
-
+ 
     function returnAssetLogs(
         address token
     ) external view returns (IDataHub.AssetData memory) {
@@ -412,20 +433,20 @@ contract DataHub is Ownable {
                             token_2
                         ] > 0
                     ) {
-
-                  
-                          console.log(token);
-                              console.log(token_2);
-                           console.log(assetdata[token].assetPrice);
-                        AMMR += (assetdata[token].assetPrice * userdata[user].maintenance_margin_requirement[
-                            token
-                        ][token_2]) / 10 **18;
+                        console.log(token);
+                        console.log(token_2);
+                        console.log(assetdata[token].assetPrice);
+                        AMMR +=
+                            (assetdata[token].assetPrice *
+                                userdata[user].maintenance_margin_requirement[
+                                    token
+                                ][token_2]) /
+                            10 ** 18;
                     }
                 }
             }
         }
         return AMMR;
-
     }
 
     receive() external payable {}
