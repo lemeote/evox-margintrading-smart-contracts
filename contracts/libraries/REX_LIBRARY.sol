@@ -2,7 +2,7 @@
 pragma solidity =0.8.20;
 
 import "../interfaces/IDataHub.sol";
-
+import "../interfaces/IinterestData.sol";
 
 library REX_LIBRARY {
     function createArray(address user) public pure returns (address[] memory) {
@@ -72,7 +72,7 @@ library REX_LIBRARY {
     function calculateInterestRate(
         uint256 amount,
         IDataHub.AssetData memory assetlogs,
-        IDataHub.interestDetails memory interestRateInfo
+        IInterestData.interestDetails memory interestRateInfo
     ) public view returns (uint256) {
         uint256 borrowProportion = ((assetlogs.totalBorrowedAmount) +
             amount * 10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0

@@ -8,7 +8,7 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
 import "./libraries/REX_LIBRARY.sol";
-
+import "./interfaces/IinterestData.sol";
 contract REX_EXCHANGE is Ownable {
     /** Address's  */
 
@@ -17,6 +17,8 @@ contract REX_EXCHANGE is Ownable {
     IOracle public Oracle;
 
     IDepositVault public DepositVault;
+
+    IInterestData public interestContract; 
 
     IUtilityContract public Utilities;
 
@@ -31,15 +33,16 @@ contract REX_EXCHANGE is Ownable {
         address _DataHub,
         address _deposit_vault,
         address oracle,
-        address _utility
+        address _utility,
+        address _interest
     )
-        // address _liquidator
         Ownable(initialOwner)
     {
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_deposit_vault);
         Oracle = IOracle(oracle);
         Utilities = IUtilityContract(_utility);
+        interestContract = IInterestData(_interest);
 
         // liquidator = _liquidator;
     }
@@ -225,57 +228,12 @@ contract REX_EXCHANGE is Ownable {
             uint256 amountToAddToLiabilities = liabilityAmounts[i];
 
             if (amountToAddToLiabilities != 0) {
-                if (block.timestamp % 3600 != 0) {
-                    amountToAddToLiabilities += Utilities.handleHourlyFee(
-                        out_token,
-                        amountToAddToLiabilities
-                    );
-                }
-                Datahub.addAssets(
-                    FeeWallet,
-                    out_token,
-                    REX_LIBRARY.calculateinitialMarginFeeAmount(
-                        returnAssetLogs(out_token),
-                        amountToAddToLiabilities
-                    )
-                );
-
-                uint256 interestCharge = Utilities.chargeInterest(
-                    out_token,
-                    Utilities.returnliabilities(users[i], out_token),
-                    Datahub.viewUsersInterestRateIndex(users[i])
-                );
-
-                amountToAddToLiabilities += interestCharge;
-
-                Datahub.addLiabilities(
+                chargeinterest(
                     users[i],
                     out_token,
-                    amountToAddToLiabilities
-                );
-
-                Datahub.alterUsersInterestRateIndex(users[i]);
-
-                // include bulk uncharged interest into this
-                // need to do a similar thing to TPV and AMMR for the individual user
-
-                Datahub.setTotalBorrowedAmount(
-                    out_token,
                     amountToAddToLiabilities,
-                    true
-                );
-                // add rate change information cause the rates will change
-                Datahub.toggleInterestRate(
-                    out_token,
-                    REX_LIBRARY.calculateInterestRate(
-                        amountToAddToLiabilities,
-                        returnAssetLogs(out_token),
-                        Datahub.fetchRates(
-                            out_token,
-                            Datahub.fetchCurrentRateIndex(out_token)
-                        )
-                    )
-                );
+                    false
+                ); // this sets total borrowed amount, adds to liabilities
 
                 Datahub.addMaintenanceMarginRequirement(
                     users[i],
@@ -291,43 +249,9 @@ contract REX_EXCHANGE is Ownable {
                 amounts_in_token[i] <=
                 Utilities.returnliabilities(users[i], in_token)
             ) {
+                chargeinterest(users[i], in_token, amounts_in_token[i], true);
+
                 Modifymmr(users[i], in_token, out_token, amounts_in_token[i]);
-
-                uint256 interestCharge = Utilities.chargeInterest(
-                    in_token,
-                    Utilities.returnliabilities(users[i], in_token),
-                    Datahub.viewUsersInterestRateIndex(users[i])
-                );
-
-                // under flow possiblities
-
-                Datahub.removeLiabilities(
-                    users[i],
-                    in_token,
-                    (amounts_in_token[i] - interestCharge)
-                );
-
-                Datahub.alterUsersInterestRateIndex(users[i]);
-
-                // add rate change information cause the rates will change
-
-                Datahub.setTotalBorrowedAmount(
-                    out_token,
-                    amounts_in_token[i],
-                    false
-                );
-
-                Datahub.toggleInterestRate(
-                    in_token,
-                    REX_LIBRARY.calculateInterestRate(
-                        amountToAddToLiabilities,
-                        returnAssetLogs(in_token),
-                        Datahub.fetchRates(
-                            in_token,
-                            Datahub.fetchCurrentRateIndex(in_token)
-                        )
-                    )
-                );
             } else {
                 uint256 subtractedFromLiabilites = Utilities.returnliabilities(
                     users[i],
@@ -341,44 +265,17 @@ contract REX_EXCHANGE is Ownable {
                         amounts_in_token[i] -
                         Utilities.returnliabilities(users[i], in_token);
 
+                    chargeinterest(
+                        users[i],
+                        in_token,
+                        subtractedFromLiabilites,
+                        true
+                    );
                     Modifymmr(
                         users[i],
                         in_token,
                         out_token,
                         amounts_in_token[i]
-                    );
-                    // add rate change information cause the rates will change
-
-                    uint256 interestCharge = Utilities.chargeInterest(
-                        in_token,
-                        Utilities.returnliabilities(users[i], in_token),
-                        Datahub.viewUsersInterestRateIndex(users[i])
-                    );
-                    // under flow possiblities
-                    Datahub.alterUsersInterestRateIndex(users[i]);
-
-                    Datahub.removeLiabilities(
-                        users[i],
-                        in_token,
-                        (subtractedFromLiabilites - interestCharge)
-                    );
-
-                    Datahub.setTotalBorrowedAmount(
-                        in_token,
-                        subtractedFromLiabilites,
-                        false
-                    );
-                    // calculate interest rate
-                    Datahub.toggleInterestRate(
-                        in_token,
-                        REX_LIBRARY.calculateInterestRate(
-                            0,
-                            returnAssetLogs(in_token),
-                            Datahub.fetchRates(
-                                in_token,
-                                Datahub.fetchCurrentRateIndex(in_token)
-                            )
-                        )
                     );
                 }
 
@@ -399,6 +296,111 @@ contract REX_EXCHANGE is Ownable {
 
                 // Conditions met assets changed, set flag to true
             }
+        }
+    }
+
+    function chargeLiabilityDelta(
+        address token,
+        uint256 index
+    ) public view returns (uint256) {
+        uint256 LiabilityToCharge;
+        uint256 LiabilityDelta;
+
+        IDataHub.AssetData memory assetLogs = returnAssetLogs(token);
+
+        IInterestData.interestDetails memory interestDetails = interestContract.fetchRates(
+            token,
+            index
+        );
+        if (
+            assetLogs.totalBorrowedAmount >
+            interestDetails.totalLiabilitiesAtIndex
+        ) {
+            // LiabilityDelta = TotalLiabilityPoolNow - TotalLiabilityPoolAtIndex // check which one is bigger, subtract the smaller from the bigger
+            LiabilityDelta =
+                assetLogs.totalBorrowedAmount -
+                interestDetails.totalLiabilitiesAtIndex;
+            //LiabilityToCharge = TotalLiabilityPoolNow - LiabilityDelta
+            LiabilityToCharge = assetLogs.totalBorrowedAmount - LiabilityDelta;
+        } else {
+            LiabilityDelta =
+                interestDetails.totalLiabilitiesAtIndex -
+                assetLogs.totalBorrowedAmount;
+
+            LiabilityToCharge = assetLogs.totalBorrowedAmount + LiabilityDelta;
+        }
+        //MassCharge = LiabilityToCharge * CurrentHourlyIndexInterest  //This means the index that just passed (i.e. we charge at 12:00:01 we use the interest rate for 12:00:00)
+        uint256 MassCharge = LiabilityToCharge *
+            (interestDetails.interestRate / 8760);
+
+        //TotalLiabilityPoolNow += MassCharge
+        return MassCharge;
+    }
+
+    function chargeinterest(
+        address user,
+        address token,
+        uint256 liabilitiesAccrued,
+        bool minus
+    ) private {
+
+        uint256 interestCharged = Utilities.chargeInterest(
+            token,
+            Utilities.returnliabilities(user, token),
+            liabilitiesAccrued,
+            Datahub.viewUsersInterestRateIndex(user)
+        );
+        if (!minus) {
+            Datahub.addLiabilities(
+                user,
+                token,
+                liabilitiesAccrued + interestCharged
+            );
+
+            Datahub.setTotalBorrowedAmount(
+                token,
+                (liabilitiesAccrued + interestCharged),
+                true
+            );
+        } else {
+            Datahub.removeLiabilities(
+                user,
+                token,
+                liabilitiesAccrued
+            );
+            Datahub.setTotalBorrowedAmount(
+                token,
+                liabilitiesAccrued,
+                true
+            );
+        }
+
+        Datahub.alterUsersInterestRateIndex(user);
+
+        if (
+            interestContract
+                .fetchRates(token, interestContract.fetchCurrentRateIndex(token))
+                .lastUpdatedTime +
+                1 hours <
+            block.timestamp
+        ) {
+       
+            Datahub.setTotalBorrowedAmount(token, chargeLiabilityDelta(
+                token,
+                interestContract.fetchCurrentRateIndex(token)
+            ), true);
+
+            Datahub.toggleInterestRate(
+                token,
+                REX_LIBRARY.calculateInterestRate(
+                    liabilitiesAccrued,
+                    returnAssetLogs(token),
+                    interestContract.fetchRates(
+                        token,
+                        interestContract.fetchCurrentRateIndex(token)
+                    )
+                )
+            );
         }
     }
 
@@ -506,6 +508,247 @@ contract REX_EXCHANGE is Ownable {
 
     receive() external payable {}
 }
+
+        // charge the user interest and add interest to their liabilities balance
+        /// and we always add that amount of new liabilties they took and the interest charged to total borrowed amount
+        // change users mmr
+
+        // IF we havent updated the current interest index then charge and update it
+        // charge mass interest to total borrowed amount
+        // once we do the above step this will effectively change the interest rate  BUT the contract doesnt know this yet
+        // we then write to actually change this rate THIS will create a new index with the new rate
+
+        // just make sure that their is a read function exposed to give ALL the above data in relation to the users mmr because
+        // the top data will not reflect the changes made in the data in the below paragraph in the state we must read it
+
+
+/*
+    function executeTradeOld(
+        address[] memory users,
+        uint256[] memory amounts_in_token,
+        uint256[] memory amounts_out_token,
+        uint256[] memory liabilityAmounts,
+        address out_token,
+        address in_token
+    ) private {
+        for (uint256 i = 0; i < users.length; i++) {
+            uint256 amountToAddToLiabilities = liabilityAmounts[i];
+
+            if (amountToAddToLiabilities != 0) {
+                /*
+                
+                if the amount to add to liabilities is above 0 
+
+                if this trade is not happening right on the hour
+                   // charge the user interest on his past trades and for the next hour 
+                   // add that to amount to add to liabilities
+
+                if the trade is happening right on the hour
+                  // get the mass charge amount and add that to the total borrowed amount 
+
+                add to users liabilities 
+
+                alter the users interest rate index 
+
+                set the total borrowed amount up by the size of the trade and interest charged
+
+                toggle the interest rate because we just changed the borrow proportion thus affecting interest rates
+
+                add to users mmr 
+
+
+                */
+
+                /*
+                if (block.timestamp % 3600 != 0) {
+                    amountToAddToLiabilities += Utilities.handleHourlyFee(
+                        out_token,
+                        amountToAddToLiabilities
+                    );
+                }
+
+                             Datahub.addAssets(
+                    FeeWallet,
+                    out_token,
+                    REX_LIBRARY.calculateinitialMarginFeeAmount(
+                        returnAssetLogs(out_token),
+                        amountToAddToLiabilities
+                    )
+                );
+
+                
+
+                if (block.timestamp % 3600 != 0) {
+                    uint256 interestCharge = Utilities.chargeInterest(
+                        out_token,
+                        Utilities.returnliabilities(users[i], out_token),
+                        amountToAddToLiabilities,
+                        Datahub.viewUsersInterestRateIndex(users[i])
+                    );
+
+                    amountToAddToLiabilities += interestCharge;
+                } else {
+                    // if its on the hour
+                    // charge mass
+                    // if it hasnt already happend on the hour charge the mass
+                }
+
+                Datahub.addLiabilities(
+                    users[i],
+                    out_token,
+                    amountToAddToLiabilities
+                );
+
+                Datahub.alterUsersInterestRateIndex(users[i]);
+
+                // include bulk uncharged interest into this
+                // need to do a similar thing to TPV and AMMR for the individual user
+
+                Datahub.setTotalBorrowedAmount(
+                    out_token,
+                    amountToAddToLiabilities,
+                    true
+                );
+                // add rate change information cause the rates will change
+                Datahub.toggleInterestRate(
+                    out_token,
+                    REX_LIBRARY.calculateInterestRate(
+                        amountToAddToLiabilities,
+                        returnAssetLogs(out_token),
+                        Datahub.fetchRates(
+                            out_token,
+                            Datahub.fetchCurrentRateIndex(out_token)
+                        )
+                    )
+                );
+
+                Datahub.addMaintenanceMarginRequirement(
+                    users[i],
+                    out_token,
+                    in_token,
+                    REX_LIBRARY.calculateMaintenanceRequirementForTrade(
+                        returnAssetLogs(in_token),
+                        amountToAddToLiabilities
+                    )
+                );
+            }
+            if (
+                amounts_in_token[i] <=
+                Utilities.returnliabilities(users[i], in_token)
+            ) {
+                Modifymmr(users[i], in_token, out_token, amounts_in_token[i]);
+                
+                uint256 interestCharge = Utilities.chargeInterest(
+                    in_token,
+                    Utilities.returnliabilities(users[i], in_token),
+                    Datahub.viewUsersInterestRateIndex(users[i])
+                );
+
+                // under flow possiblities
+
+                Datahub.removeLiabilities(
+                    users[i],
+                    in_token,
+                    (amounts_in_token[i])
+                );
+
+                Datahub.alterUsersInterestRateIndex(users[i]);
+
+                // add rate change information cause the rates will change
+
+                Datahub.setTotalBorrowedAmount(
+                    out_token,
+                    (amounts_in_token[i]),
+                    false
+                );
+
+                Datahub.toggleInterestRate(
+                    in_token,
+                    REX_LIBRARY.calculateInterestRate(
+                        amountToAddToLiabilities,
+                        returnAssetLogs(in_token),
+                        Datahub.fetchRates(
+                            in_token,
+                            Datahub.fetchCurrentRateIndex(in_token)
+                        )
+                    )
+                );
+            } else {
+                uint256 subtractedFromLiabilites = Utilities.returnliabilities(
+                    users[i],
+                    in_token
+                ); // we know its greater than or equal to its safe to 0
+
+                uint256 input_amount = amounts_in_token[i];
+
+                if (subtractedFromLiabilites > 0) {
+                    input_amount =
+                        amounts_in_token[i] -
+                        Utilities.returnliabilities(users[i], in_token);
+
+                    Modifymmr(
+                        users[i],
+                        in_token,
+                        out_token,
+                        amounts_in_token[i]
+                    );
+                    // add rate change information cause the rates will change
+                    
+                    uint256 interestCharge = Utilities.chargeInterest(
+                        in_token,
+                        Utilities.returnliabilities(users[i], in_token),
+                        Datahub.viewUsersInterestRateIndex(users[i])
+                    );
+
+                
+                    // under flow possiblities
+                    Datahub.alterUsersInterestRateIndex(users[i]);
+
+                    Datahub.removeLiabilities(
+                        users[i],
+                        in_token,
+                        (subtractedFromLiabilites)
+                    );
+
+                    Datahub.setTotalBorrowedAmount(
+                        in_token,
+                        subtractedFromLiabilites,
+                        false
+                    );
+                    // calculate interest rate
+                    Datahub.toggleInterestRate(
+                        in_token,
+                        REX_LIBRARY.calculateInterestRate(
+                            0,
+                            returnAssetLogs(in_token),
+                            Datahub.fetchRates(
+                                in_token,
+                                Datahub.fetchCurrentRateIndex(in_token)
+                            )
+                        )
+                    );
+                }
+
+                amounts_out_token[i] >
+                    Utilities.returnPending(users[i], out_token)
+                    ? Datahub.removePendingBalances(
+                        users[i],
+                        out_token,
+                        Utilities.returnPending(users[i], out_token)
+                    )
+                    : Datahub.removePendingBalances(
+                        users[i],
+                        out_token,
+                        amounts_out_token[i]
+                    );
+
+                Datahub.addAssets(users[i], in_token, input_amount);
+
+                // Conditions met assets changed, set flag to true
+            }
+        }
+    }
+*/
 
 /*
     function modifyMMR(address user, address in_token, address out_token, uint256 amount) private {

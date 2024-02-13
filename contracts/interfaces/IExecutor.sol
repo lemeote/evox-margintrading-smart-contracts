@@ -16,4 +16,9 @@ interface IExecutor {
     function returnAssetLogsExternal(
         address token
     ) external view returns (IDataHub.AssetData memory assetLogs);
+
+        function chargeLiabilityDelta(
+        address token,
+        uint256 index
+    ) external view returns (uint256) ;
 }

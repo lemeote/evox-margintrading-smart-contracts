@@ -6,14 +6,25 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol" as ERC20;
 import "@openzeppelin/contracts/interfaces/IERC20.sol" as IERC20;
 import "./libraries/REX_LIBRARY.sol";
+import "./interfaces/IExecutor.sol";
+import "./interfaces/IinterestData.sol";
 
 //  userId[totalHistoricalUsers] = msg.sender;
 contract DepositVault is Ownable {
-    constructor(address initialOwner, address dataHub) Ownable(initialOwner) {
+    constructor(
+        address initialOwner,
+        address dataHub,
+        address executor,
+        address interest
+    ) Ownable(initialOwner) {
         Datahub = IDataHub(dataHub);
+        Executor = IExecutor(executor);
+        interestContract = IInterestData(interest);
     }
 
     IDataHub public Datahub;
+    IExecutor public Executor;
+    IInterestData public interestContract;
 
     using REX_LIBRARY for uint256;
 
@@ -29,9 +40,9 @@ contract DepositVault is Ownable {
         return Token.decimals();
     }
 
-        function fetchtotalHistoricalUsers() external view returns(uint256){
-            return totalHistoricalUsers;
-        }
+    function fetchtotalHistoricalUsers() external view returns (uint256) {
+        return totalHistoricalUsers;
+    }
 
     function fetchstatus(address user) external view returns (bool) {
         if (userInitialized[user] == true) {
@@ -47,9 +58,11 @@ contract DepositVault is Ownable {
         uint256 amount
     ) private {
         address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-       (, uint256 liabilities, , , ) = Datahub.ReadUserData(msg.sender, in_token);
+        (, uint256 liabilities, , , ) = Datahub.ReadUserData(
+            msg.sender,
+            in_token
+        );
         for (uint256 i = 0; i < tokens.length; i++) {
-
             uint256 liabilityMultiplier = REX_LIBRARY
                 .calculatedepositLiabilityRatio(liabilities, amount);
             Datahub.alterMMR(user, in_token, tokens[i], liabilityMultiplier);
@@ -65,7 +78,7 @@ contract DepositVault is Ownable {
     function deposit_token(
         address token,
         uint256 amount
-    ) external returns(bool) {
+    ) external returns (bool) {
         require(
             Datahub.FetchAssetInitilizationStatus(token) == true,
             "this asset is not available to be depositted or traded"
@@ -74,26 +87,23 @@ contract DepositVault is Ownable {
         require(ERC20Token.transferFrom(msg.sender, address(this), amount));
 
         Datahub.settotalAssetSupply(token, amount, true);
-        Datahub.toggleInterestRate(
-            token,
-            REX_LIBRARY.calculateInterestRate(0, Datahub.returnAssetLogs(token))
-        );
-   
-        (, uint256 liabilities, , ,address[] memory tokens ) = Datahub.ReadUserData(msg.sender, token);
 
-        if(tokens.length == 0){
+        (, uint256 liabilities, , , address[] memory tokens) = Datahub
+            .ReadUserData(msg.sender, token);
+
+        if (tokens.length == 0) {
             totalHistoricalUsers += 1;
-            Datahub.alterUsersInterestRateIndex( msg.sender);
+            //    Datahub.alterUsersInterestRateIndex(msg.sender);
         }
 
-        /// 
+        ///
         // checks to see if user is in the sytem and inits their struct if not
         if (liabilities > 0) {
             // checks to see if the user has liabilities of that asset
 
             if (amount <= liabilities) {
                 // if the amount is less or equal to their current liabilities -> lower their liabilities using the multiplier
-                
+
                 modifyMMROnDeposit(msg.sender, token, amount);
 
                 uint256 liabilityMultiplier = REX_LIBRARY
@@ -105,21 +115,24 @@ contract DepositVault is Ownable {
                     ((10 ** 18) - liabilityMultiplier)
                 );
 
-        return true;
-            } else {
+                Datahub.setTotalBorrowedAmount(token, amount, false);
 
+                interestContract.chargeMassinterest(token);
+
+                return true;
+            } else {
                 modifyMMROnDeposit(msg.sender, token, amount);
                 // if amount depositted is bigger that liability info 0 it out
                 uint256 amountAddedtoAssets = amount - liabilities; // amount - outstanding liabilities
-
 
                 Datahub.addAssets(msg.sender, token, amountAddedtoAssets); // add to assets
 
                 Datahub.removeLiabilities(msg.sender, token, liabilities); // remove all liabilities
 
- 
+                Datahub.setTotalBorrowedAmount(token, liabilities, false);
 
                 Datahub.changeMarginStatus(msg.sender);
+                interestContract.chargeMassinterest(token);
 
                 return true;
             }
@@ -132,7 +145,6 @@ contract DepositVault is Ownable {
 
             return true;
         }
-
     }
 
     /* WITHDRAW FUNCTION */
@@ -148,7 +160,7 @@ contract DepositVault is Ownable {
         address token,
         uint256 amount
     ) external returns (bool) {
-        (uint256 assets, ,uint256 pending, , ) = Datahub.ReadUserData(
+        (uint256 assets, , uint256 pending, , ) = Datahub.ReadUserData(
             msg.sender,
             token
         );
@@ -163,9 +175,7 @@ contract DepositVault is Ownable {
         uint256 AssetPriceCalulation = (assetInformation.assetPrice * amount) /
             10 ** 18; // this is 10*18 dnominated price of asset amount
 
-        uint256 usersAMMR = Datahub.calculateAMMRForUser(
-            msg.sender
-        );
+        uint256 usersAMMR = Datahub.calculateAMMRForUser(msg.sender);
 
         uint256 usersTPV = Datahub.calculateTotalPortfolioValue(msg.sender);
 
@@ -191,10 +201,7 @@ contract DepositVault is Ownable {
 
         // recalculate interest rate because total asset supply is changing
         if (assetLogs.totalBorrowedAmount > 0) {
-            Datahub.toggleInterestRate(
-                token,
-                REX_LIBRARY.calculateInterestRate(0, assetLogs)
-            );
+            interestContract.chargeMassinterest(token);
         }
         return true;
     }

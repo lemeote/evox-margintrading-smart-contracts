@@ -27,9 +27,10 @@ interface IUtilityContract {
         uint256 amount
     ) external view returns (uint256);
 
-        function chargeInterest(
+    function chargeInterest(
         address token,
         uint256 liabilities,
+        uint256 amount_to_be_added, 
         uint256 rateIndex
     ) external view returns (uint256);
 

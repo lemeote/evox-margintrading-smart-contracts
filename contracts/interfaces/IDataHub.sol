@@ -30,19 +30,6 @@ interface IDataHub {
         uint256 totalDepositors;
     }
 
-    struct interestDetails {
-        uint256 lastUpdatedTime; // last updated time 
-        uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
-        uint256 interestRate; // current interestRate
-    }
-
-    function fetchRates(
-        address token,
-        uint256 index
-    ) external view returns (IDataHub.interestDetails memory);
-
-    function fetchCurrentRateIndex(address token) external view returns (uint256);
-
     function addAssets(address user, address token, uint256 amount) external;
 
     function removeAssets(address user, address token, uint256 amount) external;

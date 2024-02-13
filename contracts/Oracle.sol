@@ -14,7 +14,7 @@ contract Oracle is Ownable  {
     IExecutor public Executor;
     IDepositVault public DepositVault;
 
-    address public USDT = address(0xa513E6E4b8f2a923D98304ec87F64353C4D5C853);
+    address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
 
     /** Constructor  */
     constructor(

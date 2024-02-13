@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
 import "hardhat/console.sol";
+import "./interfaces/IinterestData.sol";
 
 contract DataHub is Ownable {
     modifier checkRoleAuthority() {
@@ -33,51 +34,69 @@ contract DataHub is Ownable {
     address public deposit_vault;
     address public oracle;
 
-    uint256 public CurrentRateIndex;
+    IInterestData interestContract; 
+
 
     function AlterAdminRoles(
         address _deposit_vault,
         address _executor,
-        address _oracle
+        address _oracle,
+        address _interest
     ) public onlyOwner {
         executor = _executor;
         deposit_vault = _deposit_vault;
         oracle = _oracle;
+        interestContract = IInterestData(_interest);
     }
-
+/// @notice checks to see if the asset has been initilized 
+/// @dev once an asset is tradeable this is true
     mapping(address => bool) public assetInitialized;
 
+/// @notice Keeps track of a users data
+/// @dev Go to IDatahub for more details 
     mapping(address => IDataHub.UserData) public userdata;
 
+/// @notice Keeps track of an assets data
+/// @dev Go to IDatahub for more details 
     mapping(address => IDataHub.AssetData) public assetdata;
-
-    mapping(address => mapping(uint256 => IDataHub.interestDetails)) interestInfo;
 
     uint256 private MAX_INT = type(uint256).max;
 
-    function fetchRates(
-        address token,
-        uint256 index
-    ) external view returns (IDataHub.interestDetails memory) {
-        return interestInfo[token][index];
-    }
 
-    function fetchCurrentRateIndex() external view returns (uint256) {
-        return CurrentRateIndex;
-    }
 
-    function alterUsersInterestRateIndex(
-        address user
+/// @notice Alters the users interest rate index (or epoch)
+/// @dev This is to change the users rate epoch, it would be changed after they pay interest.
+/// @param user the users address
+/// @param token the token being targetted
+        function alterUsersInterestRateIndex(
+        address user,
+        address token
     ) external checkRoleAuthority {
-        userdata[user].interestRateIndex = CurrentRateIndex;
+        userdata[user].interestRateIndex[token] = interestContract.fetchCurrentRateIndex(
+        token
+    );
     }
-
+/// @notice provides to the caller the users current rate epoch
+/// @dev This is to keep track of the last epoch the user paid at 
+/// @param user the users address
+/// @param token the token being targetted
     function viewUsersInterestRateIndex(
-        address user
+        address user,
+        address token
     ) external view returns (uint256) {
-        return userdata[user].interestRateIndex;
+        return userdata[user].interestRateIndex[token];
     }
 
+  /// -----------------------------------------------------------------------
+  /// Assets
+  /// -----------------------------------------------------------------------
+
+
+/// @notice This adds to the users assets 
+/// @dev this function is to add to the users assets of a token
+/// @param user the users address
+/// @param token the token being targetted
+/// @param amount the amount to be added to their balance
     function addAssets(
         address user,
         address token,
@@ -85,7 +104,11 @@ contract DataHub is Ownable {
     ) external checkRoleAuthority {
         userdata[user].asset_info[token] += amount;
     }
-
+/// @notice This removes balance from the users assets 
+/// @dev this function is to remove assets from the users assets of a token
+/// @param user the users address
+/// @param token the token being targetted
+/// @param amount the amount to be removed to their balance
     function removeAssets(
         address user,
         address token,
@@ -94,14 +117,17 @@ contract DataHub is Ownable {
         userdata[user].asset_info[token] -= amount;
     }
 
-    function alterAssets(
-        address user,
-        address token,
-        uint256 amount
-    ) external checkRoleAuthority {
-        userdata[user].asset_info[token] *= amount;
-    }
 
+  /// -----------------------------------------------------------------------
+  /// Maintenance Margin Requirement
+  /// -----------------------------------------------------------------------
+
+
+/// @notice This alters a users maintenance margin requirement of a given asset pair
+/// @param user the users address
+/// @param in_token the base token being targetted
+/// @param out_token the other token of the pair being targetted
+/// @param amount the amount to multiply their MMR by
     function alterMMR(
         address user,
         address in_token,
@@ -112,31 +138,11 @@ contract DataHub is Ownable {
             out_token
         ] *= amount;
     }
-
-    function alterLiabilities(
-        address user,
-        address token,
-        uint256 amount
-    ) external checkRoleAuthority {
-        userdata[user].liability_info[token] *= amount;
-    }
-
-    function addLiabilities(
-        address user,
-        address token,
-        uint256 amount
-    ) external checkRoleAuthority {
-        userdata[user].liability_info[token] += amount;
-    }
-
-    function removeLiabilities(
-        address user,
-        address token,
-        uint256 amount
-    ) external checkRoleAuthority {
-        userdata[user].liability_info[token] -= amount;
-    }
-
+/// @notice This adds to  a users maintenance margin requirement of a given asset pair
+/// @param user the users address
+/// @param in_token the base token being targetted
+/// @param out_token the other token of the pair being targetted
+/// @param amount the amount to add to their MMR
     function addMaintenanceMarginRequirement(
         address user,
         address in_token,
@@ -147,7 +153,11 @@ contract DataHub is Ownable {
             out_token
         ] += amount;
     }
-
+/// @notice This removes maintenance margin requirement of a given asset pair
+/// @param user the users address
+/// @param in_token the base token being targetted
+/// @param out_token the other token of the pair being targetted
+/// @param amount the amount to remove from MMR 
     function removeMaintenanceMarginRequirement(
         address user,
         address in_token,
@@ -159,6 +169,69 @@ contract DataHub is Ownable {
         ] -= amount;
     }
 
+/// @notice This returns the users current MMR
+/// @param user the users address
+/// @param in_token the base token being targetted
+/// @param out_token the other token of the pair being targetted
+    function returnPairMMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) external view returns (uint256) {
+        uint256 mmr = userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ];
+        return mmr;
+    }
+
+  /// -----------------------------------------------------------------------
+  /// Liabilities
+  /// -----------------------------------------------------------------------
+
+/// @notice Alters a users liabilities 
+/// @param user being targetted 
+/// @param token being targetted
+/// @param amount to alter liabilities by 
+    function alterLiabilities(
+        address user,
+        address token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].liability_info[token] *= amount;
+    }
+/// @notice Adds to a users liabilities 
+/// @param user being targetted 
+/// @param token being targetted
+/// @param amount to alter liabilities by 
+    function addLiabilities(
+        address user,
+        address token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].liability_info[token] += amount;
+    }
+/// @notice removes a users liabilities 
+/// @param user being targetted 
+/// @param token being targetted
+/// @param amount to alter liabilities by 
+    function removeLiabilities(
+        address user,
+        address token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].liability_info[token] -= amount;
+    }
+
+  /// -----------------------------------------------------------------------
+  /// Pending Balances --> when a trade is being executed the balance of the trade is moved to pending
+  /// -----------------------------------------------------------------------
+
+
+/// @notice This adds a pending balance for the user on a token they are trading
+/// @dev We do this because when the oracle is called there is a gap in time where the user should not have assets because the trade is not finalized
+/// @param user being targetted 
+/// @param token being targetted
+/// @param amount to add to pending balances
     function addPendingBalances(
         address user,
         address token,
@@ -166,7 +239,11 @@ contract DataHub is Ownable {
     ) external checkRoleAuthority {
         userdata[user].pending_balances[token] += amount;
     }
-
+/// @notice This removes a pending balance for the user on a token they are trading
+/// @dev We do this when the trade is cleared by the oracle and the trade is executed. 
+/// @param user being targetted 
+/// @param token being targetted
+/// @param amount to remove from pending balances
     function removePendingBalances(
         address user,
         address token,
@@ -175,13 +252,69 @@ contract DataHub is Ownable {
         userdata[user].pending_balances[token] -= amount;
     }
 
+
+
+  /// -----------------------------------------------------------------------
+  /// Margin modifiers.
+  /// -----------------------------------------------------------------------
+
+/// @notice This sets the users margin status 
+/// @dev if the user does a margined trade we want to record them on the contract as having margin already
+/// @param user user address being targetted 
+/// @param onOrOff this determines whether they are being turned as having margin or not 
     function SetMarginStatus(
         address user,
         bool onOrOff
     ) external checkRoleAuthority {
         userdata[user].margined = onOrOff;
     }
+/// @notice This checks the users margin status and if they should be in that status state, and changes it if they should not be
+/// @param user the user being targetted
+/// @param token the token being traded or targetted
+/// @param BalanceToLeave the balance leaving their account
+        function checkMarginStatus(
+        address user,
+        address token,
+        uint256 BalanceToLeave
+    ) external checkRoleAuthority {
+        uint256 AssetBalance = userdata[user].asset_info[token];
+        //  - userdata[user].pending_balances[token];
+        if (userdata[user].margined == false) {
+            if (AssetBalance < BalanceToLeave) {
+                userdata[user].margined = true;
+            }
+            return;
+        }
+        return;
+    }
+/// @notice This changes the users margin status 
+/// @dev if they don't have any margined positions this should turn them into a "spot" user
+/// @param user the user being targetted
+    function changeMarginStatus(
+        address user
+    ) external checkRoleAuthority returns (bool) {
+        bool isMargined = false;
+        for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
+            if (userdata[user].liability_info[userdata[user].tokens[j]] > 0) {
+                // Token found in the array
+                isMargined = true;
+                break;
+            }
+        }
 
+        userdata[user].margined = isMargined;
+        return isMargined;
+    }
+
+  /// -----------------------------------------------------------------------
+  /// Portfolio make-up  --> when a user has assets they are added to an array these function return or change that array
+  /// -----------------------------------------------------------------------
+
+
+/// @notice This function removes an asset from a users portfolio 
+/// @dev it removes a token address from their tokens[] array in user data so it doesnt touch their assets this is called after they have no assets or liabiltiies of the token
+/// @param user the user being targetted
+/// @param tokenToRemove the token to remove from the portfolio
     function removeAssetToken(
         address user,
         address tokenToRemove
@@ -199,14 +332,17 @@ contract DataHub is Ownable {
             }
         }
     }
-
+/// @notice This function returns the users tokens array ( the tokens in their portfolio) 
+/// @param user the user being targetted
     function returnUsersAssetTokens(
         address user
     ) external view returns (address[] memory) {
         IDataHub.UserData storage userData = userdata[user];
         return userData.tokens;
     }
-
+/// @notice This function rchecks if a token is present in a users potrfolio
+/// @param users the users being targetted
+/// @param token being targetted
     function checkIfAssetIsPresent(
         address[] memory users,
         address token
@@ -234,39 +370,17 @@ contract DataHub is Ownable {
         return tokenFound;
     }
 
-    function FetchAssetInitilizationStatus(
-        address token
-    ) external view returns (bool) {
-        return assetInitialized[token];
-    }
 
-    function returnPairMMROfUser(
-        address user,
-        address in_token,
-        address out_token
-    ) external view returns (uint256) {
-        uint256 mmr = userdata[user].maintenance_margin_requirement[in_token][
-            out_token
-        ];
-        return mmr;
-    }
 
-    function ReadUserData(
-        address user,
-        address token
-    )
-        external
-        view
-        returns (uint256, uint256, uint256, bool, address[] memory)
-    {
-        uint256 assets = userdata[user].asset_info[token]; // tracks their portfolio (margined, and depositted)
-        uint256 liabilities = userdata[user].liability_info[token];
-        uint256 pending = userdata[user].pending_balances[token];
-        bool margined = userdata[user].margined;
-        address[] memory tokens = userdata[user].tokens;
-        return (assets, liabilities, pending, margined, tokens);
-    }
 
+  /// -----------------------------------------------------------------------
+  /// Asset Pool functions  --> 
+  /// -----------------------------------------------------------------------
+
+/// @notice This increases or decreases the asset supply of a given tokens
+/// @param token the token being targetted
+/// @param amount the amount to add or remove
+/// @param pos_neg if its adding or removing asset supply 
     function settotalAssetSupply(
         address token,
         uint256 amount,
@@ -278,7 +392,10 @@ contract DataHub is Ownable {
             assetdata[token].totalAssetSupply -= amount;
         }
     }
-
+/// @notice This increases or decreases the total borrowed amount of a given tokens
+/// @param token the token being targetted
+/// @param amount the amount to add or remove
+/// @param pos_neg if its adding or removing from the borrowed amount
     function setTotalBorrowedAmount(
         address token,
         uint256 amount,
@@ -290,32 +407,37 @@ contract DataHub is Ownable {
             assetdata[token].totalBorrowedAmount -= amount;
         }
     }
+  /// -----------------------------------------------------------------------
+  /// Asset Data functions  --> 
+  /// -----------------------------------------------------------------------
 
-    function toggleInterestRate(
-        address token,
-        uint256 index,
-        uint256 value
-    ) external checkRoleAuthority {
-
-        interestInfo[token][index].interestRate = value;
-        // assetdata[token].interestRate = value;
+  /// @notice This returns the asset data of a given asset see Idatahub for more details on what it returns 
+  /// @param token the token being targetted
+  /// @return returns the assets data
+    function returnAssetLogs(
+        address token
+    ) external view returns (IDataHub.AssetData memory) {
+        return assetdata[token];
     }
 
-    function initInterest(address token, uint256 index, uint256[] memory rateInfo, uint256 interestRate ) external checkRoleAuthority{
-        interestInfo[token][index].lastUpdatedTime = block.timestamp;
-        interestInfo[token][index].rateInfo = rateInfo;
-        interestInfo[token][index].interestRate = interestRate;
+  /// @notice This returns the asset data of a given asset see Idatahub for more details on what it returns 
+  /// @param token the token being targetted
+  /// @return returns the assets data
+    function FetchAssetInitilizationStatus(
+        address token
+    ) external view returns (bool) {
+        return assetInitialized[token];
     }
 
-    function toggleAssetPrice(
-        address token,
-        uint256 value
-    ) external checkRoleAuthority {
-        assetdata[token].assetPrice = value;
-    }
-
-    /* INITILIZATION FUNCTIONS */
-
+  /// @notice This returns the asset data of a given asset see Idatahub for more details on what it returns 
+  /// @param token the token being targetted
+  /// @param assetPrice the starting asset price of the token 
+  /// @param initialMarginFee the fee charged when they take out margin on the token
+  /// @param liquidationFee the fee they pay when being liquidated
+  /// @param initialMarginRequirement the amount they have to have in their portfolio to take out margin
+  /// @param MaintenanceMarginRequirement the amount they need to hold in their account to sustain a margin position of the asset
+  /// @param optimalBorrowProportion the optimal borrow proportion
+  /// @param maximumBorrowProportion the maximum borrow proportion of the asset 
     function InitTokenMarket(
         address token,
         uint256 assetPrice,
@@ -343,46 +465,46 @@ contract DataHub is Ownable {
 
         assetInitialized[token] = true;
     }
-
- 
-    function returnAssetLogs(
-        address token
-    ) external view returns (IDataHub.AssetData memory) {
-        return assetdata[token];
-    }
-
-    function checkMarginStatus(
-        address user,
+/// @notice Changes the assets price 
+/// @param token the token being targetted 
+/// @param value the new price 
+    function toggleAssetPrice(
         address token,
-        uint256 BalanceToLeave
+        uint256 value
     ) external checkRoleAuthority {
-        uint256 AssetBalance = userdata[user].asset_info[token];
-        //  - userdata[user].pending_balances[token];
-        if (userdata[user].margined == false) {
-            if (AssetBalance < BalanceToLeave) {
-                userdata[user].margined = true;
-            }
-            return;
-        }
-        return;
+        assetdata[token].assetPrice = value;
     }
+ 
 
-    function changeMarginStatus(
-        address user
-    ) external checkRoleAuthority returns (bool) {
-        bool isMargined = false;
-        for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
-            if (userdata[user].liability_info[userdata[user].tokens[j]] > 0) {
-                // Token found in the array
-                isMargined = true;
-                break;
-            }
-        }
 
-        userdata[user].margined = isMargined;
-        return isMargined;
+
+  /// -----------------------------------------------------------------------
+  /// User Data functions --> 
+  /// -----------------------------------------------------------------------
+
+/// @notice Returns a users data 
+/// @param user being targetted
+/// @param token the users data of the token being queried
+/// @return a tuple containing their info of the token 
+
+    function ReadUserData(
+        address user,
+        address token
+    )
+        external
+        view
+        returns (uint256, uint256, uint256, bool, address[] memory)
+    {
+        uint256 assets = userdata[user].asset_info[token]; // tracks their portfolio (margined, and depositted)
+        uint256 liabilities = userdata[user].liability_info[token];
+        uint256 pending = userdata[user].pending_balances[token];
+        bool margined = userdata[user].margined;
+        address[] memory tokens = userdata[user].tokens;
+        return (assets, liabilities, pending, margined, tokens);
     }
-
+/// @notice calculates the total dollar value of the users assets 
+/// @param user the address of the user we want to query
+/// @return sumOfAssets the cumulative value of all their assets 
     function calculateTotalAssetValue(
         address user
     ) public view returns (uint256) {
@@ -396,7 +518,9 @@ contract DataHub is Ownable {
         }
         return sumOfAssets;
     }
-
+/// @notice calculates the total dollar value of the users liabilities
+/// @param user the address of the user we want to query
+/// @return sumOfliabilities the cumulative value of all their liabilities
     function calculateLiabilitiesValue(
         address user
     ) public view returns (uint256) {
@@ -410,14 +534,17 @@ contract DataHub is Ownable {
         }
         return sumOfliabilities;
     }
-
-    // add pending balances in here?
+/// @notice calculates the total dollar value of the users portfolio
+/// @param user the address of the user we want to query
+/// @return returns their assets - liabilities value in dollars 
     function calculateTotalPortfolioValue(
         address user
     ) external view returns (uint256) {
         return calculateTotalAssetValue(user) - calculateLiabilitiesValue(user);
     }
-
+/// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement 
+/// @param user the address of the user we want to query
+/// @return returns their AMMR
     function calculateAMMRForUser(
         address user
     ) external view returns (uint256) {
