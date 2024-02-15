@@ -21,5 +21,11 @@ interface IInterestData {
 
     function chargeMassinterest(address token) external;
 
+        function toggleInterestRate(
+        address token,
+        uint256 index,
+        uint256 value
+    ) external;
+
 
 }

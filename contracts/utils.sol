@@ -8,6 +8,7 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./libraries/REX_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
+import "hardhat/console.sol";
 
 contract Utility is Ownable {
     IDataHub public Datahub;
@@ -18,7 +19,7 @@ contract Utility is Ownable {
 
     IExecutor public Executor;
 
-    IInterestData public interestContract; 
+    IInterestData public interestContract;
 
     /** Constructor  */
     constructor(
@@ -95,17 +96,25 @@ We are taking delta into account because there might be trades that have taken p
             i < interestContract.fetchCurrentRateIndex(token);
             i++
         ) {
-            interestBulk += (interestContract.fetchRates(token, i).interestRate / 8760);
+            interestBulk += (interestContract
+                .fetchRates(token, i)
+                .interestRate / 8760); /// / 8760
         }
-
-        uint256[] memory details;
+        uint256[] memory details = new uint256[](3);
 
         details[0] = liabilities;
         details[1] = amount_to_be_added;
-        details[3] = rateIndex;
-        
-        uint256 interestAverage = interestBulk /
-            ((interestContract.fetchCurrentRateIndex(token)) - rateIndex);
+        details[2] = rateIndex;
+        uint256 interestAverage;
+
+        if (interestContract.fetchCurrentRateIndex(token) != 0) {
+            interestAverage =
+                interestBulk /
+                ((interestContract.fetchCurrentRateIndex(token)) - rateIndex);
+        } else {
+            interestAverage = interestBulk;
+        }
+
         return
             returnInterestDetails(
                 interestAverage,
@@ -121,27 +130,32 @@ We are taking delta into account because there might be trades that have taken p
         uint256[] memory details,
         IDataHub.AssetData memory assetLogs
     ) private view returns (uint256) {
+        uint256 interestCharged;
+        if (interestContract.fetchCurrentRateIndex(token) != 0) {
+            interestCharged =
+                details[0] *
+                ((1 + interestAverage) **
+                    (interestContract.fetchCurrentRateIndex(token) -
+                        details[3])) -
+                details[0];
+        } else {
+            interestCharged = details[0] * (1 + interestAverage) - details[0];
+        }
 
-
-
-        uint256 interestCharged = details[0] *
-            ((1 + interestAverage) **
-                (interestContract.fetchCurrentRateIndex(token) - details[3])) -
-            details[0];
         // this settles them in the example to the current hour not the next thats what happens below
 
         uint256 interestRateForHour = REX_LIBRARY.calculateInterestRate(
             details[1],
             assetLogs,
-            interestContract.fetchRates(token, interestContract.fetchCurrentRateIndex(token))
+            interestContract.fetchRates(
+                token,
+                interestContract.fetchCurrentRateIndex(token)
+            )
         ) / 8760;
 
         return (interestCharged +
             interestRateForHour +
-            REX_LIBRARY.calculateinitialMarginFeeAmount(
-                assetLogs,
-                details[1]
-            ));
+            REX_LIBRARY.calculateinitialMarginFeeAmount(assetLogs, details[1]));
     }
 
     function calculateAmountToAddToLiabilities(
@@ -214,7 +228,6 @@ We are taking delta into account because there might be trades that have taken p
 
     receive() external payable {}
 }
-
 
 /*
     function handleHourlyFee(

@@ -11,7 +11,10 @@ const OracleABI = require("../artifacts/contracts/Oracle.sol/Oracle.json")
 const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.json")
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
+const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
+// interest needs datahub and executor 
 
+// datahub,deposit, exec need the interest --> its the last item int he array so deploy it then alter the admin roles after you havve dh and ex
 async function main() {
   const [deployer] = await hre.ethers.getSigners(0);
 
@@ -30,12 +33,22 @@ async function main() {
 
   console.log("REX Library deployed to", await REX_LIB.getAddress());
 
-  const DATAHUB = await hre.ethers.getContractFactory("DataHub", {
+  const Interest = await hre.ethers.getContractFactory("interestData", {
     libraries: {
       REX_LIBRARY: await REX_LIB.getAddress(),
     },
   });
-  const Deploy_dataHub = await DATAHUB.deploy(initialOwner, executor, depositvault, oracle);
+
+  const Deploy_interest = await Interest.deploy(initialOwner, executor, depositvault);
+
+  await Deploy_interest.waitForDeployment();
+
+  console.log("Interest deployed to", await Deploy_interest.getAddress());
+
+
+  const Deploy_dataHub = await hre.ethers.deployContract("DataHub", [initialOwner, executor, depositvault, oracle, Deploy_interest.getAddress()]);
+
+  ///const Deploy_dataHub = await DATAHUB.deploy(initialOwner, executor, depositvault, oracle);
 
   await Deploy_dataHub.waitForDeployment();
 
@@ -46,7 +59,8 @@ async function main() {
       REX_LIBRARY: await REX_LIB.getAddress(),
     },
   });
-  const Deploy_depositVault = await depositVault.deploy(initialOwner, Deploy_dataHub.getAddress());
+
+  const Deploy_depositVault = await depositVault.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner, Deploy_interest.getAddress());
 
   await Deploy_depositVault.waitForDeployment();
 
@@ -65,7 +79,7 @@ async function main() {
       REX_LIBRARY: await REX_LIB.getAddress(),
     },
   });
-  const Deploy_Utilities = await Utility.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), initialOwner);
+  const Deploy_Utilities = await Utility.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), initialOwner, Deploy_interest.getAddress());
 
   console.log("Utils deployed to", await Deploy_Utilities.getAddress());
 
@@ -76,15 +90,9 @@ async function main() {
   });
 
 
-  const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress());
+  const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress(), Deploy_interest.getAddress());
 
   console.log("Exchange deployed to", await Deploy_Exchange.getAddress());
-
-// Attach the contract address to a signer (e.g., deployer)
- Exchange.attach(await Deploy_Exchange.getAddress()).connect(deployer);
-
-
-
 
 
   const REXE = await hre.ethers.deployContract("REXE", [deployer.address]);
@@ -100,7 +108,7 @@ async function main() {
 
   console.log("USDT deployed to", await USDT.getAddress());
 
-  await init(await USDT.getAddress(), await REXE.getAddress(), await Deploy_Exchange.getAddress(), await Deploy_dataHub.getAddress(), await Deploy_depositVault.getAddress(), await DeployOracle.getAddress(), await Deploy_Utilities.getAddress())
+  await init(await USDT.getAddress(), await REXE.getAddress(), await Deploy_Exchange.getAddress(), await Deploy_dataHub.getAddress(), await Deploy_depositVault.getAddress(), await DeployOracle.getAddress(), await Deploy_Utilities.getAddress(), await Deploy_interest.getAddress())
 
   await deposit(await Deploy_depositVault.getAddress(), await USDT.getAddress(), await REXE.getAddress())
 }
@@ -161,7 +169,7 @@ async function deposit(DV, USDT, REXE) {
 }
 
 
-async function init(USDT, REXE, ex, DH, DV, oracle, util) {
+async function init(USDT, REXE, ex, DH, DV, oracle, util, _int) {
 
   const USDTprice = "1000000000000000000"
 
@@ -205,12 +213,12 @@ async function init(USDT, REXE, ex, DH, DV, oracle, util) {
 
   const Exchange = new hre.ethers.Contract(ex, ExecutorAbi.abi, deployer);
 
-  const SETUPEX = await Exchange.alterAdminRoles(DH, DV, oracle, util);
+  const SETUPEX = await Exchange.alterAdminRoles(DH, DV, oracle, util, _int);
 
   SETUPEX.wait()
 
 
-  const setup = await DataHub.AlterAdminRoles(DV, ex, oracle);
+  const setup = await DataHub.AlterAdminRoles(DV, ex, oracle, _int);
 
   setup.wait();
 
@@ -218,13 +226,28 @@ async function init(USDT, REXE, ex, DH, DV, oracle, util) {
 
   oraclesetup.wait();
 
-  const USDT_init_transaction = await DataHub.InitTokenMarket(USDT, USDTprice, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion, USDTInterestRate, USDT_interestRateInfo);
+  const Interest = new hre.ethers.Contract(_int, InterestAbi.abi, deployer);
+
+
+  const interestSetup = await Interest.AlterAdmins(ex, DH);
+
+  interestSetup.wait();
+
+
+  const InitRatesREXE = await Interest.initInterest(REXE, 1, USDT_interestRateInfo, USDTInterestRate)
+  const InitRatesUSDT = await Interest.initInterest(USDT, 1, REXEinterestRateInfo, REXEInterestRate)
+
+  InitRatesREXE.wait();
+  InitRatesUSDT.wait();
+
+
+  const USDT_init_transaction = await DataHub.InitTokenMarket(USDT, USDTprice, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
 
   USDT_init_transaction.wait();
 
 
-  const REXE_init_transaction = await DataHub.InitTokenMarket(REXE, REXEprice, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion, REXEInterestRate, REXEinterestRateInfo);
+  const REXE_init_transaction = await DataHub.InitTokenMarket(REXE, REXEprice, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);
 
   REXE_init_transaction.wait();
 

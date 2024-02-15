@@ -22,11 +22,6 @@ interface IUtilityContract {
         address token
     ) external view returns (uint256);
 
-    function handleHourlyFee(
-        address asset,
-        uint256 amount
-    ) external view returns (uint256);
-
     function chargeInterest(
         address token,
         uint256 liabilities,

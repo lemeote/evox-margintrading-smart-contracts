@@ -9,6 +9,8 @@ import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
 import "./libraries/REX_LIBRARY.sol";
 import "./interfaces/IinterestData.sol";
+import "hardhat/console.sol";
+
 contract REX_EXCHANGE is Ownable {
     /** Address's  */
 
@@ -18,7 +20,7 @@ contract REX_EXCHANGE is Ownable {
 
     IDepositVault public DepositVault;
 
-    IInterestData public interestContract; 
+    IInterestData public interestContract;
 
     IUtilityContract public Utilities;
 
@@ -35,9 +37,7 @@ contract REX_EXCHANGE is Ownable {
         address oracle,
         address _utility,
         address _interest
-    )
-        Ownable(initialOwner)
-    {
+    ) Ownable(initialOwner) {
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_deposit_vault);
         Oracle = IOracle(oracle);
@@ -271,6 +271,7 @@ contract REX_EXCHANGE is Ownable {
                         subtractedFromLiabilites,
                         true
                     );
+
                     Modifymmr(
                         users[i],
                         in_token,
@@ -308,10 +309,8 @@ contract REX_EXCHANGE is Ownable {
 
         IDataHub.AssetData memory assetLogs = returnAssetLogs(token);
 
-        IInterestData.interestDetails memory interestDetails = interestContract.fetchRates(
-            token,
-            index
-        );
+        IInterestData.interestDetails memory interestDetails = interestContract
+            .fetchRates(token, index);
         if (
             assetLogs.totalBorrowedAmount >
             interestDetails.totalLiabilitiesAtIndex
@@ -343,55 +342,62 @@ contract REX_EXCHANGE is Ownable {
         uint256 liabilitiesAccrued,
         bool minus
     ) private {
-
-        uint256 interestCharged = Utilities.chargeInterest(
-            token,
-            Utilities.returnliabilities(user, token),
-            liabilitiesAccrued,
-            Datahub.viewUsersInterestRateIndex(user)
-        );
         if (!minus) {
+            /// Utilities.chargeInterest(token, liabilities, amount_to_be_added, rateIndex); == interest charged
+            // something is wrong in the below function
+
             Datahub.addLiabilities(
                 user,
                 token,
-                liabilitiesAccrued + interestCharged
+                liabilitiesAccrued +
+                    Utilities.chargeInterest(
+                        token,
+                        Utilities.returnliabilities(user, token),
+                        liabilitiesAccrued,
+                        Datahub.viewUsersInterestRateIndex(user, token)
+                    )
             );
 
             Datahub.setTotalBorrowedAmount(
                 token,
-                (liabilitiesAccrued + interestCharged),
+                (liabilitiesAccrued +
+                    Utilities.chargeInterest(
+                        token,
+                        Utilities.returnliabilities(user, token),
+                        liabilitiesAccrued,
+                        Datahub.viewUsersInterestRateIndex(user, token)
+                    )),
                 true
             );
         } else {
-            Datahub.removeLiabilities(
-                user,
-                token,
-                liabilitiesAccrued
-            );
-            Datahub.setTotalBorrowedAmount(
-                token,
-                liabilitiesAccrued,
-                true
-            );
+            Datahub.removeLiabilities(user, token, liabilitiesAccrued);
+            Datahub.setTotalBorrowedAmount(token, liabilitiesAccrued, true);
         }
 
-        Datahub.alterUsersInterestRateIndex(user);
+        Datahub.alterUsersInterestRateIndex(user, token);
 
         if (
             interestContract
-                .fetchRates(token, interestContract.fetchCurrentRateIndex(token))
+                .fetchRates(
+                    token,
+                    interestContract.fetchCurrentRateIndex(token)
+                )
                 .lastUpdatedTime +
                 1 hours <
             block.timestamp
         ) {
-       
-            Datahub.setTotalBorrowedAmount(token, chargeLiabilityDelta(
+            Datahub.setTotalBorrowedAmount(
                 token,
-                interestContract.fetchCurrentRateIndex(token)
-            ), true);
+                chargeLiabilityDelta(
+                    token,
+                    interestContract.fetchCurrentRateIndex(token)
+                ),
+                true
+            );
 
-            Datahub.toggleInterestRate(
+            interestContract.toggleInterestRate(
                 token,
+                interestContract.fetchCurrentRateIndex(token),
                 REX_LIBRARY.calculateInterestRate(
                     liabilitiesAccrued,
                     returnAssetLogs(token),
@@ -498,29 +504,30 @@ contract REX_EXCHANGE is Ownable {
         address _datahub,
         address _depositVault,
         address _oracle,
-        address _utility
+        address _utility,
+        address _int
     ) public onlyOwner {
         Datahub = IDataHub(_datahub);
         DepositVault = IDepositVault(_depositVault);
         Oracle = IOracle(_oracle);
         Utilities = IUtilityContract(_utility);
+        interestContract = IInterestData(_int);
     }
 
     receive() external payable {}
 }
 
-        // charge the user interest and add interest to their liabilities balance
-        /// and we always add that amount of new liabilties they took and the interest charged to total borrowed amount
-        // change users mmr
+// charge the user interest and add interest to their liabilities balance
+/// and we always add that amount of new liabilties they took and the interest charged to total borrowed amount
+// change users mmr
 
-        // IF we havent updated the current interest index then charge and update it
-        // charge mass interest to total borrowed amount
-        // once we do the above step this will effectively change the interest rate  BUT the contract doesnt know this yet
-        // we then write to actually change this rate THIS will create a new index with the new rate
+// IF we havent updated the current interest index then charge and update it
+// charge mass interest to total borrowed amount
+// once we do the above step this will effectively change the interest rate  BUT the contract doesnt know this yet
+// we then write to actually change this rate THIS will create a new index with the new rate
 
-        // just make sure that their is a read function exposed to give ALL the above data in relation to the users mmr because
-        // the top data will not reflect the changes made in the data in the below paragraph in the state we must read it
-
+// just make sure that their is a read function exposed to give ALL the above data in relation to the users mmr because
+// the top data will not reflect the changes made in the data in the below paragraph in the state we must read it
 
 /*
     function executeTradeOld(
@@ -559,7 +566,7 @@ contract REX_EXCHANGE is Ownable {
 
                 */
 
-                /*
+/*
                 if (block.timestamp % 3600 != 0) {
                     amountToAddToLiabilities += Utilities.handleHourlyFee(
                         out_token,

@@ -23,8 +23,13 @@ contract interestData is Ownable {
     IDataHub public Datahub;
     IExecutor public Executor;
 
-    constructor(address initialOwner, address _DataHub) Ownable(initialOwner) {
+    constructor(
+        address initialOwner,
+        address _DataHub,
+        address _executor
+    ) Ownable(initialOwner) {
         Datahub = IDataHub(_DataHub);
+        Executor = IExecutor(_executor);
     }
 
     function AlterAdmins(address _executor, address _DataHub) public onlyOwner {
@@ -53,7 +58,7 @@ contract interestData is Ownable {
         address token,
         uint256 index,
         uint256 value
-    ) external checkRoleAuthority {
+    ) public checkRoleAuthority {
         currentInterestIndex[token] = index + 1; // fetch current plus 1?
         interestInfo[token][currentInterestIndex[token]].interestRate = value;
         interestInfo[token][currentInterestIndex[token]].lastUpdatedTime = block
@@ -78,32 +83,32 @@ contract interestData is Ownable {
         currentInterestIndex[token] = index;
     }
 
-
-function chargeMassinterest(address token) public{
-           if (
-            fetchRates(token, fetchCurrentRateIndex(token))
-                .lastUpdatedTime +
+    function chargeMassinterest(address token) public onlyOwner {
+        if (
+            fetchRates(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
                 1 hours <
             block.timestamp
         ) {
-       
-            Datahub.setTotalBorrowedAmount(token, Executor.chargeLiabilityDelta(
+            Datahub.setTotalBorrowedAmount(
                 token,
-                fetchCurrentRateIndex(token)
-            ), true);
+                Executor.chargeLiabilityDelta(
+                    token,
+                    fetchCurrentRateIndex(token)
+                ),
+                true
+            );
 
-            Datahub.toggleInterestRate(
+            toggleInterestRate(
                 token,
+                fetchCurrentRateIndex(token),
                 REX_LIBRARY.calculateInterestRate(
                     0,
                     Datahub.returnAssetLogs(token),
-                    fetchRates(
-                        token,
-                        fetchCurrentRateIndex(token)
-                    )
+                    fetchRates(token, fetchCurrentRateIndex(token))
                 )
             );
         }
-}
+    }
+
     receive() external payable {}
 }

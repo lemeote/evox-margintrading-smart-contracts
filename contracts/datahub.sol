@@ -10,10 +10,7 @@ import "./interfaces/IinterestData.sol";
 contract DataHub is Ownable {
     modifier checkRoleAuthority() {
         require(
-            msg.sender == owner() ||
-                msg.sender == deposit_vault ||
-                msg.sender == executor ||
-                msg.sender == oracle,
+            admins[msg.sender] == true,
             "Unauthorized"
         );
         _;
@@ -23,18 +20,19 @@ contract DataHub is Ownable {
         address initialOwner,
         address _executor,
         address _deposit_vault,
-        address _oracle
+        address _oracle,
+        address _interest
     ) Ownable(initialOwner) {
-        executor = _executor;
-        deposit_vault = _deposit_vault;
-        oracle = _oracle;
+        admins[_executor] = true;
+        admins[_deposit_vault] = true;
+        admins[_oracle] = true;
+        admins[_interest] = true;
+        interestContract = IInterestData(_interest);
+    
     }
 
-    address public executor;
-    address public deposit_vault;
-    address public oracle;
 
-    IInterestData interestContract; 
+    IInterestData public interestContract; 
 
 
     function AlterAdminRoles(
@@ -43,9 +41,11 @@ contract DataHub is Ownable {
         address _oracle,
         address _interest
     ) public onlyOwner {
-        executor = _executor;
-        deposit_vault = _deposit_vault;
-        oracle = _oracle;
+
+        admins[_executor] = true;
+        admins[_deposit_vault] = true;
+        admins[_oracle] = true;
+        admins[_interest] = true;
         interestContract = IInterestData(_interest);
     }
 /// @notice checks to see if the asset has been initilized 
@@ -60,8 +60,9 @@ contract DataHub is Ownable {
 /// @dev Go to IDatahub for more details 
     mapping(address => IDataHub.AssetData) public assetdata;
 
-    uint256 private MAX_INT = type(uint256).max;
 
+/// @notice Keeps track of contract admins
+    mapping(address => bool) public admins;
 
 
 /// @notice Alters the users interest rate index (or epoch)
@@ -393,6 +394,7 @@ contract DataHub is Ownable {
         }
     }
 /// @notice This increases or decreases the total borrowed amount of a given tokens
+/// @dev TODO: change to modifytotalborrowedamount --> set implies we are making a new value not modifying an existing value 
 /// @param token the token being targetted
 /// @param amount the amount to add or remove
 /// @param pos_neg if its adding or removing from the borrowed amount
@@ -475,8 +477,6 @@ contract DataHub is Ownable {
         assetdata[token].assetPrice = value;
     }
  
-
-
 
   /// -----------------------------------------------------------------------
   /// User Data functions --> 

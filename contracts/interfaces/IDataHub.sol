@@ -34,12 +34,11 @@ interface IDataHub {
 
     function removeAssets(address user, address token, uint256 amount) external;
 
-    function alterAssets(address user, address token, uint256 amount) external;
-
-    function alterUsersInterestRateIndex(address user) external;
+    function alterUsersInterestRateIndex(address user, address token) external;
 
     function viewUsersInterestRateIndex(
-        address user
+        address user,
+        address token
     ) external view returns (uint256);
 
     function alterLiabilities(
