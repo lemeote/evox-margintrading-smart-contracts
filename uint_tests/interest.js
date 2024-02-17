@@ -210,14 +210,14 @@ async function main() {
 
     const contractABI = tokenabi.abi; // token abi for approvals 
     // taker deposit amounts 
-    const deposit_amount = "10000000000000000000"
+    const deposit_amount = "500000000000000000000"
 
     const TOKENCONTRACT = new hre.ethers.Contract(await USDT.getAddress(), contractABI, signers[0]);
     // Wait for approval transaction to finish
     const approvalTx = await TOKENCONTRACT.approve(await Deploy_depositVault.getAddress(), deposit_amount);
     await approvalTx.wait();  // Wait for the transaction to be mined
 
-    const transfer = await TOKENCONTRACT.transfer(signers[1].address, "200000000000000000000");
+    const transfer = await TOKENCONTRACT.transfer(signers[1].address, "20000000000000000000000");
 
     await transfer.wait();
 
@@ -232,11 +232,11 @@ async function main() {
     )
     console.log("deposit 1 complete")
 
-    const deposit_amount_2 = "20000000000000000000"
+    const deposit_amount_2 = "1000000000000000000000"
 
     const TOKENCONTRACT_2 = new hre.ethers.Contract(await REXE.getAddress(), tokenabi.abi, signers[1]);
     // Wait for approval transaction to finish
-    const approvalTx_2 = await TOKENCONTRACT_2.approve(await Deploy_depositVault.getAddress(), deposit_amount_2);
+    const approvalTx_2 = await TOKENCONTRACT_2.approve(await Deploy_depositVault.getAddress(), "5000000000000000000000");
     await approvalTx_2.wait();  // Wait for the transaction to be mined
 
     console.log("Deposit with account:", signers[1].address);
@@ -245,7 +245,7 @@ async function main() {
 
     await DVM.deposit_token(
         await REXE.getAddress(),
-        deposit_amount_2
+        ("5000000000000000000000")
     )
 
     console.log("deposit 2 complete")
@@ -273,8 +273,8 @@ async function main() {
         "maker_out_token": await REXE.getAddress(), //0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
         "takers": signers[0].address, //0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
         "makers": signers[1].address, //0x70997970c51812dc3a010c7d01b50e0d17dc79c8
-        "taker_out_token_amount": "12000000000000000000", // 12000000000000000000
-        "maker_out_token_amount": "6000000000000000000", // 12000000000000000000    (12 tokens leaving takers wallet)
+        "taker_out_token_amount": "1250000000000000000000", // 12000000000000000000
+        "maker_out_token_amount": "2500000000000000000000", // 12000000000000000000    (12 tokens leaving takers wallet)
     }
     /// 
     const pair = [Data.taker_out_token, Data.maker_out_token];
@@ -317,35 +317,56 @@ async function main() {
         await mine(86400);
     }
 
+
+//async function runTest(){
     for (let i = 0; i <= 24; i++) {
 
         // speed up time 1 hour
-        await mineHour();
+        // enable manual mining
+await hre.network.provider.send("evm_setAutomine", [false]);
+await hre.network.provider.send("evm_setIntervalMining", [0]);
+
+
         // charge mass interest REXE
-        await _Interest.chargeMassinterest(await REXE.getAddress());
+       // await _Interest.chargeMassinterest(await REXE.getAddress());
         //charge mass interest USDT
         await _Interest.chargeMassinterest(await USDT.getAddress());
 
         /// fetch total borrowed amount of usdt
-        const borrowed = await EX.returnAssetLogsExternal(await USDT.getAddress()).totalBorrowedAmount 
-        console.log("USDT totalBorrowed", await borrowed)
+       // const borrowed = await EX.returnAssetLogsExternal(await USDT.getAddress()).totalBorrowedAmount 
+        console.log("USDT totalBorrowed", await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress()))
+
+        console.log( await  _Interest.chargeLiabilityDelta(
+            await USDT.getAddress(),
+           await  _Interest.fetchCurrentRateIndex(USDT.getAddress())
+        ), "charge chargeLiabilityDelta output")
 
         /// fetch total borrowed amount of REXE
-        const REXEborrowed = await EX.returnAssetLogsExternal(await REXE.getAddress()).totalBorrowedAmount
-        console.log("REXE totalBorrowed", await REXEborrowed)
+      //  const REXEborrowed = await EX.returnAssetLogsExternal(await REXE.getAddress()).totalBorrowedAmount
+        console.log("REXE totalBorrowed", await DataHub.fetchTotalBorrowedAmount(await REXE.getAddress()))
        
         // fetch current interest RATE USDT
         console.log("current interest rate USDT", await _Interest.fetchRates(
             await USDT.getAddress(),
-            _Interest.fetchCurrentRateIndex(USDT.getAddress())
+        await  _Interest.fetchCurrentRateIndex(USDT.getAddress())
         ))
         // fetch current interest RATE REXE
         console.log("current interest rate REXE", await _Interest.fetchRates(
             await REXE.getAddress(),
             await _Interest.fetchCurrentRateIndex(REXE.getAddress())
         ))
-    }
 
+        // mine the needed blocks, below we mine 256 blocks at once (how many blocks to
+// mine depends on how many pending transactions you have), instead of having 
+// to call `evm_mine` for every single block which is time consuming
+await hre.network.provider.send("hardhat_mine", ["0x100"]);
+
+// re-enable automining when you are done, so you dont need to manually mine future blocks
+await hre.network.provider.send("evm_setAutomine", [true]);
+
+
+    }
+//}
 
     /*
     

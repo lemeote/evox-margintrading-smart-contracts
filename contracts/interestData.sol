@@ -48,6 +48,11 @@ contract interestData is Ownable {
         return interestInfo[token][index];
     }
 
+
+    function fetchCurrentRate(address token) public view returns(uint256){
+        return interestInfo[token][currentInterestIndex[token]].interestRate;
+    }
+
     function fetchCurrentRateIndex(
         address token
     ) public view returns (uint256) {
@@ -67,8 +72,7 @@ contract interestData is Ownable {
             .rateInfo = interestInfo[token][index].rateInfo;
 
         interestInfo[token][index].totalLiabilitiesAtIndex = Datahub
-            .returnAssetLogs(token)
-            .totalBorrowedAmount;
+            .fetchTotalBorrowedAmount(token);
     }
 
     function initInterest(
@@ -82,16 +86,55 @@ contract interestData is Ownable {
         interestInfo[token][index].interestRate = interestRate;
         currentInterestIndex[token] = index;
     }
+    function chargeLiabilityDelta(
+        address token,
+        uint256 index
+    ) public view returns (uint256) {
+        uint256 LiabilityToCharge = Datahub.fetchTotalBorrowedAmount(token);
+        uint256 LiabilityDelta;
+
+        IInterestData.interestDetails memory interestDetails = fetchRates(token, index);
+        if (
+            Datahub.fetchTotalBorrowedAmount(token) >
+            interestDetails.totalLiabilitiesAtIndex
+        ) {
+            // LiabilityDelta = TotalLiabilityPoolNow - TotalLiabilityPoolAtIndex // check which one is bigger, subtract the smaller from the bigger
+            LiabilityDelta =
+                Datahub.fetchTotalBorrowedAmount(token) -
+                interestDetails.totalLiabilitiesAtIndex;
+            //LiabilityToCharge = TotalLiabilityPoolNow - LiabilityDelta
+
+         //   LiabilityToCharge = Datahub.fetchTotalBorrowedAmount(token) - LiabilityDelta;
+        } else {
+            LiabilityDelta =
+                interestDetails.totalLiabilitiesAtIndex -
+                Datahub.fetchTotalBorrowedAmount(token);
+
+            LiabilityToCharge = Datahub.fetchTotalBorrowedAmount(token) + LiabilityDelta;
+        }
+        //MassCharge = LiabilityToCharge * CurrentHourlyIndexInterest  //This means the index that just passed (i.e. we charge at 12:00:01 we use the interest rate for 12:00:00)
+        console.log(token, "wrong token i bet");
+        console.log(LiabilityToCharge , "liabilites");
+        console.log(fetchCurrentRate(token), "currentf fucking rate");
+        uint256 MassCharge = (LiabilityToCharge *
+            ((fetchCurrentRate(token)) / 8760)) / 10**18;
+
+        //TotalLiabilityPoolNow += MassCharge
+        return MassCharge;
+    }
 
     function chargeMassinterest(address token) public onlyOwner {
+
         if (
             fetchRates(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
                 1 hours <
             block.timestamp
         ) {
+
+      
             Datahub.setTotalBorrowedAmount(
                 token,
-                Executor.chargeLiabilityDelta(
+                chargeLiabilityDelta(
                     token,
                     fetchCurrentRateIndex(token)
                 ),
@@ -106,8 +149,8 @@ contract interestData is Ownable {
                     Datahub.returnAssetLogs(token),
                     fetchRates(token, fetchCurrentRateIndex(token))
                 )
-            );
-        }
+            );  
+     }
     }
 
     receive() external payable {}

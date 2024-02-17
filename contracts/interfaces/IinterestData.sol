@@ -20,12 +20,17 @@ interface IInterestData {
     ) external view returns (uint256);
 
     function chargeMassinterest(address token) external;
-
+    function fetchCurrentRate(address token) external view returns(uint256);
         function toggleInterestRate(
         address token,
         uint256 index,
         uint256 value
     ) external;
+
+      function chargeLiabilityDelta(
+        address token,
+        uint256 index
+    ) external view returns (uint256);
 
 
 }

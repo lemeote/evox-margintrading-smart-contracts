@@ -41,6 +41,9 @@ interface IDataHub {
         address token
     ) external view returns (uint256);
 
+
+function fetchTotalBorrowedAmount(address token) external view returns(uint256);
+
     function alterLiabilities(
         address user,
         address token,

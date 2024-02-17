@@ -409,6 +409,12 @@ contract DataHub is Ownable {
             assetdata[token].totalBorrowedAmount -= amount;
         }
     }
+/// @notice Fetches the total amount borrowed of the token
+/// @param token the token being queried
+/// @return the total borrowed amount
+function fetchTotalBorrowedAmount(address token) external view returns(uint256){
+    return assetdata[token].totalBorrowedAmount;
+}
   /// -----------------------------------------------------------------------
   /// Asset Data functions  --> 
   /// -----------------------------------------------------------------------

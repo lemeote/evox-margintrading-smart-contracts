@@ -144,8 +144,7 @@ contract REX_EXCHANGE is Ownable {
                         pair[1],
                         trade_amounts[1][i],
                         assets
-                    ),
-                    "you failed the margin requirement"
+                    )
                 );
                 if (
                     Utilities.validateMarginStatus(
@@ -300,41 +299,6 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
-    function chargeLiabilityDelta(
-        address token,
-        uint256 index
-    ) public view returns (uint256) {
-        uint256 LiabilityToCharge;
-        uint256 LiabilityDelta;
-
-        IDataHub.AssetData memory assetLogs = returnAssetLogs(token);
-
-        IInterestData.interestDetails memory interestDetails = interestContract
-            .fetchRates(token, index);
-        if (
-            assetLogs.totalBorrowedAmount >
-            interestDetails.totalLiabilitiesAtIndex
-        ) {
-            // LiabilityDelta = TotalLiabilityPoolNow - TotalLiabilityPoolAtIndex // check which one is bigger, subtract the smaller from the bigger
-            LiabilityDelta =
-                assetLogs.totalBorrowedAmount -
-                interestDetails.totalLiabilitiesAtIndex;
-            //LiabilityToCharge = TotalLiabilityPoolNow - LiabilityDelta
-            LiabilityToCharge = assetLogs.totalBorrowedAmount - LiabilityDelta;
-        } else {
-            LiabilityDelta =
-                interestDetails.totalLiabilitiesAtIndex -
-                assetLogs.totalBorrowedAmount;
-
-            LiabilityToCharge = assetLogs.totalBorrowedAmount + LiabilityDelta;
-        }
-        //MassCharge = LiabilityToCharge * CurrentHourlyIndexInterest  //This means the index that just passed (i.e. we charge at 12:00:01 we use the interest rate for 12:00:00)
-        uint256 MassCharge = LiabilityToCharge *
-            (interestDetails.interestRate / 8760);
-
-        //TotalLiabilityPoolNow += MassCharge
-        return MassCharge;
-    }
 
     function chargeinterest(
         address user,
@@ -342,7 +306,7 @@ contract REX_EXCHANGE is Ownable {
         uint256 liabilitiesAccrued,
         bool minus
     ) private {
-        if (!minus) {
+        if (minus ==false) {
             /// Utilities.chargeInterest(token, liabilities, amount_to_be_added, rateIndex); == interest charged
             // something is wrong in the below function
 
@@ -352,7 +316,7 @@ contract REX_EXCHANGE is Ownable {
                 liabilitiesAccrued +
                     Utilities.chargeInterest(
                         token,
-                        Utilities.returnliabilities(user, token),
+                        Utilities.returnliabilities(user, token), // this is 0 at this point because its the first time we are chargin liabilities
                         liabilitiesAccrued,
                         Datahub.viewUsersInterestRateIndex(user, token)
                     )
@@ -388,7 +352,7 @@ contract REX_EXCHANGE is Ownable {
         ) {
             Datahub.setTotalBorrowedAmount(
                 token,
-                chargeLiabilityDelta(
+                interestContract.chargeLiabilityDelta(
                     token,
                     interestContract.fetchCurrentRateIndex(token)
                 ),
