@@ -41,13 +41,18 @@ contract interestData is Ownable {
 
     mapping(address => uint256) currentInterestIndex;
 
-    function fetchRates(
+    function fetchRateInfo(
         address token,
         uint256 index
     ) public view returns (IInterestData.interestDetails memory) {
         return interestInfo[token][index];
     }
-
+   function fetchRate(
+        address token,
+        uint256 index
+    ) public view returns (uint256) {
+        return interestInfo[token][index].interestRate;
+    }
 
     function fetchCurrentRate(address token) public view returns(uint256){
         return interestInfo[token][currentInterestIndex[token]].interestRate;
@@ -93,7 +98,7 @@ contract interestData is Ownable {
         uint256 LiabilityToCharge = Datahub.fetchTotalBorrowedAmount(token);
         uint256 LiabilityDelta;
 
-        IInterestData.interestDetails memory interestDetails = fetchRates(token, index);
+        IInterestData.interestDetails memory interestDetails = fetchRateInfo(token, index);
         if (
             Datahub.fetchTotalBorrowedAmount(token) >
             interestDetails.totalLiabilitiesAtIndex
@@ -113,20 +118,17 @@ contract interestData is Ownable {
             LiabilityToCharge = Datahub.fetchTotalBorrowedAmount(token) + LiabilityDelta;
         }
         //MassCharge = LiabilityToCharge * CurrentHourlyIndexInterest  //This means the index that just passed (i.e. we charge at 12:00:01 we use the interest rate for 12:00:00)
-        console.log(token, "wrong token i bet");
-        console.log(LiabilityToCharge , "liabilites");
-        console.log(fetchCurrentRate(token), "currentf fucking rate");
         uint256 MassCharge = (LiabilityToCharge *
             ((fetchCurrentRate(token)) / 8760)) / 10**18;
 
         //TotalLiabilityPoolNow += MassCharge
-        return MassCharge;
+        return MassCharge;   //753750438539632926624n    753760763955881175172n
     }
 
     function chargeMassinterest(address token) public onlyOwner {
 
         if (
-            fetchRates(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
+            fetchRateInfo(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
                 1 hours <
             block.timestamp
         ) {
@@ -145,9 +147,12 @@ contract interestData is Ownable {
                 token,
                 fetchCurrentRateIndex(token),
                 REX_LIBRARY.calculateInterestRate(
-                    0,
+                      chargeLiabilityDelta(
+                    token,
+                    fetchCurrentRateIndex(token)
+                ),
                     Datahub.returnAssetLogs(token),
-                    fetchRates(token, fetchCurrentRateIndex(token))
+                    fetchRateInfo(token, fetchCurrentRateIndex(token))
                 )
             );  
      }

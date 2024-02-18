@@ -8,7 +8,8 @@ const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
 const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
-
+const fs = require('fs');
+const path = require('path');
 
 async function main() {
     /// const [deployer] = await hre.ethers.getSigners(0);
@@ -183,8 +184,8 @@ async function main() {
 
     interestSetup.wait();
 
-    const InitRatesREXE = await _Interest.initInterest(await REXE.getAddress(), 0, USDT_interestRateInfo, USDTInterestRate)
-    const InitRatesUSDT = await _Interest.initInterest(await USDT.getAddress(), 0, REXEinterestRateInfo, REXEInterestRate)
+    const InitRatesREXE = await _Interest.initInterest(await REXE.getAddress(), 0, REXEinterestRateInfo, REXEInterestRate)
+    const InitRatesUSDT = await _Interest.initInterest(await USDT.getAddress(), 0, USDT_interestRateInfo, USDTInterestRate)
 
     InitRatesREXE.wait();
     InitRatesUSDT.wait();
@@ -316,57 +317,97 @@ async function main() {
         // instantly mine 1000 blocks
         await mine(86400);
     }
+    async function getCurrentTimestamp() {
+        const block = await hre.ethers.provider.getBlock('latest');
+        return block.timestamp;
+    }
+            
+    function writeCSV(filePath, data) {
+        // Convert array of arrays into CSV string
+        const csvString = data.map(row => row.join(',')).join('\n');
+    
+        // Write CSV string to file
+        fs.writeFile(filePath, csvString, (err) => {
+            if (err) throw err;
+            console.log('CSV file has been saved.');
+        });
+    }
 
+    const originTimestamp = await getCurrentTimestamp();
+    console.log('Origin timestamp:', originTimestamp);
 
-//async function runTest(){
+    //async function runTest(){
     for (let i = 0; i <= 24; i++) {
 
         // speed up time 1 hour
         // enable manual mining
-await hre.network.provider.send("evm_setAutomine", [false]);
-await hre.network.provider.send("evm_setIntervalMining", [0]);
 
+        // liabilities of user 
+        // total borrowed usdt 
+        // hourly interest rate
+        // total interest rate 
+        // total borrow proportion 
+        // index 
+        // SET THE TIMEUP AN HOUR
+        const scaledTimestamp = originTimestamp + i * 3600;
 
-        // charge mass interest REXE
-       // await _Interest.chargeMassinterest(await REXE.getAddress());
-        //charge mass interest USDT
+        await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
+        console.log(`Loop ${i + 1}: Set timestamp to ${scaledTimestamp}`);
+
+        // CHARGE MASS INTEREST
         await _Interest.chargeMassinterest(await USDT.getAddress());
 
         /// fetch total borrowed amount of usdt
-       // const borrowed = await EX.returnAssetLogsExternal(await USDT.getAddress()).totalBorrowedAmount 
+        // const borrowed = await EX.returnAssetLogsExternal(await USDT.getAddress()).totalBorrowedAmount 
         console.log("USDT totalBorrowed", await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress()))
 
-        console.log( await  _Interest.chargeLiabilityDelta(
-            await USDT.getAddress(),
-           await  _Interest.fetchCurrentRateIndex(USDT.getAddress())
-        ), "charge chargeLiabilityDelta output")
 
-        /// fetch total borrowed amount of REXE
-      //  const REXEborrowed = await EX.returnAssetLogsExternal(await REXE.getAddress()).totalBorrowedAmount
-        console.log("REXE totalBorrowed", await DataHub.fetchTotalBorrowedAmount(await REXE.getAddress()))
-       
         // fetch current interest RATE USDT
-        console.log("current interest rate USDT", await _Interest.fetchRates(
+        const Rate = await _Interest.fetchCurrentRate(await USDT.getAddress())
+
+        console.log("current interest rate USDT", Rate)
+
+
+        const interest =  await Utils.chargeInterest(
             await USDT.getAddress(),
-        await  _Interest.fetchCurrentRateIndex(USDT.getAddress())
-        ))
-        // fetch current interest RATE REXE
-        console.log("current interest rate REXE", await _Interest.fetchRates(
-            await REXE.getAddress(),
-            await _Interest.fetchCurrentRateIndex(REXE.getAddress())
-        ))
+            "753750012393998695368",
+            1,
+            1
+        )
+        console.log(interest)
 
-        // mine the needed blocks, below we mine 256 blocks at once (how many blocks to
-// mine depends on how many pending transactions you have), instead of having 
-// to call `evm_mine` for every single block which is time consuming
-await hre.network.provider.send("hardhat_mine", ["0x100"]);
+   
 
-// re-enable automining when you are done, so you dont need to manually mine future blocks
-await hre.network.provider.send("evm_setAutomine", [true]);
-
+        //    console.log("current interest HOURLY rate USDT", (Number((hourlyRate).toString())) / 8760)
 
     }
-//}
+
+         // Example usage
+         const data = [
+            ['Name', 'Age', 'City'],
+            ['Alice', '24', 'New York'],
+            ['Bob', '30', 'Los Angeles']
+        ];
+        const filePath = path.join(__dirname, './example.csv');
+        const csvString = data.map(row => row.join(',')).join('\n');
+    
+        // Write CSV string to file
+        fs.writeFile(filePath, csvString, (err) => {
+            if (err) throw err;
+            console.log('CSV file has been saved.');
+        });
+
+}
+//npx hardhat run scripts/deploy.js 
+main().then(() => process.exit(0))
+    .catch((error) => {
+        console.error(error);
+        process.exit(1);
+    });
+
+
+
+    //}
 
     /*
     
@@ -415,17 +456,6 @@ await hre.network.provider.send("evm_setAutomine", [true]);
      console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
      console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
     */
-}
-//npx hardhat run scripts/deploy.js 
-main().then(() => process.exit(0))
-    .catch((error) => {
-        console.error(error);
-        process.exit(1);
-    });
-
-
-
-
 
 // node testOrders.js
 

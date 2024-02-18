@@ -18,8 +18,10 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.1",
+    "fs": "^0.0.1-security",
     "hardhat-abi-exporter": "^2.10.1",
     "hardhat-gas-reporter": "^1.0.9",
-    "hardhat-gui": "^0.0.14"
+    "hardhat-gui": "^0.0.14",
+    "path": "^0.12.7"
   }
 }

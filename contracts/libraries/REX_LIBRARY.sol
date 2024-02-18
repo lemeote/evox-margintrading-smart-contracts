@@ -3,6 +3,7 @@ pragma solidity =0.8.20;
 
 import "../interfaces/IDataHub.sol";
 import "../interfaces/IinterestData.sol";
+import "hardhat/console.sol";
 
 library REX_LIBRARY {
     function createArray(address user) public pure returns (address[] memory) {
@@ -74,16 +75,27 @@ library REX_LIBRARY {
         IDataHub.AssetData memory assetlogs,
         IInterestData.interestDetails memory interestRateInfo
     ) public view returns (uint256) {
-        uint256 borrowProportion = ((assetlogs.totalBorrowedAmount) +
-            amount * 10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
+        uint256 borrowProportion = ((assetlogs.totalBorrowedAmount +
+            amount) * 10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
+
+        console.log("current borrow proportion",borrowProportion );
+        console.log("currnet borrowed amount", assetlogs.totalBorrowedAmount);
+        console.log("asset supply", assetlogs.totalAssetSupply);
+        console.log("amount being added to borrowed maount", amount);
+        console.log("a little tet",(assetlogs.totalBorrowedAmount + amount) *10**18 /assetlogs.totalAssetSupply );
         uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
 
-        
+   
         uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
         uint256 optimalInterestRate = interestRateInfo.rateInfo[1];
         uint256 maximumInterestRate = interestRateInfo.rateInfo[2];
+     console.log(optimalBorrowProportion, "optimal BP");
+        console.log(minimumInterestRate,optimalInterestRate,maximumInterestRate, "min irate, optimal irate, maxirate");
 
+        
+
+    
         if (borrowProportion <= optimalBorrowProportion) {
             uint256 rate = optimalInterestRate - minimumInterestRate;
             return

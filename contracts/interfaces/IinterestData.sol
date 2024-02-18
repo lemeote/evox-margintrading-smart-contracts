@@ -10,11 +10,14 @@ interface IInterestData {
         uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
         uint256 interestRate; // current interestRate
     }
-    function fetchRates(
+    function fetchRateInfo(
         address token,
         uint256 index
     ) external view returns (interestDetails memory);
-
+  function fetchRate(
+        address token,
+        uint256 index
+    ) external view returns (uint256);
     function fetchCurrentRateIndex(
         address token
     ) external view returns (uint256);

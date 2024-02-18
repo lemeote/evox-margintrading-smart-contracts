@@ -342,7 +342,7 @@ contract REX_EXCHANGE is Ownable {
 
         if (
             interestContract
-                .fetchRates(
+                .fetchRateInfo(
                     token,
                     interestContract.fetchCurrentRateIndex(token)
                 )
@@ -365,7 +365,7 @@ contract REX_EXCHANGE is Ownable {
                 REX_LIBRARY.calculateInterestRate(
                     liabilitiesAccrued,
                     returnAssetLogs(token),
-                    interestContract.fetchRates(
+                    interestContract.fetchRateInfo(
                         token,
                         interestContract.fetchCurrentRateIndex(token)
                     )

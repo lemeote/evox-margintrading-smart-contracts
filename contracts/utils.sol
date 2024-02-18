@@ -91,14 +91,16 @@ We are taking delta into account because there might be trades that have taken p
     ) public view returns (uint256) {
         uint256 interestBulk;
 
+        console.log((interestContract
+                .fetchRate(token, 1) / 8760), "interest");
+
         for (
             uint256 i = rateIndex;
             i < interestContract.fetchCurrentRateIndex(token);
             i++
         ) {
             interestBulk += (interestContract
-                .fetchRates(token, i)
-                .interestRate / 8760); /// / 8760
+                .fetchRate(token, i) / 8760); /// / 8760
         }
         uint256[] memory details = new uint256[](3);
 
@@ -106,6 +108,10 @@ We are taking delta into account because there might be trades that have taken p
         details[1] = amount_to_be_added;
         details[2] = rateIndex;
         uint256 interestAverage;
+
+        console.log(interestContract.fetchCurrentRateIndex(token), "current index");
+
+        console.log(interestBulk, "interest bulk");
 
         if (interestContract.fetchCurrentRateIndex(token) != 0) {
             interestAverage =
@@ -131,12 +137,13 @@ We are taking delta into account because there might be trades that have taken p
         IDataHub.AssetData memory assetLogs
     ) private view returns (uint256) {
         uint256 interestCharged;
+
         if (interestContract.fetchCurrentRateIndex(token) != 0) {
             interestCharged =
                 details[0] *
                 ((1 + interestAverage) **
                     (interestContract.fetchCurrentRateIndex(token) -
-                        details[3])) -
+                        details[2])) -
                 details[0];
         } else {
             interestCharged = details[0] * (1 + interestAverage) - details[0];
@@ -147,7 +154,7 @@ We are taking delta into account because there might be trades that have taken p
         uint256 interestRateForHour = REX_LIBRARY.calculateInterestRate(
             details[1],
             assetLogs,
-            interestContract.fetchRates(
+            interestContract.fetchRateInfo(
                 token,
                 interestContract.fetchCurrentRateIndex(token)
             )
