@@ -337,7 +337,7 @@ async function main() {
     console.log('Origin timestamp:', originTimestamp);
 
     //async function runTest(){
-    for (let i = 0; i <= 24; i++) {
+    for (let i = 0; i <= 900; i++) {
 
         // speed up time 1 hour
         // enable manual mining
@@ -367,35 +367,51 @@ async function main() {
 
         console.log("current interest rate USDT", Rate)
 
-
+/*
         const interest =  await Utils.chargeInterest(
             await USDT.getAddress(),
             "753750012393998695368",
             1,
             1
         )
-        console.log(interest)
+        */
+       // console.log(interest)
 
-   
+        // Data to be recorded
+        const userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress())
 
-        //    console.log("current interest HOURLY rate USDT", (Number((hourlyRate).toString())) / 8760)
-
+        const liabilitiesValue = userData[1];
+       const borrowed =  await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress())
+       const hourly_rate = (Number(Rate.toString()))/8760;
+const newData = {
+"index": i,
+"total-borrowed": Number(borrowed.toString()) /10**18,
+"rate": Number(Rate.toString()) /10**18,
+"hourly-rate": hourly_rate /10**18,
+"liabilities": Number(liabilitiesValue.toString())/10**18,
+ "timestamp": Number(scaledTimestamp.toString()),
+};
+  
+  // File path for the JSON file
+  const filePath = './data.json';
+  
+  // Read existing data from the file (if any)
+  let existingData = [];
+  try {
+    existingData = JSON.parse(fs.readFileSync(filePath));
+  } catch (error) {
+    // File doesn't exist or is not valid JSON, ignore and proceed with an empty array
+  }
+  
+  // Add new data to the existing data array
+  existingData.push(newData);
+  
+  // Write the updated data back to the JSON file
+  fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
+  
+  console.log('Data recorded successfully.');
+  
     }
-
-         // Example usage
-         const data = [
-            ['Name', 'Age', 'City'],
-            ['Alice', '24', 'New York'],
-            ['Bob', '30', 'Los Angeles']
-        ];
-        const filePath = path.join(__dirname, './example.csv');
-        const csvString = data.map(row => row.join(',')).join('\n');
-    
-        // Write CSV string to file
-        fs.writeFile(filePath, csvString, (err) => {
-            if (err) throw err;
-            console.log('CSV file has been saved.');
-        });
 
 }
 //npx hardhat run scripts/deploy.js 
