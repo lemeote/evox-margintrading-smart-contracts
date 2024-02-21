@@ -31,15 +31,28 @@ contract interestData is Ownable {
         Datahub = IDataHub(_DataHub);
         Executor = IExecutor(_executor);
     }
+    
+    mapping(address => mapping(uint256 => IInterestData.interestDetails)) interestInfo;
 
+    mapping(address => uint256) currentInterestIndex;
+
+
+
+/// @notice Explain to an end user what this does
+/// @dev Explain to a developer any extra details
+/// @param _executor parameter just like in doxygen (must be followed by parameter name)
+/// @param _DataHub a parameter just like in doxygen (must be followed by parameter name)
     function AlterAdmins(address _executor, address _DataHub) public onlyOwner {
         Executor = IExecutor(_executor);
         Datahub = IDataHub(_DataHub);
     }
 
-    mapping(address => mapping(uint256 => IInterestData.interestDetails)) interestInfo;
+/// @notice Explain to an end user what this does
+/// @dev Explain to a developer any extra details
+/// @param token the token being targetted
+/// @param index the index of the period
+/// @return IInterestData.interestDetails memor
 
-    mapping(address => uint256) currentInterestIndex;
 
     function fetchRateInfo(
         address token,
@@ -47,23 +60,36 @@ contract interestData is Ownable {
     ) public view returns (IInterestData.interestDetails memory) {
         return interestInfo[token][index];
     }
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+/// @param token the token being targetted
+/// @param index the index of the period
    function fetchRate(
         address token,
         uint256 index
     ) public view returns (uint256) {
         return interestInfo[token][index].interestRate;
     }
-
+/// @notice Explain to an end user what this does
+/// @dev Explain to a developer any extra details
+/// @param token the token being targetted
     function fetchCurrentRate(address token) public view returns(uint256){
         return interestInfo[token][currentInterestIndex[token]].interestRate;
     }
-
+/// @notice Explain to an end user what this does
+/// @dev Explain to a developer any extra details
+/// @param token the token being targetted
+/// @return currentInterestIndex[token]
     function fetchCurrentRateIndex(
         address token
     ) public view returns (uint256) {
         return currentInterestIndex[token];
     }
-
+/// @notice Explain to an end user what this does
+/// @dev Explain to a developer any extra details
+/// @param token the token being targetted
+/// @param index the index of the period
+/// @param value the value
     function toggleInterestRate(
         address token,
         uint256 index,
@@ -79,7 +105,6 @@ contract interestData is Ownable {
         interestInfo[token][index].totalLiabilitiesAtIndex = Datahub
             .fetchTotalBorrowedAmount(token);
     }
-
     function initInterest(
         address token,
         uint256 index,
@@ -91,6 +116,11 @@ contract interestData is Ownable {
         interestInfo[token][index].interestRate = interestRate;
         currentInterestIndex[token] = index;
     }
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+/// @param token the token being targetted
+/// @param index the index of the period
+    /// @return MassCharge
     function chargeLiabilityDelta(
         address token,
         uint256 index
@@ -124,12 +154,14 @@ contract interestData is Ownable {
         //TotalLiabilityPoolNow += MassCharge
         return MassCharge;   //753750438539632926624n    753760763955881175172n
     }
-
+/// @notice Explain to an end user what this does
+/// @dev Explain to a developer any extra details
+/// @param token the token being targetted
     function chargeMassinterest(address token) public onlyOwner {
 
         if (
             fetchRateInfo(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
-                1 hours <
+                1 hours <=
             block.timestamp
         ) {
 

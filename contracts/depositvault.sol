@@ -35,15 +35,23 @@ contract DepositVault is Ownable {
     mapping(address => bool) public userInitialized;
     mapping(uint256 => address) public userId;
 
+    /// @notice fetches and returns a tokens decimals
+    /// @param token the token you want the decimals for 
+    /// @return Token.decimals() the token decimals
+
     function fetchDecimals(address token) public view returns (uint256) {
         ERC20.ERC20 Token = ERC20.ERC20(token);
         return Token.decimals();
     }
-
+/// @notice This reutrns the number of histrocial users 
+/// @return totalHistoricalUsers the total historical users of the exchange 
     function fetchtotalHistoricalUsers() external view returns (uint256) {
         return totalHistoricalUsers;
     }
-
+/// @notice This function checks if this user has been initilized
+/// @dev Explain to a developer any extra details
+/// @param user the user you want to fetch their status for 
+/// @return bool if they are initilized or not 
     function fetchstatus(address user) external view returns (bool) {
         if (userInitialized[user] == true) {
             return true;
@@ -51,7 +59,10 @@ contract DepositVault is Ownable {
             return false;
         }
     }
-
+/// @notice This function modifies the mmr of the user on deposit 
+/// @param user the user being targetted
+/// @param in_token the token coming into their wallet 
+/// @param amount the amount being transfered into their wallet 
     function modifyMMROnDeposit(
         address user,
         address in_token,
@@ -205,11 +216,15 @@ contract DepositVault is Ownable {
         }
         return true;
     }
-
+/// @notice This alters the datahub
+/// @param _datahub this is the new address for the datahub
     function alterdataHub(address _datahub) public onlyOwner {
         Datahub = IDataHub(_datahub);
     }
-
+/// @notice This fetches a users primary account information assets, liabilities, and pending balances
+/// @param token the token you want the data for 
+/// @param user the user we are wanting to fetch the information for 
+/// @return [assets, liabilities, pending] the assets liabilities and pending balances for the user
     function GetTokenDepositInfo(
         address token,
         address user

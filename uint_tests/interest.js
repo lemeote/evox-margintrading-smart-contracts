@@ -332,87 +332,77 @@ async function main() {
             console.log('CSV file has been saved.');
         });
     }
-
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
     const originTimestamp = await getCurrentTimestamp();
     console.log('Origin timestamp:', originTimestamp);
 
-    //async function runTest(){
-    for (let i = 0; i <= 900; i++) {
+    let allData = [];
 
-        // speed up time 1 hour
-        // enable manual mining
-
-        // liabilities of user 
-        // total borrowed usdt 
-        // hourly interest rate
-        // total interest rate 
-        // total borrow proportion 
-        // index 
-        // SET THE TIMEUP AN HOUR
+    for (let i = 0; i <= 40; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
-
+    
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
         console.log(`Loop ${i + 1}: Set timestamp to ${scaledTimestamp}`);
-
+    
         // CHARGE MASS INTEREST
-        await _Interest.chargeMassinterest(await USDT.getAddress());
+        const masscharge = await _Interest.chargeMassinterest(await USDT.getAddress());
+        await masscharge.wait(); // Wait for the transaction to be mined
 
-        /// fetch total borrowed amount of usdt
-        // const borrowed = await EX.returnAssetLogsExternal(await USDT.getAddress()).totalBorrowedAmount 
-        console.log("USDT totalBorrowed", await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress()))
+        // Fetch total borrowed amount of USDT
+        let  borrowed = await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress());
+
+    
+        // Fetch current interest RATE USDT
+        let Rate = await _Interest.fetchCurrentRate(await USDT.getAddress());
 
 
-        // fetch current interest RATE USDT
-        const Rate = await _Interest.fetchCurrentRate(await USDT.getAddress())
+    
+        // Fetch user data including liabilities
+        let userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress());
+        let liabilitiesValue = userData[1];
 
-        console.log("current interest rate USDT", Rate)
 
-/*
-        const interest =  await Utils.chargeInterest(
+        let interestCharge = await Utils.chargeInterest(
             await USDT.getAddress(),
-            "753750012393998695368",
-            1,
-            1
-        )
-        */
-       // console.log(interest)
+             liabilitiesValue,
+            0,
+           0
+        ) 
 
-        // Data to be recorded
-        const userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress())
+        let liabilitiesWithInterest = interestCharge + liabilitiesValue;
 
-        const liabilitiesValue = userData[1];
-       const borrowed =  await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress())
-       const hourly_rate = (Number(Rate.toString()))/8760;
-const newData = {
-"index": i,
-"total-borrowed": Number(borrowed.toString()) /10**18,
-"rate": Number(Rate.toString()) /10**18,
-"hourly-rate": hourly_rate /10**18,
-"liabilities": Number(liabilitiesValue.toString())/10**18,
- "timestamp": Number(scaledTimestamp.toString()),
-};
-  
-  // File path for the JSON file
-  const filePath = './data.json';
-  
-  // Read existing data from the file (if any)
-  let existingData = [];
-  try {
-    existingData = JSON.parse(fs.readFileSync(filePath));
-  } catch (error) {
-    // File doesn't exist or is not valid JSON, ignore and proceed with an empty array
-  }
-  
-  // Add new data to the existing data array
-  existingData.push(newData);
-  
-  // Write the updated data back to the JSON file
-  fs.writeFileSync(filePath, JSON.stringify(existingData, null, 2));
-  
-  console.log('Data recorded successfully.');
-  
+        let interestIndex = await _Interest.fetchCurrentRateIndex(await USDT.getAddress());
+
+    
+        // Calculate hourly rate
+        let hourly_rate = Number(Rate.toString()) / 8760;
+    
+        // Create a data object for the current iteration
+        const newData = {
+            "index": Number(interestIndex.toString()),
+            "loop #": i,
+            "total-borrowed": Number(borrowed.toString()) / 10**18,
+            "rate": Number(Rate.toString()) / 10**18,
+            "hourly-rate": hourly_rate / 10**18,
+            "liabilities": Number(liabilitiesWithInterest.toString()) / 10**18,
+            "timestamp": Number(scaledTimestamp.toString()),
+        };
+    
+        // Add the data object to the array
+        allData.push(newData);
+    
+        console.log('Data recorded for index', i);
     }
-
+    
+    // File path for the JSON file
+    const filePath = './data.json';
+    
+    // Write all collected data to the JSON file
+    fs.writeFileSync(filePath, JSON.stringify(allData, null, 2));
+    
+    console.log('All data recorded successfully.');
 }
 //npx hardhat run scripts/deploy.js 
 main().then(() => process.exit(0))

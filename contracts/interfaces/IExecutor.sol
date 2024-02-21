@@ -13,7 +13,7 @@ interface IExecutor {
         uint256[] memory MakerliabilityAmounts
     ) external ;
 
-    function returnAssetLogsExternal(
+    function returnAssetLogs(
         address token
     ) external view returns (IDataHub.AssetData memory assetLogs);
 

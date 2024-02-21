@@ -37,10 +37,16 @@ contract Utility is Ownable {
         interestContract = IInterestData(_interest);
     }
 
+    /// @notice Alters the exchange contract
+    /// @param _executor the new executor address
     function AlterExchange(address _executor) public onlyOwner {
         Executor = IExecutor(_executor);
     }
 
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param user being argetted
+    /// @param token being argetted
     function validateMarginStatus(
         address user,
         address token
@@ -49,6 +55,12 @@ contract Utility is Ownable {
         return margined;
     }
 
+    //// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param user being argetted
+    /// @param token being argetted
+    /// @param BalanceToLeave the balance to leave
+    /// @param userAssets the users assets
     function calculateMarginRequirement(
         address user,
         address token,
@@ -59,7 +71,7 @@ contract Utility is Ownable {
         if (
             Datahub.calculateAMMRForUser(user) +
                 REX_LIBRARY.calculateMaintenanceRequirementForTrade(
-                    Executor.returnAssetLogsExternal(token),
+                    Executor.returnAssetLogs(token),
                     liabilities
                 ) <=
             Datahub.calculateTotalPortfolioValue(user)
@@ -70,19 +82,6 @@ contract Utility is Ownable {
         }
     }
 
-    /*
-
-MASS CHARGE
-
-LiabilityDelta = TotalLiabilityPoolNow - TotalLiabilityPoolAtIndex // check which one is bigger, subtract the smaller from the bigger
-LiabilityToCharge = TotalLiabilityPoolNow - LiabilityDelta
-MassCharge = LiabilityToCharge * CurrentHourlyIndexInterest  //This means the index that just passed (i.e. we charge at 12:00:01 we use the interest rate for 12:00:00)
-
-TotalLiabilityPoolNow += MassCharge
-
-We are taking delta into account because there might be trades that have taken place and have already been charged interest between the index and when we charge the interest
-    */
-
     function chargeInterest(
         address token,
         uint256 liabilities,
@@ -91,16 +90,12 @@ We are taking delta into account because there might be trades that have taken p
     ) public view returns (uint256) {
         uint256 interestBulk;
 
-        console.log((interestContract
-                .fetchRate(token, 1) / 8760), "interest");
-
         for (
             uint256 i = rateIndex;
             i < interestContract.fetchCurrentRateIndex(token);
             i++
         ) {
-            interestBulk += (interestContract
-                .fetchRate(token, i) / 8760); /// / 8760
+            interestBulk += (interestContract.fetchRate(token, i) / 8760); /// / 8760
         }
         uint256[] memory details = new uint256[](3);
 
@@ -109,21 +104,17 @@ We are taking delta into account because there might be trades that have taken p
         details[2] = rateIndex;
         uint256 interestAverage;
 
-        console.log(interestContract.fetchCurrentRateIndex(token), "current index");
-
-        console.log(interestBulk, "interest bulk");
-
         if (interestContract.fetchCurrentRateIndex(token) != 0) {
-            interestAverage =
-                interestBulk /
-                ((interestContract.fetchCurrentRateIndex(token)) - rateIndex);
+            interestAverage = ((interestBulk * 10 ** 18) /
+                ((interestContract.fetchCurrentRateIndex(token)) - rateIndex) /
+                10 ** 18);
         } else {
             interestAverage = interestBulk;
         }
-
+        console.log(interestAverage, "interest average");
         return
             returnInterestDetails(
-                interestAverage,
+                (interestAverage),
                 token,
                 details,
                 Datahub.returnAssetLogs(token)
@@ -139,12 +130,23 @@ We are taking delta into account because there might be trades that have taken p
         uint256 interestCharged;
 
         if (interestContract.fetchCurrentRateIndex(token) != 0) {
-            interestCharged =
-                details[0] *
-                ((1 + interestAverage) **
-                    (interestContract.fetchCurrentRateIndex(token) -
-                        details[2])) -
-                details[0];
+            unchecked {
+            /*
+                interestCharged = (details[0] / 10 ** 18) *
+                    (1 + (interestAverage) **
+                        (interestContract.fetchCurrentRateIndex(token) -
+                            details[2])) -
+                    (details[0] / 10 ** 18);
+*/
+        uint256 amountOfchargedIndexs = interestContract.fetchCurrentRateIndex(token) - details[2];
+        interestCharged = ((1 + (interestAverage)) ** (interestContract.fetchCurrentRateIndex(token) -
+                            details[2])) / ((10**18) ** amountOfchargedIndexs);
+
+
+        console.log(interestCharged);
+            
+        //interestCharged = details[0] * (((1 + interestAverage) ** (interestContract.fetchCurrentRateIndex(token) - details[2])) / (10**18 **(interestContract.fetchCurrentRateIndex(token) - details[2])))- details[0];
+            }
         } else {
             interestCharged = details[0] * (1 + interestAverage) - details[0];
         }
@@ -187,6 +189,11 @@ We are taking delta into account because there might be trades that have taken p
         return bulkAssets;
     }
 
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param user being argetted
+    /// @param token being argetted
+    /// @return assets
     function returnAssets(
         address user,
         address token
@@ -203,6 +210,11 @@ We are taking delta into account because there might be trades that have taken p
         return liabilities;
     }
 
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param user being targetted
+    /// @param token being targetted
+    /// @return pending balance
     function returnPending(
         address user,
         address token
@@ -216,9 +228,7 @@ We are taking delta into account because there might be trades that have taken p
         uint256 amount
     ) external view returns (uint256) {
         //uint256 price = assetdata[token].assetPrice; // price comes at aggregate calc now
-        IDataHub.AssetData memory assetLogs = Executor.returnAssetLogsExternal(
-            token
-        );
+        IDataHub.AssetData memory assetLogs = Executor.returnAssetLogs(token);
         uint256 maintenace = assetLogs.MaintenanceMarginRequirement;
         return ((maintenace * (amount)) / 10 ** 18); //
     }
