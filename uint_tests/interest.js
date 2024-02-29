@@ -6,6 +6,7 @@ const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.js
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
+const LiquidatorAbi = require("../artifacts/contracts/liquidator.sol/Liquidator.json")
 const { mine } = require("@nomicfoundation/hardhat-network-helpers");
 
 const fs = require('fs');
@@ -84,18 +85,24 @@ async function main() {
 
     console.log("Utils deployed to", await Deploy_Utilities.getAddress());
 
-    const Exchange = await hre.ethers.getContractFactory("REX_EXCHANGE", {
+    const Liquidator = await hre.ethers.getContractFactory("Liquidator", {
         libraries: {
-            REX_LIBRARY: await REX_LIB.getAddress(),
+          REX_LIBRARY: await REX_LIB.getAddress(),
         },
-    });
-
-
-    const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress(), await Deploy_interest.getAddress());
-
-    console.log("Exchange deployed to", await Deploy_Exchange.getAddress());
-
-
+      });
+      const Deploy_Liquidator = await Liquidator.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner); // need to alter the ex after 
+    
+      console.log("Liquidator deployed to", await Deploy_Liquidator.getAddress());
+    
+      const Exchange = await hre.ethers.getContractFactory("REX_EXCHANGE", {
+        libraries: {
+          REX_LIBRARY: await REX_LIB.getAddress(),
+        },
+      });
+    
+    
+    const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress(),await Deploy_interest.getAddress(),Deploy_Liquidator.getAddress());
+    
 
     const selectedSigner = signers[1];
 
@@ -169,6 +176,14 @@ async function main() {
     SETUPEX.wait()
 
 
+    const CurrentLiquidator  = new hre.ethers.Contract(await Deploy_Liquidator.getAddress(), LiquidatorAbi.abi, signers[0]);
+
+    const liqSetup = await CurrentLiquidator.AlterAdmins(await Deploy_Exchange.getAddress());
+  
+    liqSetup.wait();
+  
+
+
     const setup = await DataHub.AlterAdminRoles(await Deploy_depositVault.getAddress(), await Deploy_Exchange.getAddress(), await DeployOracle.getAddress(), await Deploy_interest.getAddress());
 
     setup.wait();
@@ -184,8 +199,8 @@ async function main() {
 
     interestSetup.wait();
 
-    const InitRatesREXE = await _Interest.initInterest(await REXE.getAddress(), 0, REXEinterestRateInfo, REXEInterestRate)
-    const InitRatesUSDT = await _Interest.initInterest(await USDT.getAddress(), 0, USDT_interestRateInfo, USDTInterestRate)
+    const InitRatesREXE = await _Interest.initInterest(await REXE.getAddress(), 1, REXEinterestRateInfo, REXEInterestRate)
+    const InitRatesUSDT = await _Interest.initInterest(await USDT.getAddress(), 1, USDT_interestRateInfo, USDTInterestRate)
 
     InitRatesREXE.wait();
     InitRatesUSDT.wait();
@@ -222,16 +237,12 @@ async function main() {
 
     await transfer.wait();
 
-
-    console.log("Deposit with account:", signers[0].address);
-
     const DVault = new hre.ethers.Contract(await Deploy_depositVault.getAddress(), depositABI.abi, signers[0]);
 
     await DVault.deposit_token(
         await USDT.getAddress(),
         deposit_amount
     )
-    console.log("deposit 1 complete")
 
     const deposit_amount_2 = "1000000000000000000000"
 
@@ -240,7 +251,6 @@ async function main() {
     const approvalTx_2 = await TOKENCONTRACT_2.approve(await Deploy_depositVault.getAddress(), "5000000000000000000000");
     await approvalTx_2.wait();  // Wait for the transaction to be mined
 
-    console.log("Deposit with account:", signers[1].address);
 
     const DVM = new hre.ethers.Contract(await Deploy_depositVault.getAddress(), depositABI.abi, signers[1]);
 
@@ -249,7 +259,7 @@ async function main() {
         ("5000000000000000000000")
     )
 
-    console.log("deposit 2 complete")
+
     const TOKENCONTRACT_3 = new hre.ethers.Contract(await USDT.getAddress(), tokenabi.abi, signers[1]);
 
     const approvalTx_3 = await TOKENCONTRACT_3.approve(await Deploy_depositVault.getAddress(), deposit_amount_2);
@@ -259,23 +269,17 @@ async function main() {
     await DVM.deposit_token(
         await USDT.getAddress(),
         deposit_amount_2)
-    console.log("deposit 3 complete")
+    console.log("deposits complete")
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    //TRADE
-
-    //console.log("Submitting orders with the account:", signers[0].address);
-
-    //console.log(await DataHub.ReadUserData(signers[1].address, await REXE.getAddress()), "user data");
 
     const Data = {
         "taker_out_token": await USDT.getAddress(),  //0x0165878A594ca255338adfa4d48449f69242Eb8F 
         "maker_out_token": await REXE.getAddress(), //0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
         "takers": signers[0].address, //0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
         "makers": signers[1].address, //0x70997970c51812dc3a010c7d01b50e0d17dc79c8
-        "taker_out_token_amount": "1250000000000000000000", // 12000000000000000000
-        "maker_out_token_amount": "2500000000000000000000", // 12000000000000000000    (12 tokens leaving takers wallet)
+        "taker_out_token_amount": "1250000000000000000000", // 12000000000000000000 // 1250
+        "maker_out_token_amount": "2500000000000000000000", // 12000000000000000000  // 2500
     }
     /// 
     const pair = [Data.taker_out_token, Data.maker_out_token];
@@ -287,54 +291,18 @@ async function main() {
     const EX = new hre.ethers.Contract(await Deploy_Exchange.getAddress(), ExecutorAbi.abi, signers[0]);
     // Perform testing actions
 
-
-
     console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
     console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
     console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
     console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
 
 
-
-    await EX.SubmitOrder(pair, participants, trade_amounts)
-
-    console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
-    console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
-    console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
-    console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
-
-    console.log(await DataHub.calculateAMMRForUser(signers[0].address), "ammr");
-    console.log(await DataHub.returnPairMMROfUser(signers[0].address, USDT, REXE), "mmr");
-    async function mineMinute() {
-        // instantly mine 1000 blocks
-        await mine(60);
-    }
-    async function mineHour() {
-        // instantly mine 1000 blocks
-        await mine(3600);
-    }
-    async function mineDay() {
-        // instantly mine 1000 blocks
-        await mine(86400);
-    }
     async function getCurrentTimestamp() {
         const block = await hre.ethers.provider.getBlock('latest');
         return block.timestamp;
     }
             
-    function writeCSV(filePath, data) {
-        // Convert array of arrays into CSV string
-        const csvString = data.map(row => row.join(',')).join('\n');
-    
-        // Write CSV string to file
-        fs.writeFile(filePath, csvString, (err) => {
-            if (err) throw err;
-            console.log('CSV file has been saved.');
-        });
-    }
-    function delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-      }
+
     const originTimestamp = await getCurrentTimestamp();
     console.log('Origin timestamp:', originTimestamp);
 
@@ -350,6 +318,19 @@ async function main() {
         const masscharge = await _Interest.chargeMassinterest(await USDT.getAddress());
         await masscharge.wait(); // Wait for the transaction to be mined
 
+        if( i == 3 ){
+            await EX.SubmitOrder(pair, participants, trade_amounts)
+
+            console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
+            console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
+            console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
+            console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
+        
+            console.log(await DataHub.calculateAMMRForUser(signers[0].address), "ammr");
+            console.log(await DataHub.returnPairMMROfUser(signers[0].address, USDT, REXE), "mmr");
+        
+        }
+
         // Fetch total borrowed amount of USDT
         let  borrowed = await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress());
 
@@ -357,22 +338,22 @@ async function main() {
         // Fetch current interest RATE USDT
         let Rate = await _Interest.fetchCurrentRate(await USDT.getAddress());
 
+      //  let usersIndex = DataHub.viewUsersInterestRateIndex(signers[0].address, await USDT.getAddress() )
+
 
     
         // Fetch user data including liabilities
         let userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress());
         let liabilitiesValue = userData[1];
 
-
-        let interestCharge = await Utils.chargeInterest(
+/*
+        let interestadjustedLiabilities = await _Interest.calculateCompoundedLiabilities(
             await USDT.getAddress(),
-             liabilitiesValue,
             0,
-           0
+             liabilitiesValue,
+             usersIndex
         ) 
-
-        let liabilitiesWithInterest = interestCharge + liabilitiesValue;
-
+*/
         let interestIndex = await _Interest.fetchCurrentRateIndex(await USDT.getAddress());
 
     
@@ -386,7 +367,7 @@ async function main() {
             "total-borrowed": Number(borrowed.toString()) / 10**18,
             "rate": Number(Rate.toString()) / 10**18,
             "hourly-rate": hourly_rate / 10**18,
-            "liabilities": Number(liabilitiesWithInterest.toString()) / 10**18,
+            "liabilities": Number(liabilitiesValue.toString()) / 10**18,
             "timestamp": Number(scaledTimestamp.toString()),
         };
     
@@ -416,7 +397,33 @@ main().then(() => process.exit(0))
     //}
 
     /*
+
+        async function mineMinute() {
+        // instantly mine 1000 blocks
+        await mine(60);
+    }
+    async function mineHour() {
+        // instantly mine 1000 blocks
+        await mine(3600);
+    }
+    async function mineDay() {
+        // instantly mine 1000 blocks
+        await mine(86400);
+    }
+
+        function writeCSV(filePath, data) {
+        // Convert array of arrays into CSV string
+        const csvString = data.map(row => row.join(',')).join('\n');
     
+        // Write CSV string to file
+        fs.writeFile(filePath, csvString, (err) => {
+            if (err) throw err;
+            console.log('CSV file has been saved.');
+        });
+    }
+    function delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+      }
     do a trade like we do between 2 parties they have to do margin trades 
     
     then we can do a loop of 24 times 

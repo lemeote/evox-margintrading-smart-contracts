@@ -256,7 +256,7 @@ contract REX_EXCHANGE is Ownable {
                     true
                 );
                 /// here
-                Datahub.toggleInterestRate(
+                Datahub.updateInterestIndex(
                     out_token,
                     REX_LIBRARY.calculateInterestRate(
                         amountToAddToLiabilities,
@@ -290,7 +290,7 @@ contract REX_EXCHANGE is Ownable {
                     false
                 );
 
-                Datahub.toggleInterestRate(
+                Datahub.updateInterestIndex(
                     in_token,
                     REX_LIBRARY.calculateInterestRate(
                         amountToAddToLiabilities,
@@ -344,7 +344,7 @@ contract REX_EXCHANGE is Ownable {
                         false
                     );
                     // calculate interest rate
-                    Datahub.toggleInterestRate(
+                    Datahub.updateInterestIndex(
                         in_token,
                         REX_LIBRARY.calculateInterestRate(
                             0,

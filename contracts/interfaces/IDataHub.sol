@@ -115,7 +115,7 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
         bool pos_neg
     ) external;
 
-    function toggleInterestRate(address token, uint256 value) external;
+    function updateInterestIndex(address token, uint256 value) external;
 
     function returnAssetLogs(
         address token

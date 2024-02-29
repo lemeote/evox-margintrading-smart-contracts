@@ -28,7 +28,6 @@ contract DataHub is Ownable {
         admins[_oracle] = true;
         admins[_interest] = true;
         interestContract = IInterestData(_interest);
-    
     }
 
 
@@ -75,7 +74,7 @@ contract DataHub is Ownable {
     ) external checkRoleAuthority {
         userdata[user].interestRateIndex[token] = interestContract.fetchCurrentRateIndex(
         token
-    );
+    ) + 1;
     }
 /// @notice provides to the caller the users current rate epoch
 /// @dev This is to keep track of the last epoch the user paid at 

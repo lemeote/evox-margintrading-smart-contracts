@@ -30,6 +30,25 @@ library REX_LIBRARY {
         return total;
     }
 
+    function calculateAverage(uint256[] memory values) public view returns(uint256){
+        if(values.length == 0){
+            return 0;
+        }
+        uint256 total;
+        for (uint256 i = 0; i < values.length; i++) {
+            total += values[i];
+        }
+        total / values.length;
+        return total;
+
+    }
+    function calculateAverageOfValue(uint256 value, uint divisor) public view returns(uint256){
+        if(value / divisor == 0){
+            return 0;
+        }
+       uint256 total = value / divisor;
+        return total;
+    }
     // NEEDS REVIEW
 
     /*
@@ -79,21 +98,12 @@ library REX_LIBRARY {
             amount) * 10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
 
-        console.log("current borrow proportion",borrowProportion );
-        console.log("currnet borrowed amount", assetlogs.totalBorrowedAmount);
-        console.log("asset supply", assetlogs.totalAssetSupply);
-        console.log("amount being added to borrowed maount", amount);
-        console.log("a little tet",(assetlogs.totalBorrowedAmount + amount) *10**18 /assetlogs.totalAssetSupply );
         uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
 
    
         uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
         uint256 optimalInterestRate = interestRateInfo.rateInfo[1];
         uint256 maximumInterestRate = interestRateInfo.rateInfo[2];
-     console.log(optimalBorrowProportion, "optimal BP");
-        console.log(minimumInterestRate,optimalInterestRate,maximumInterestRate, "min irate, optimal irate, maxirate");
-
-        
 
     
         if (borrowProportion <= optimalBorrowProportion) {

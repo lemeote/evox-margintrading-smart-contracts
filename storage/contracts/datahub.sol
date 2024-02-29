@@ -247,7 +247,7 @@ contract DataHub is Ownable {
         }
     }
 
-    function toggleInterestRate(
+    function updateInterestIndex(
         address token,
         uint256 value
     ) external checkRoleAuthority {
@@ -297,7 +297,7 @@ contract DataHub is Ownable {
     }
 
 
-    function toggleInterestRates(
+    function updateInterestIndexs(
         address token,
         uint256 optimalBorrowProportion,
         uint256 maximumBorrowProportion,

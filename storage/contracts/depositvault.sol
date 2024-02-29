@@ -57,7 +57,7 @@ contract DepositVault is Ownable {
         require(ERC20Token.transferFrom(msg.sender, address(this), amount));
 
         Datahub.settotalAssetSupply(token, amount, true);
-        Datahub.toggleInterestRate(
+        Datahub.updateInterestIndex(
             token,
             REX_LIBRARY.calculateInterestRate(0,Datahub.returnAssetLogs(token))
         );
@@ -163,7 +163,7 @@ contract DepositVault is Ownable {
 
         // recalculate interest rate because total asset supply is changing 
         if (assetLogs.totalBorrowedAmount > 0) {
-            Datahub.toggleInterestRate(
+            Datahub.updateInterestIndex(
                 token,
                 REX_LIBRARY.calculateInterestRate(0,assetLogs)
             );

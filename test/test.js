@@ -6,6 +6,7 @@ const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.js
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
+const LiquidatorAbi = require("../artifacts/contracts/liquidator.sol/Liquidator.json")
 async function main() {
   /// const [deployer] = await hre.ethers.getSigners(0);
   //console.log(signers[0].address)
@@ -79,6 +80,16 @@ async function main() {
 
   console.log("Utils deployed to", await Deploy_Utilities.getAddress());
 
+
+  const Liquidator = await hre.ethers.getContractFactory("Liquidator", {
+    libraries: {
+      REX_LIBRARY: await REX_LIB.getAddress(),
+    },
+  });
+  const Deploy_Liquidator = await Liquidator.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner); // need to alter the ex after 
+
+  console.log("Liquidator deployed to", await Deploy_Liquidator.getAddress());
+
   const Exchange = await hre.ethers.getContractFactory("REX_EXCHANGE", {
     libraries: {
       REX_LIBRARY: await REX_LIB.getAddress(),
@@ -86,7 +97,7 @@ async function main() {
   });
 
 
-  const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress(),await Deploy_interest.getAddress());
+  const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress(),await Deploy_interest.getAddress(),Deploy_Liquidator.getAddress());
 
   console.log("Exchange deployed to", await Deploy_Exchange.getAddress());
 
@@ -162,6 +173,12 @@ async function main() {
   const SETUPEX = await CurrentExchange.alterAdminRoles(await Deploy_dataHub.getAddress(), await Deploy_depositVault.getAddress(), await DeployOracle.getAddress(), await Deploy_Utilities.getAddress(), await Deploy_interest.getAddress());
 
   SETUPEX.wait()
+
+  const CurrentLiquidator  = new hre.ethers.Contract(await Deploy_Liquidator.getAddress(), LiquidatorAbi.abi, signers[0]);
+
+  const liqSetup = CurrentLiquidator.AlterAdmins(await Deploy_Exchange.getAddress());
+
+  liqSetup.wait();
 
 
   const setup = await DataHub.AlterAdminRoles(await Deploy_depositVault.getAddress(), await Deploy_Exchange.getAddress(), await DeployOracle.getAddress(), await Deploy_interest.getAddress());

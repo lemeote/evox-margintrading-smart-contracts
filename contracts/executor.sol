@@ -36,15 +36,15 @@ contract REX_EXCHANGE is Ownable {
         address _deposit_vault,
         address oracle,
         address _utility,
-        address _interest
+        address _interest,
+        address _liquidator
     ) Ownable(initialOwner) {
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_deposit_vault);
         Oracle = IOracle(oracle);
         Utilities = IUtilityContract(_utility);
         interestContract = IInterestData(_interest);
-
-        // liquidator = _liquidator;
+        liquidator = _liquidator;
     }
 
     modifier checkRoleAuthority() {
@@ -54,11 +54,12 @@ contract REX_EXCHANGE is Ownable {
         );
         _;
     }
-/// @notice This is the function users need to submit an order to the exchange
-/// @dev Explain to a developer any extra details
-/// @param pair the pair of tokens being traded
-/// @param participants of the trade 2 nested arrays 
-/// @param trade_amounts the trades amounts for each participant 
+
+    /// @notice This is the function users need to submit an order to the exchange
+    /// @dev Explain to a developer any extra details
+    /// @param pair the pair of tokens being traded
+    /// @param participants of the trade 2 nested arrays
+    /// @param trade_amounts the trades amounts for each participant
     function SubmitOrder(
         address[2] memory pair,
         address[][2] memory participants,
@@ -188,14 +189,15 @@ contract REX_EXCHANGE is Ownable {
             MakerliabilityAmounts
         );
     }
-/// @notice This called the execute trade functions on the particpants and checks if the assets are already in their portfolio
-/// @param pair the pair of assets involved in the trade
-/// @param takers the taker wallet addresses
-/// @param makers the maker wallet addresses 
-/// @param taker_amounts the taker amounts in the trade
-/// @param maker_amounts the maker amounts in the trade
-/// @param TakerliabilityAmounts the new liabilities being issued to the takers
-/// @param MakerliabilityAmounts the new liabilities being issued to the makers
+
+    /// @notice This called the execute trade functions on the particpants and checks if the assets are already in their portfolio
+    /// @param pair the pair of assets involved in the trade
+    /// @param takers the taker wallet addresses
+    /// @param makers the maker wallet addresses
+    /// @param taker_amounts the taker amounts in the trade
+    /// @param maker_amounts the maker amounts in the trade
+    /// @param TakerliabilityAmounts the new liabilities being issued to the takers
+    /// @param MakerliabilityAmounts the new liabilities being issued to the makers
     function TransferBalances(
         address[2] memory pair,
         address[] memory takers,
@@ -225,14 +227,15 @@ contract REX_EXCHANGE is Ownable {
             pair[1]
         );
     }
-/// @notice Explain to an end user what this does
-/// @dev Explain to a developer any extra details
-/// @param users the users involved in the trade
-/// @param amounts_in_token the amounts coming into the users wallets
-/// @param amounts_out_token the amounts coming out of the users wallets
-/// @param  liabilityAmounts new liabilities being issued
-/// @param  out_token the token leaving the users wallet
-/// @param  in_token the token coming into the users wallet
+
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param users the users involved in the trade
+    /// @param amounts_in_token the amounts coming into the users wallets
+    /// @param amounts_out_token the amounts coming out of the users wallets
+    /// @param  liabilityAmounts new liabilities being issued
+    /// @param  out_token the token leaving the users wallet
+    /// @param  in_token the token coming into the users wallet
     function executeTrade(
         address[] memory users,
         uint256[] memory amounts_in_token,
@@ -317,43 +320,39 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
-/// @notice Explain to an end user what this does
-/// @dev Explain to a developer any extra details
-/// @param user the address of the user beign confirmed
-/// @param token the token being targetted 
-/// @param liabilitiesAccrued the new liabilities being issued 
-/// @param minus determines if we are adding to the liability pool or subtracting 
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param user the address of the user beign confirmed
+    /// @param token the token being targetted
+    /// @param liabilitiesAccrued the new liabilities being issued
+    /// @param minus determines if we are adding to the liability pool or subtracting
     function chargeinterest(
         address user,
         address token,
         uint256 liabilitiesAccrued,
         bool minus
     ) private {
-        if (minus ==false) {
-            /// Utilities.chargeInterest(token, liabilities, amount_to_be_added, rateIndex); == interest charged
-            // something is wrong in the below function
+        if (minus == false) {
+            // problem is in the function relow
+            uint256 interestCharge = interestContract
+                .calculateCompoundedLiabilities(
+                    token,
+                    liabilitiesAccrued,
+                    Utilities.returnliabilities(user, token),
+                    Datahub.viewUsersInterestRateIndex(user, token)
+                );
 
             Datahub.addLiabilities(
                 user,
                 token,
-                liabilitiesAccrued +
-                    Utilities.chargeInterest(
-                        token,
-                        Utilities.returnliabilities(user, token), // this is 0 at this point because its the first time we are chargin liabilities
-                        liabilitiesAccrued,
-                        Datahub.viewUsersInterestRateIndex(user, token)
-                    )
+                liabilitiesAccrued + interestCharge
             );
+
+            Datahub.alterUsersInterestRateIndex(user, token);
 
             Datahub.setTotalBorrowedAmount(
                 token,
-                (liabilitiesAccrued +
-                    Utilities.chargeInterest(
-                        token,
-                        Utilities.returnliabilities(user, token),
-                        liabilitiesAccrued,
-                        Datahub.viewUsersInterestRateIndex(user, token)
-                    )),
+                (liabilitiesAccrued + interestCharge),
                 true
             );
         } else {
@@ -382,7 +381,7 @@ contract REX_EXCHANGE is Ownable {
                 true
             );
 
-            interestContract.toggleInterestRate(
+            interestContract.updateInterestIndex(
                 token,
                 interestContract.fetchCurrentRateIndex(token),
                 REX_LIBRARY.calculateInterestRate(
@@ -396,12 +395,13 @@ contract REX_EXCHANGE is Ownable {
             );
         }
     }
-/// @notice This modify's a users maintenance margin requirement 
-/// @dev Explain to a developer any extra details
-/// @param user the user we are modifying the mmr of
-/// @param in_token the token entering the users wallet
-/// @param out_token the token leaving the users wallet
-/// @param amount the amount being adjected
+
+    /// @notice This modify's a users maintenance margin requirement
+    /// @dev Explain to a developer any extra details
+    /// @param user the user we are modifying the mmr of
+    /// @param in_token the token entering the users wallet
+    /// @param out_token the token leaving the users wallet
+    /// @param amount the amount being adjected
     function Modifymmr(
         address user,
         address in_token,
@@ -470,10 +470,11 @@ contract REX_EXCHANGE is Ownable {
             }
         }
     }
-/// @notice Alters a users pending balance 
-/// @param participant the participant being adjusted
-/// @param asset the asset being traded 
-/// @param trade_amount the amount being adjusted 
+
+    /// @notice Alters a users pending balance
+    /// @param participant the participant being adjusted
+    /// @param asset the asset being traded
+    /// @param trade_amount the amount being adjusted
     function AlterPendingBalances(
         address participant,
         address asset,
@@ -483,21 +484,22 @@ contract REX_EXCHANGE is Ownable {
         Datahub.addPendingBalances(participant, asset, trade_amount);
     }
 
-/// @notice This returns all asset data from the asset data struct from IDatahub
-/// @param token the token we are fetching the data for 
-/// @return assetLogs the asset logs for the asset
+    /// @notice This returns all asset data from the asset data struct from IDatahub
+    /// @param token the token we are fetching the data for
+    /// @return assetLogs the asset logs for the asset
     function returnAssetLogs(
         address token
     ) public view returns (IDataHub.AssetData memory assetLogs) {
         IDataHub.AssetData memory assetlogs = Datahub.returnAssetLogs(token);
         return assetlogs;
     }
-/// @notice Alters the Admin roles for the contract
-/// @param _datahub  the new address for the datahub
-/// @param _depositVault the new address for the deposit vault
-/// @param _oracle the new address for oracle 
-/// @param _utility the new address for the utility contract
-/// @param  _int the new address for the interest contract
+
+    /// @notice Alters the Admin roles for the contract
+    /// @param _datahub  the new address for the datahub
+    /// @param _depositVault the new address for the deposit vault
+    /// @param _oracle the new address for oracle
+    /// @param _utility the new address for the utility contract
+    /// @param  _int the new address for the interest contract
     function alterAdminRoles(
         address _datahub,
         address _depositVault,
@@ -615,7 +617,7 @@ contract REX_EXCHANGE is Ownable {
                     true
                 );
                 // add rate change information cause the rates will change
-                Datahub.toggleInterestRate(
+                Datahub.updateInterestIndex(
                     out_token,
                     REX_LIBRARY.calculateInterestRate(
                         amountToAddToLiabilities,
@@ -667,7 +669,7 @@ contract REX_EXCHANGE is Ownable {
                     false
                 );
 
-                Datahub.toggleInterestRate(
+                Datahub.updateInterestIndex(
                     in_token,
                     REX_LIBRARY.calculateInterestRate(
                         amountToAddToLiabilities,
@@ -721,7 +723,7 @@ contract REX_EXCHANGE is Ownable {
                         false
                     );
                     // calculate interest rate
-                    Datahub.toggleInterestRate(
+                    Datahub.updateInterestIndex(
                         in_token,
                         REX_LIBRARY.calculateInterestRate(
                             0,
