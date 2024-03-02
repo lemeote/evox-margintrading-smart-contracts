@@ -112,22 +112,30 @@ contract interestData is Ownable {
         uint256 usersOriginIndex
     ) public view returns (uint256) {
         // oldLiabilities * ((1+averageHourlyInterest)^amountOfIndexes)
+
         uint256 amountOfBilledHours = fetchCurrentRateIndex(token) -
             usersOriginIndex;
-        console.log("users liabilities ",usersLiabilities);
-        console.log("users index", usersOriginIndex);
-        console.log("hours to bill for user", amountOfBilledHours);
 
-        uint256 adjustedNewLiabilities = newLiabilities * (1 + fetchCurrentRate(token));
-        uint256 initalMarginFeeAmount =  REX_LIBRARY.calculateinitialMarginFeeAmount(Executor.returnAssetLogs(token), newLiabilities);
+        uint256 adjustedNewLiabilities = newLiabilities *
+            (1 + fetchCurrentRate(token));
+        uint256 initalMarginFeeAmount = REX_LIBRARY
+            .calculateinitialMarginFeeAmount(
+                Executor.returnAssetLogs(token),
+                newLiabilities
+            );
 
-        if(usersLiabilities ==0){
-            return ((adjustedNewLiabilities + initalMarginFeeAmount) - newLiabilities) / 10**18;
-        }else{
-        return
-            (((usersLiabilities *
-            ((1 + calculateInterestCharge(token, usersOriginIndex)) **
-                amountOfBilledHours)) + adjustedNewLiabilities + initalMarginFeeAmount) - (usersLiabilities +newLiabilities)) /10**18 ;
+        if (usersLiabilities == 0) {
+            return
+                ((adjustedNewLiabilities + initalMarginFeeAmount) -
+                    newLiabilities) / 10 ** 18;
+        } else {
+            return
+                (((usersLiabilities *
+                    ((1 + calculateInterestCharge(token, usersOriginIndex)) **
+                        amountOfBilledHours)) +
+                    adjustedNewLiabilities +
+                    initalMarginFeeAmount) -
+                    (usersLiabilities + newLiabilities)) / 10 ** 18;
         }
     }
 
@@ -150,6 +158,11 @@ contract interestData is Ownable {
         InterestDetails[5] memory interestDetails; // yearly, monthly, weekly, daily, hourly
 
         uint256[5] memory timeFrames = [year, month, week, day, hour];
+
+        if (TimeInHoursInDebt == 0) {
+            /// IMPORTANT UNDERSTAND THE IMPLICATIONS OF THIS ON A DEEPER LEVEL, WHAT IF THEY HAVE BEEN IN FOR 30 MINS AND CASH OUT? NO CHARGE??
+            return 0;
+        }
 
         for (uint256 i = 0; i < 5; i++) {
             while (remainingTime >= timeFrames[i]) {
@@ -221,20 +234,50 @@ contract interestData is Ownable {
     ) private view returns (uint256[3] memory) {
         uint[5] memory timeframes = [hour, day, week, month, year];
 
+        if (targetTimeFrame == 3600) {
+            targetTimeFrame = 0;
+        }
+        if (targetTimeFrame == 86400) {
+            targetTimeFrame = 1;
+        }
+        if (targetTimeFrame == 604800) {
+            targetTimeFrame = 2;
+        }
+        if (targetTimeFrame == 2419200) {
+            targetTimeFrame = 3;
+        }
+        if (targetTimeFrame == 31449600) {
+            targetTimeFrame = 4;
+        }
+
         uint usersOriginTimeFrame = (usersOriginRateIndex * 3600) /
             timeframes[targetTimeFrame];
+        console.log("users origin timeframe",usersOriginTimeFrame );
         // i.e if we want to find what year or month a user took their debt this will spit that out
         // if they took debt after the first rate year cycles done but not the second then it would be like 1.5
+        uint usersOriginScaledDownTimeFrame;
 
+        uint256 endingIndex;
         // cause if their origin year was 1 then would spit back 2 which is the orign of the next year
-        uint usersOriginScaledDownTimeFrame = (usersOriginRateIndex * 3600) /
+        if(targetTimeFrame != 0){
+         usersOriginScaledDownTimeFrame = (usersOriginRateIndex * 3600) /
             timeframes[targetTimeFrame - 1]; // --> use this and go if its like 10 scale to 12
+      endingIndex =   (usersOriginTimeFrame + timeframes[targetTimeFrame]) /
+                timeframes[targetTimeFrame - 1];
         // month that they took the debt on so it would be like 15 if they took the debt 3 months after the origin year
+        }else{
+         usersOriginScaledDownTimeFrame = usersOriginRateIndex;  
+         endingIndex =  (usersOriginTimeFrame);
+        }
+
+        console.log("we are getting so fucking close");
+        console.log("calculate interest details",targetTimeFrame,
+            usersOriginScaledDownTimeFrame, 
+            remainingTime);
         uint256[3] memory interestDetails = calculateInterest(
-            targetTimeFrame, // 1 year
+            targetTimeFrame, // 
             usersOriginScaledDownTimeFrame, // months
-            (usersOriginTimeFrame + timeframes[targetTimeFrame]) /
-                timeframes[targetTimeFrame - 1], //
+            endingIndex, //
             remainingTime, // remaing time to bill
             token
         ); // this gets the next years month
@@ -242,7 +285,6 @@ contract interestData is Ownable {
         return [interestDetails[0], interestDetails[1], interestDetails[2]];
     }
 
-    //(usersOriginYear + year) ending index
     function calculateInterest(
         uint EpochRateId,
         uint256 originRateIndex,
@@ -272,6 +314,13 @@ contract interestData is Ownable {
         return timeframes[EpochRateId] / hour;
     }
 
+    function fetchLiabilitiesOfIndex(
+        address token,
+        uint256 index
+    ) private view returns (uint256) {
+        return interestInfo[token][index].totalLiabilitiesAtIndex;
+    }
+
     /// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param token the token being targetted
@@ -279,52 +328,68 @@ contract interestData is Ownable {
     /// @param value the value
     function updateInterestIndex(
         address token,
-        uint256 index,
+        uint256 index, // 24
         uint256 value
     ) public checkRoleAuthority {
-        currentInterestIndex[token] = index + 1; // fetch current plus 1?
+        currentInterestIndex[token] = index + 1; // 25
         interestInfo[token][currentInterestIndex[token]].interestRate = value;
+
+        interestInfo[token][currentInterestIndex[token]]
+            .rateInfo = interestInfo[token][currentInterestIndex[token] - 1]
+            .rateInfo;
+
         interestInfo[token][currentInterestIndex[token]].lastUpdatedTime = block
             .timestamp;
         interestInfo[token][index].totalLiabilitiesAtIndex = Datahub
             .fetchTotalBorrowedAmount(token);
-/*
+
         if (index % 24 == 0) {
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
+            // 168
+            console.log("SET DAILY RATE");
+            InterestRateEpochs[0][token][uint(currentInterestIndex[token] / 24)]
                 .interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 24,
-                    currentInterestIndex[token],
+                    currentInterestIndex[token] - 24, // 1
+                    currentInterestIndex[token], //24
                     token
                 )
             );
-
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
+            InterestRateEpochs[0][token][uint(currentInterestIndex[token] / 24)]
                 .lastUpdatedTime = block.timestamp;
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
+            InterestRateEpochs[0][token][uint(currentInterestIndex[token] / 24)]
                 .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(
                 token
             );
+            InterestRateEpochs[0][token][uint(currentInterestIndex[token] / 24)]
+                .rateInfo = interestInfo[token][currentInterestIndex[token]]
+                .rateInfo;
         }
-        if (index % (24 * week) == 0) {
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / (24 * week))
+        if (index % 168 == 0) {
+            console.log("SET WEEKLY RATE");
+            InterestRateEpochs[1][token][
+                uint(currentInterestIndex[token] / (24 * 7))
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 24 * week,
+                    currentInterestIndex[token] - 24 * 7,
                     currentInterestIndex[token],
                     token
                 )
             );
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / (24 * week))
+            InterestRateEpochs[1][token][
+                uint(currentInterestIndex[token] / (24 * 7))
             ].lastUpdatedTime = block.timestamp;
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / (24 * week))
+            InterestRateEpochs[1][token][
+                uint(currentInterestIndex[token] / (24 * 7))
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+
+            InterestRateEpochs[1][token][
+                uint(currentInterestIndex[token] / (24 * 7))
+            ].rateInfo = interestInfo[token][currentInterestIndex[token]]
+                .rateInfo;
         }
-        if (index % (24 * month) == 0) {
-            InterestRateEpochs[3][token][
+        if (index % 672 == 0) {
+            console.log("SET MONTHLY RATE");
+            InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / (24 * month))
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
@@ -333,14 +398,19 @@ contract interestData is Ownable {
                     token
                 )
             );
-            InterestRateEpochs[3][token][
+            InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / (24 * month))
             ].lastUpdatedTime = block.timestamp;
-            InterestRateEpochs[3][token][
+            InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / (24 * month))
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+
+            InterestRateEpochs[2][token][
+                uint(currentInterestIndex[token] / (24 * month))
+            ].rateInfo = interestInfo[token][currentInterestIndex[token]]
+                .rateInfo;
         }
-        if (index % (24 * year) == 0) {
+        if (index % 8736 == 0) {
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / (24 * year))
             ].interestRate = REX_LIBRARY.calculateAverage(
@@ -356,8 +426,12 @@ contract interestData is Ownable {
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / (24 * year))
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+
+            InterestRateEpochs[3][token][
+                uint(currentInterestIndex[token] / (24 * year))
+            ].rateInfo = interestInfo[token][currentInterestIndex[token]]
+                .rateInfo;
         }
-        */
     }
 
     function fetchRatesList(
@@ -365,12 +439,14 @@ contract interestData is Ownable {
         uint256 endingIndex,
         address token
     ) private view returns (uint256[] memory) {
-        uint256[] memory interestRatesForThePeriod;
-        uint256 counter = 0;
+        uint256[] memory interestRatesForThePeriod = new uint256[](
+            (endingIndex) - startingIndex
+        );
+        uint counter = 0;
         for (uint256 i = startingIndex; i < endingIndex; i++) {
             interestRatesForThePeriod[counter] = interestInfo[token][i]
                 .interestRate;
-            counter++;
+            counter += 1;
         }
         return interestRatesForThePeriod;
     }
@@ -399,36 +475,24 @@ contract interestData is Ownable {
         uint256 LiabilityToCharge = Datahub.fetchTotalBorrowedAmount(token);
         uint256 LiabilityDelta;
 
-        IInterestData.interestDetails memory interestDetails = fetchRateInfo(
-            token,
-            index
-        );
-
-        /*
-LiabilityDelta = TotalLiabilityPoolNow - TotalLiabilityPoolAtIndex // check which one is bigger, subtract the smaller from the bigger
-LiabilityToCharge = TotalLiabilityPoolNow - LiabilityDelta
-MassCharge = LiabilityToCharge * CurrentHourlyIndexInterest  //This means the index that just passed (i.e. we charge at 12:00:01 we use the interest rate for 12:00:00)
-
-TotalLiabilityPoolNow += MassCharge
-        */
         if (
             Datahub.fetchTotalBorrowedAmount(token) >
-            interestDetails.totalLiabilitiesAtIndex
+            fetchLiabilitiesOfIndex(token, index)
         ) {
             LiabilityDelta =
                 Datahub.fetchTotalBorrowedAmount(token) -
-                interestDetails.totalLiabilitiesAtIndex;
-                LiabilityToCharge -= LiabilityDelta;
+                fetchLiabilitiesOfIndex(token, index);
+            LiabilityToCharge -= LiabilityDelta;
         } else {
             LiabilityDelta =
-                interestDetails.totalLiabilitiesAtIndex -
+                fetchLiabilitiesOfIndex(token, index) -
                 Datahub.fetchTotalBorrowedAmount(token);
 
             LiabilityToCharge -= LiabilityDelta;
         }
-        uint256 MassCharge = (LiabilityToCharge *
-            ((fetchCurrentRate(token)) / 8760)) / 10 ** 18;
 
+        uint256 MassCharge = (LiabilityToCharge *
+            ((fetchCurrentRate(token)) / 8760)) / 10 ** 18; // this has an erro i think
         return MassCharge;
     }
 
@@ -443,11 +507,10 @@ TotalLiabilityPoolNow += MassCharge
         ) {
             Datahub.setTotalBorrowedAmount(
                 token,
-                chargeLiabilityDelta(token, fetchCurrentRateIndex(token)),
+                chargeLiabilityDelta(token, fetchCurrentRateIndex(token) - 1), // why is this the case why do i need to -1..... oopsies?
                 true
             );
 
-      
             updateInterestIndex(
                 token,
                 fetchCurrentRateIndex(token),
@@ -457,7 +520,6 @@ TotalLiabilityPoolNow += MassCharge
                     fetchRateInfo(token, fetchCurrentRateIndex(token))
                 )
             );
- 
         }
     }
 

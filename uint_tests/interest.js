@@ -291,10 +291,10 @@ async function main() {
     const EX = new hre.ethers.Contract(await Deploy_Exchange.getAddress(), ExecutorAbi.abi, signers[0]);
     // Perform testing actions
 
-    console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
-    console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
-    console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
-    console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
+  //  console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
+  //  console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
+  //  console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
+  //  console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
 
 
     async function getCurrentTimestamp() {
@@ -308,11 +308,11 @@ async function main() {
 
     let allData = [];
 
-    for (let i = 0; i <= 40; i++) {
+    for (let i = 0; i <= 200; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
     
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
-        console.log(`Loop ${i + 1}: Set timestamp to ${scaledTimestamp}`);
+        console.log(`Loop ${i}: Set timestamp to ${scaledTimestamp}`);
     
         // CHARGE MASS INTEREST
         const masscharge = await _Interest.chargeMassinterest(await USDT.getAddress());
@@ -338,7 +338,7 @@ async function main() {
         // Fetch current interest RATE USDT
         let Rate = await _Interest.fetchCurrentRate(await USDT.getAddress());
 
-      //  let usersIndex = DataHub.viewUsersInterestRateIndex(signers[0].address, await USDT.getAddress() )
+       let usersIndex = DataHub.viewUsersInterestRateIndex(signers[0].address, await USDT.getAddress() )
 
 
     
@@ -346,14 +346,14 @@ async function main() {
         let userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress());
         let liabilitiesValue = userData[1];
 
-/*
+
         let interestadjustedLiabilities = await _Interest.calculateCompoundedLiabilities(
             await USDT.getAddress(),
             0,
              liabilitiesValue,
              usersIndex
         ) 
-*/
+
         let interestIndex = await _Interest.fetchCurrentRateIndex(await USDT.getAddress());
 
     
@@ -367,7 +367,7 @@ async function main() {
             "total-borrowed": Number(borrowed.toString()) / 10**18,
             "rate": Number(Rate.toString()) / 10**18,
             "hourly-rate": hourly_rate / 10**18,
-            "liabilities": Number(liabilitiesValue.toString()) / 10**18,
+            "liabilities": Number(interestadjustedLiabilities.toString()) / 10**18,
             "timestamp": Number(scaledTimestamp.toString()),
         };
     

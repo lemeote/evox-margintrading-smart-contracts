@@ -100,6 +100,8 @@ library REX_LIBRARY {
 
         uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
 
+        console.log(interestRateInfo.rateInfo[0],interestRateInfo.rateInfo[1],interestRateInfo.rateInfo[2]);
+
    
         uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
         uint256 optimalInterestRate = interestRateInfo.rateInfo[1];

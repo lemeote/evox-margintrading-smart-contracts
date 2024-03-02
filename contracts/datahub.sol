@@ -74,7 +74,7 @@ contract DataHub is Ownable {
     ) external checkRoleAuthority {
         userdata[user].interestRateIndex[token] = interestContract.fetchCurrentRateIndex(
         token
-    ) + 1;
+    ); // updates to be the current rate index..... 1+ 
     }
 /// @notice provides to the caller the users current rate epoch
 /// @dev This is to keep track of the last epoch the user paid at 
