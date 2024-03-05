@@ -129,13 +129,20 @@ contract interestData is Ownable {
                 ((adjustedNewLiabilities + initalMarginFeeAmount) -
                     newLiabilities) / 10 ** 18;
         } else {
-            return
-                (((usersLiabilities *
-                    ((1 + calculateInterestCharge(token, usersOriginIndex)) **
+
+            uint256 interestCharge;
+
+console.log(amountOfBilledHours, "billed hrrsss");
+            unchecked{
+                interestCharge = ((((usersLiabilities) *
+                    ((1e18 + (calculateInterestCharge(token, usersOriginIndex) /10**18)) **
                         amountOfBilledHours)) +
                     adjustedNewLiabilities +
                     initalMarginFeeAmount) -
                     (usersLiabilities + newLiabilities)) / 10 ** 18;
+            }
+            return
+               interestCharge;
         }
     }
 
@@ -172,16 +179,73 @@ contract interestData is Ownable {
                     timeFrames[i],
                     token
                 );
-
                 interestDetails[i].interestRateTracker += details[0];
-                remainingTime -= details[1];
-                runningOriginIndex += details[2];
+                remainingTime = details[1];
+                runningOriginIndex = details[2];
                 interestDetails[i].counter++;
+                if (
+                    remainingTime <= 0
+                ) {
+                    break;
+                }
+            }
+
+            if (interestDetails[i].interestRateTracker != 0) {
+                interestDetails[i].interestRateTracker = REX_LIBRARY
+                    .calculateAverageOfValue(
+                        interestDetails[i].interestRateTracker,
+                        interestDetails[i].counter
+                    );
             }
         }
 
+        return calculateGrossRate(interestDetails);
+    }
+
+    function calculateGrossRate(
+        InterestDetails[5] memory interestDetails
+    ) private view returns (uint256) {
+        uint256 numerator = 0;
+        uint256 denominator = 0;
+
+        for (uint i = 0; i < interestDetails.length; i++) {
+            numerator +=
+                interestDetails[i].counter *
+                fetchHoursInTimeSpan(i) *
+                interestDetails[i].interestRateTracker;
+            denominator += interestDetails[i].counter * fetchHoursInTimeSpan(i);
+        }
+
+        return numerator / denominator;
+    }
+
+    /*
+    function calculateGrossRate(
+        uint timeFrameYear,
+        uint256 grossYearlyRate,
+        uint timeFrameMonth,
+        uint256 grossMonthlyRate,
+        uint timeFrameWeek,
+        uint256 grossWeeklyRate,
+        uint timeFrameDay,
+        uint256 grossDailyRate,
+        uint timeFrameHour,
+        uint256 grossHourlyRate
+    ) private view returns (uint256) {
         return
-            calculateGrossRate(
+            ((timeFrameYear * fetchHoursInTimeSpan(4) * grossYearlyRate) +
+                (timeFrameMonth * fetchHoursInTimeSpan(3) * grossMonthlyRate) +
+                (timeFrameWeek * fetchHoursInTimeSpan(2) * grossWeeklyRate) +
+                (timeFrameDay * fetchHoursInTimeSpan(1) * grossDailyRate) +
+              (timeFrameHour * fetchHoursInTimeSpan(0) * grossHourlyRate)  ) /
+            ((timeFrameYear * fetchHoursInTimeSpan(4)) +
+                (timeFrameMonth * fetchHoursInTimeSpan(3)) +
+                (timeFrameWeek * fetchHoursInTimeSpan(2)) +
+                (timeFrameDay * fetchHoursInTimeSpan(1)) +
+                 (timeFrameHour * fetchHoursInTimeSpan(0)));
+    }
+
+           calculateGrossRate(
                 interestDetails[0].counter,
                 REX_LIBRARY.calculateAverageOfValue(
                     interestDetails[0].interestRateTracker,
@@ -201,31 +265,14 @@ contract interestData is Ownable {
                 REX_LIBRARY.calculateAverageOfValue(
                     interestDetails[3].interestRateTracker,
                     interestDetails[3].counter
+                ),
+                interestDetails[4].counter,
+                REX_LIBRARY.calculateAverageOfValue(
+                    interestDetails[4].interestRateTracker,
+                    interestDetails[4].counter
                 )
             );
-    }
-
-    function calculateGrossRate(
-        uint timeFrameYear,
-        uint256 grossYearlyRate,
-        uint timeFrameMonth,
-        uint256 grossMonthlyRate,
-        uint timeFrameWeek,
-        uint256 grossWeeklyRate,
-        uint timeFrameDay,
-        uint256 grossDailyRate
-    ) private view returns (uint256) {
-        return
-            ((timeFrameYear * fetchHoursInTimeSpan(4) * grossYearlyRate) +
-                (timeFrameMonth * fetchHoursInTimeSpan(3) * grossMonthlyRate) +
-                (timeFrameWeek * fetchHoursInTimeSpan(2) * grossWeeklyRate) +
-                (timeFrameDay * fetchHoursInTimeSpan(1) * grossDailyRate)) /
-            ((timeFrameYear * fetchHoursInTimeSpan(4)) +
-                (timeFrameMonth * fetchHoursInTimeSpan(3)) +
-                (timeFrameWeek * fetchHoursInTimeSpan(2)) +
-                (timeFrameDay * fetchHoursInTimeSpan(1)));
-    }
-
+*/
     function calculateInterestResults(
         uint256 remainingTime,
         uint256 usersOriginRateIndex,
@@ -252,30 +299,27 @@ contract interestData is Ownable {
 
         uint usersOriginTimeFrame = (usersOriginRateIndex * 3600) /
             timeframes[targetTimeFrame];
-        console.log("users origin timeframe",usersOriginTimeFrame );
         // i.e if we want to find what year or month a user took their debt this will spit that out
         // if they took debt after the first rate year cycles done but not the second then it would be like 1.5
         uint usersOriginScaledDownTimeFrame;
 
         uint256 endingIndex;
         // cause if their origin year was 1 then would spit back 2 which is the orign of the next year
-        if(targetTimeFrame != 0){
-         usersOriginScaledDownTimeFrame = (usersOriginRateIndex * 3600) /
-            timeframes[targetTimeFrame - 1]; // --> use this and go if its like 10 scale to 12
-      endingIndex =   (usersOriginTimeFrame + timeframes[targetTimeFrame]) /
+        if (targetTimeFrame != 0) {
+            usersOriginScaledDownTimeFrame =
+                (usersOriginRateIndex * 3600) /
+                timeframes[targetTimeFrame - 1]; // --> use this and go if its like 10 scale to 12
+            endingIndex =
+                (usersOriginTimeFrame + timeframes[targetTimeFrame]) /
                 timeframes[targetTimeFrame - 1];
-        // month that they took the debt on so it would be like 15 if they took the debt 3 months after the origin year
-        }else{
-         usersOriginScaledDownTimeFrame = usersOriginRateIndex;  
-         endingIndex =  (usersOriginTimeFrame);
+            // month that they took the debt on so it would be like 15 if they took the debt 3 months after the origin year
+        } else {
+            usersOriginScaledDownTimeFrame = usersOriginRateIndex;
+            endingIndex = fetchCurrentRateIndex(token);
         }
 
-        console.log("we are getting so fucking close");
-        console.log("calculate interest details",targetTimeFrame,
-            usersOriginScaledDownTimeFrame, 
-            remainingTime);
         uint256[3] memory interestDetails = calculateInterest(
-            targetTimeFrame, // 
+            targetTimeFrame, //
             usersOriginScaledDownTimeFrame, // months
             endingIndex, //
             remainingTime, // remaing time to bill
@@ -292,18 +336,43 @@ contract interestData is Ownable {
         uint256 unbilledHours,
         address token
     ) internal view returns (uint256[3] memory) {
-        uint256 interestCharge;
-
+        uint256 interestCharge = 0;
+        uint256 GrossRate = 0;
+      
         for (uint256 i = originRateIndex; i < endingIndex; i++) {
-            uint256 GrossRate = fetchTimeScaledRateIndex(EpochRateId, token, i)
-                .interestRate; // idivsion ehre by months to get average for the months
-            interestCharge += GrossRate;
+                if (EpochRateId == 0) {
+                    GrossRate += fetchRate(token, i);
+                    interestCharge += GrossRate;
+                   
+                } else {
+                    GrossRate += fetchTimeScaledRateIndex(EpochRateId, token, i)
+                        .interestRate; // idivsion ehre by months to get average for the months
 
-            unbilledHours -= fetchHoursInTimeSpan(EpochRateId);
+                    interestCharge += GrossRate;
+                }
+      
 
+            if (
+                (fetchHoursInTimeSpan(EpochRateId) * 3600) >= unbilledHours
+          
+            ) {
+                unbilledHours = 0;
+            } else {
+               /// console.log( unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600), "this is hitting");
+                unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600);
+            }
+           // console.log("this should be 1",fetchHoursInTimeSpan(EpochRateId));
             originRateIndex += fetchHoursInTimeSpan(EpochRateId);
+        
         }
-
+       /* console.log(
+            interestCharge,
+            unbilledHours,
+            originRateIndex,
+            "reate charged"
+        );
+        */
+       console.log("details from calcualate interest",interestCharge, unbilledHours, originRateIndex ); // 5000000 0 5
         return [interestCharge, unbilledHours, originRateIndex];
     }
 

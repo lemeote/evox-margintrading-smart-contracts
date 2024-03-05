@@ -46,6 +46,13 @@ library REX_LIBRARY {
         if(value / divisor == 0){
             return 0;
         }
+        if(divisor == 0){
+            return 0;
+        }
+        if(value == 0){
+            return 0;
+        }
+     ///   console.log("its still trying");
        uint256 total = value / divisor;
         return total;
     }

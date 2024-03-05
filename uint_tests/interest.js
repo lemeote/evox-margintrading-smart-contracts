@@ -308,15 +308,15 @@ async function main() {
 
     let allData = [];
 
-    for (let i = 0; i <= 200; i++) {
+    for (let i = 0; i <= 100; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
     
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
         console.log(`Loop ${i}: Set timestamp to ${scaledTimestamp}`);
     
         // CHARGE MASS INTEREST
-        const masscharge = await _Interest.chargeMassinterest(await USDT.getAddress());
-        await masscharge.wait(); // Wait for the transaction to be mined
+      //  const masscharge = await _Interest.chargeMassinterest(await USDT.getAddress());
+       // await masscharge.wait(); // Wait for the transaction to be mined
 
         if( i == 3 ){
             await EX.SubmitOrder(pair, participants, trade_amounts)
@@ -330,6 +330,9 @@ async function main() {
             console.log(await DataHub.returnPairMMROfUser(signers[0].address, USDT, REXE), "mmr");
         
         }
+        // CHARGE MASS INTEREST
+        const masscharges = await _Interest.chargeMassinterest(await USDT.getAddress());
+        await masscharges.wait(); // Wait for the transaction to be mined
 
         // Fetch total borrowed amount of USDT
         let  borrowed = await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress());
