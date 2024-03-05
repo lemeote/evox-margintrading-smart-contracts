@@ -289,13 +289,6 @@ async function main() {
     // console.log(pair, participants, trade_amounts)
 
     const EX = new hre.ethers.Contract(await Deploy_Exchange.getAddress(), ExecutorAbi.abi, signers[0]);
-    // Perform testing actions
-
-  //  console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
-  //  console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
-  //  console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
-  //  console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
-
 
     async function getCurrentTimestamp() {
         const block = await hre.ethers.provider.getBlock('latest');
@@ -308,7 +301,7 @@ async function main() {
 
     let allData = [];
 
-    for (let i = 0; i <= 100; i++) {
+    for (let i = 0; i <= 30; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
     
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);

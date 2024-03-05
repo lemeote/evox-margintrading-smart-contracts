@@ -118,31 +118,38 @@ contract interestData is Ownable {
 
         uint256 adjustedNewLiabilities = newLiabilities *
             (1 + fetchCurrentRate(token));
-        uint256 initalMarginFeeAmount = REX_LIBRARY
-            .calculateinitialMarginFeeAmount(
-                Executor.returnAssetLogs(token),
-                newLiabilities
-            );
-
+        uint256 initalMarginFeeAmount;
+        if (adjustedNewLiabilities == 0) {
+            initalMarginFeeAmount = 0;
+        } else {
+            initalMarginFeeAmount = REX_LIBRARY.calculateinitialMarginFeeAmount(
+                    Executor.returnAssetLogs(token),
+                    newLiabilities
+                );
+        }
         if (usersLiabilities == 0) {
             return
                 ((adjustedNewLiabilities + initalMarginFeeAmount) -
                     newLiabilities) / 10 ** 18;
         } else {
-
             uint256 interestCharge;
 
-console.log(amountOfBilledHours, "billed hrrsss");
-            unchecked{
-                interestCharge = ((((usersLiabilities) *
-                    ((1e18 + (calculateInterestCharge(token, usersOriginIndex) /10**18)) **
-                        amountOfBilledHours)) +
-                    adjustedNewLiabilities +
-                    initalMarginFeeAmount) -
-                    (usersLiabilities + newLiabilities)) / 10 ** 18;
+            uint256 hourlyCharges = (calculateInterestCharge(
+                token,
+                usersOriginIndex
+            ) / 8736) ** amountOfBilledHours;
+
+            uint256 compoundedLiabilities = (usersLiabilities) *
+                (1e18 + hourlyCharges);
+
+            unchecked {
+                interestCharge =
+                    ((compoundedLiabilities +
+                        adjustedNewLiabilities +
+                        initalMarginFeeAmount) / 10 ** 18) -
+                    ((usersLiabilities + newLiabilities));
             }
-            return
-               interestCharge;
+            return interestCharge;
         }
     }
 
@@ -183,13 +190,11 @@ console.log(amountOfBilledHours, "billed hrrsss");
                 remainingTime = details[1];
                 runningOriginIndex = details[2];
                 interestDetails[i].counter++;
-                if (
-                    remainingTime <= 0
-                ) {
+                if (remainingTime <= 0) {
                     break;
                 }
             }
-
+            // console.log(interestDetails[i].interestRateTracker,interestDetails[i].counter, "should give me the interest and counter" );
             if (interestDetails[i].interestRateTracker != 0) {
                 interestDetails[i].interestRateTracker = REX_LIBRARY
                     .calculateAverageOfValue(
@@ -209,70 +214,20 @@ console.log(amountOfBilledHours, "billed hrrsss");
         uint256 denominator = 0;
 
         for (uint i = 0; i < interestDetails.length; i++) {
+            console.log(interestDetails.length);
             numerator +=
                 interestDetails[i].counter *
-                fetchHoursInTimeSpan(i) *
+                fetchHoursInTimeSpanDecending(i) *
                 interestDetails[i].interestRateTracker;
-            denominator += interestDetails[i].counter * fetchHoursInTimeSpan(i);
+            denominator +=
+                interestDetails[i].counter *
+                fetchHoursInTimeSpanDecending(i);
         }
 
         return numerator / denominator;
     }
 
-    /*
-    function calculateGrossRate(
-        uint timeFrameYear,
-        uint256 grossYearlyRate,
-        uint timeFrameMonth,
-        uint256 grossMonthlyRate,
-        uint timeFrameWeek,
-        uint256 grossWeeklyRate,
-        uint timeFrameDay,
-        uint256 grossDailyRate,
-        uint timeFrameHour,
-        uint256 grossHourlyRate
-    ) private view returns (uint256) {
-        return
-            ((timeFrameYear * fetchHoursInTimeSpan(4) * grossYearlyRate) +
-                (timeFrameMonth * fetchHoursInTimeSpan(3) * grossMonthlyRate) +
-                (timeFrameWeek * fetchHoursInTimeSpan(2) * grossWeeklyRate) +
-                (timeFrameDay * fetchHoursInTimeSpan(1) * grossDailyRate) +
-              (timeFrameHour * fetchHoursInTimeSpan(0) * grossHourlyRate)  ) /
-            ((timeFrameYear * fetchHoursInTimeSpan(4)) +
-                (timeFrameMonth * fetchHoursInTimeSpan(3)) +
-                (timeFrameWeek * fetchHoursInTimeSpan(2)) +
-                (timeFrameDay * fetchHoursInTimeSpan(1)) +
-                 (timeFrameHour * fetchHoursInTimeSpan(0)));
-    }
 
-           calculateGrossRate(
-                interestDetails[0].counter,
-                REX_LIBRARY.calculateAverageOfValue(
-                    interestDetails[0].interestRateTracker,
-                    interestDetails[0].counter
-                ),
-                interestDetails[1].counter,
-                REX_LIBRARY.calculateAverageOfValue(
-                    interestDetails[1].interestRateTracker,
-                    interestDetails[1].counter
-                ),
-                interestDetails[2].counter,
-                REX_LIBRARY.calculateAverageOfValue(
-                    interestDetails[2].interestRateTracker,
-                    interestDetails[2].counter
-                ),
-                interestDetails[3].counter,
-                REX_LIBRARY.calculateAverageOfValue(
-                    interestDetails[3].interestRateTracker,
-                    interestDetails[3].counter
-                ),
-                interestDetails[4].counter,
-                REX_LIBRARY.calculateAverageOfValue(
-                    interestDetails[4].interestRateTracker,
-                    interestDetails[4].counter
-                )
-            );
-*/
     function calculateInterestResults(
         uint256 remainingTime,
         uint256 usersOriginRateIndex,
@@ -338,41 +293,28 @@ console.log(amountOfBilledHours, "billed hrrsss");
     ) internal view returns (uint256[3] memory) {
         uint256 interestCharge = 0;
         uint256 GrossRate = 0;
-      
+
         for (uint256 i = originRateIndex; i < endingIndex; i++) {
-                if (EpochRateId == 0) {
-                    GrossRate += fetchRate(token, i);
-                    interestCharge += GrossRate;
-                   
-                } else {
-                    GrossRate += fetchTimeScaledRateIndex(EpochRateId, token, i)
-                        .interestRate; // idivsion ehre by months to get average for the months
+            if (EpochRateId == 0) {
+                GrossRate += fetchRate(token, i);
+                interestCharge += GrossRate;
+            } else {
+                GrossRate += fetchTimeScaledRateIndex(EpochRateId, token, i)
+                    .interestRate; // idivsion ehre by months to get average for the months
 
-                    interestCharge += GrossRate;
-                }
-      
+                interestCharge += GrossRate;
+            }
 
-            if (
-                (fetchHoursInTimeSpan(EpochRateId) * 3600) >= unbilledHours
-          
-            ) {
+            if ((fetchHoursInTimeSpan(EpochRateId) * 3600) >= unbilledHours) {
                 unbilledHours = 0;
             } else {
-               /// console.log( unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600), "this is hitting");
+                /// console.log( unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600), "this is hitting");
                 unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600);
             }
-           // console.log("this should be 1",fetchHoursInTimeSpan(EpochRateId));
+            // console.log("this should be 1",fetchHoursInTimeSpan(EpochRateId));
             originRateIndex += fetchHoursInTimeSpan(EpochRateId);
-        
         }
-       /* console.log(
-            interestCharge,
-            unbilledHours,
-            originRateIndex,
-            "reate charged"
-        );
-        */
-       console.log("details from calcualate interest",interestCharge, unbilledHours, originRateIndex ); // 5000000 0 5
+
         return [interestCharge, unbilledHours, originRateIndex];
     }
 
@@ -380,6 +322,13 @@ console.log(amountOfBilledHours, "billed hrrsss");
         uint EpochRateId
     ) public view returns (uint256) {
         uint[5] memory timeframes = [hour, day, week, month, year];
+        return timeframes[EpochRateId] / hour;
+    }
+
+    function fetchHoursInTimeSpanDecending(
+        uint EpochRateId
+    ) public view returns (uint256) {
+        uint[5] memory timeframes = [year, month, week, day, hour];
         return timeframes[EpochRateId] / hour;
     }
 
