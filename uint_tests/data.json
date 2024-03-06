@@ -4,278 +4,188 @@
     "loop #": 0,
     "total-borrowed": 0,
     "rate": 0.005,
-    "hourly-rate": 5.707762557077626e-7,
+    "hourly-rate": 5.723443223443223e-7,
     "liabilities": 0,
-    "timestamp": 1709682543
+    "timestamp": 1709759526
   },
   {
     "index": 2,
     "loop #": 1,
     "total-borrowed": 0,
     "rate": 0.005,
-    "hourly-rate": 5.707762557077626e-7,
+    "hourly-rate": 5.723443223443223e-7,
     "liabilities": 0,
-    "timestamp": 1709686143
+    "timestamp": 1709763126
   },
   {
     "index": 3,
     "loop #": 2,
     "total-borrowed": 0,
     "rate": 0.005,
-    "hourly-rate": 5.707762557077626e-7,
+    "hourly-rate": 5.723443223443223e-7,
     "liabilities": 0,
-    "timestamp": 1709689743
+    "timestamp": 1709766726
   },
   {
     "index": 4,
     "loop #": 3,
     "total-borrowed": 753.7500000000001,
     "rate": 0.10908928571428571,
-    "hourly-rate": 0.000012453114807566861,
-    "liabilities": 0,
-    "timestamp": 1709693343
+    "hourly-rate": 0.000012487326661433804,
+    "liabilities": 753.7500000493824,
+    "timestamp": 1709770326
+  },
+  {
+    "index": 4,
+    "loop #": 4,
+    "total-borrowed": 753.7500000000001,
+    "rate": 0.10908928571428571,
+    "hourly-rate": 0.000012487326661433804,
+    "liabilities": 753.7500000493824,
+    "timestamp": 1709773926
   },
   {
     "index": 5,
-    "loop #": 4,
+    "loop #": 5,
     "total-borrowed": 753.7593865352861,
     "rate": 0.10909058195011094,
-    "hourly-rate": 0.00001245326277969303,
-    "liabilities": 0,
-    "timestamp": 1709696943
+    "hourly-rate": 0.000012487475040076803,
+    "liabilities": 753.7500011268003,
+    "timestamp": 1709777526
   },
   {
     "index": 6,
-    "loop #": 5,
+    "loop #": 6,
     "total-borrowed": 753.7687732989993,
     "rate": 0.10909187821748087,
-    "hourly-rate": 0.000012453410755420189,
-    "liabilities": 0,
-    "timestamp": 1709700543
+    "hourly-rate": 0.000012487623422330685,
+    "liabilities": 753.7500022042309,
+    "timestamp": 1709781126
   },
   {
     "index": 7,
-    "loop #": 6,
+    "loop #": 7,
     "total-borrowed": 753.778160291148,
     "rate": 0.10909317451639661,
-    "hourly-rate": 0.000012453558734748471,
-    "liabilities": 0,
-    "timestamp": 1709704143
+    "hourly-rate": 0.000012487771808195582,
+    "liabilities": 753.7500032816744,
+    "timestamp": 1709784726
   },
   {
     "index": 8,
-    "loop #": 7,
+    "loop #": 8,
     "total-borrowed": 753.7875475117401,
     "rate": 0.10909447084685935,
-    "hourly-rate": 0.000012453706717678008,
-    "liabilities": 0,
-    "timestamp": 1709707743
+    "hourly-rate": 0.00001248792019767163,
+    "liabilities": 753.7500043591307,
+    "timestamp": 1709788326
   },
   {
     "index": 9,
-    "loop #": 8,
+    "loop #": 9,
     "total-borrowed": 753.7969349607843,
     "rate": 0.1090957672088702,
-    "hourly-rate": 0.000012453854704208925,
-    "liabilities": 0,
-    "timestamp": 1709711343
+    "hourly-rate": 0.00001248806859075895,
+    "liabilities": 753.7500054365997,
+    "timestamp": 1709791926
   },
   {
     "index": 10,
-    "loop #": 9,
+    "loop #": 10,
     "total-borrowed": 753.8063226382887,
     "rate": 0.10909706360243034,
-    "hourly-rate": 0.000012454002694341364,
-    "liabilities": 0,
-    "timestamp": 1709714943
+    "hourly-rate": 0.000012488216987457685,
+    "liabilities": 753.7500065140816,
+    "timestamp": 1709795526
   },
   {
     "index": 11,
-    "loop #": 10,
+    "loop #": 11,
     "total-borrowed": 753.8157105442618,
     "rate": 0.1090983600275409,
-    "hourly-rate": 0.000012454150688075448,
-    "liabilities": 0,
-    "timestamp": 1709718543
+    "hourly-rate": 0.000012488365387767961,
+    "liabilities": 753.7500075915763,
+    "timestamp": 1709799126
   },
   {
     "index": 12,
-    "loop #": 11,
+    "loop #": 12,
     "total-borrowed": 753.825098678712,
     "rate": 0.10909965648420308,
-    "hourly-rate": 0.00001245429868541131,
-    "liabilities": 0,
-    "timestamp": 1709722143
+    "hourly-rate": 0.000012488513791689915,
+    "liabilities": 753.7500086690837,
+    "timestamp": 1709802726
   },
   {
     "index": 13,
-    "loop #": 12,
+    "loop #": 13,
     "total-borrowed": 753.8344870416474,
     "rate": 0.10910095297241798,
-    "hourly-rate": 0.000012454446686349084,
-    "liabilities": 0,
-    "timestamp": 1709725743
+    "hourly-rate": 0.00001248866219922367,
+    "liabilities": 753.7500097466042,
+    "timestamp": 1709806326
   },
   {
     "index": 14,
-    "loop #": 13,
+    "loop #": 14,
     "total-borrowed": 753.8438756330767,
     "rate": 0.10910224949218679,
-    "hourly-rate": 0.000012454594690888903,
-    "liabilities": 0,
-    "timestamp": 1709729343
+    "hourly-rate": 0.000012488810610369367,
+    "liabilities": 753.7500108241372,
+    "timestamp": 1709809926
   },
   {
     "index": 15,
-    "loop #": 14,
+    "loop #": 15,
     "total-borrowed": 753.8532644530078,
     "rate": 0.10910354604351061,
-    "hourly-rate": 0.00001245474269903089,
-    "liabilities": 0,
-    "timestamp": 1709732943
+    "hourly-rate": 0.00001248895902512713,
+    "liabilities": 753.7500119016831,
+    "timestamp": 1709813526
   },
   {
     "index": 16,
-    "loop #": 15,
+    "loop #": 16,
     "total-borrowed": 753.8626535014495,
     "rate": 0.10910484262639064,
-    "hourly-rate": 0.000012454890710775188,
-    "liabilities": 0,
-    "timestamp": 1709736543
+    "hourly-rate": 0.000012489107443497098,
+    "liabilities": 753.7500129792418,
+    "timestamp": 1709817126
   },
   {
     "index": 17,
-    "loop #": 16,
+    "loop #": 17,
     "total-borrowed": 753.8720427784099,
     "rate": 0.10910613924082802,
-    "hourly-rate": 0.00001245503872612192,
-    "liabilities": 0,
-    "timestamp": 1709740143
+    "hourly-rate": 0.000012489255865479396,
+    "liabilities": 753.7500140568133,
+    "timestamp": 1709820726
   },
   {
     "index": 18,
-    "loop #": 17,
+    "loop #": 18,
     "total-borrowed": 753.8814322838971,
     "rate": 0.1091074358868239,
-    "hourly-rate": 0.000012455186745071221,
-    "liabilities": 0,
-    "timestamp": 1709743743
+    "hourly-rate": 0.000012489404291074162,
+    "liabilities": 753.7500151343976,
+    "timestamp": 1709824326
   },
   {
     "index": 19,
-    "loop #": 18,
+    "loop #": 19,
     "total-borrowed": 753.8908220179198,
     "rate": 0.1091087325643794,
-    "hourly-rate": 0.000012455334767623221,
-    "liabilities": 0,
-    "timestamp": 1709747343
+    "hourly-rate": 0.000012489552720281526,
+    "liabilities": 753.7500162119948,
+    "timestamp": 1709827926
   },
   {
     "index": 20,
-    "loop #": 19,
+    "loop #": 20,
     "total-borrowed": 753.9002119804863,
     "rate": 0.10911002927349572,
-    "hourly-rate": 0.000012455482793778052,
-    "liabilities": 0,
-    "timestamp": 1709750943
-  },
-  {
-    "index": 21,
-    "loop #": 20,
-    "total-borrowed": 753.9096021716048,
-    "rate": 0.109111326014174,
-    "hourly-rate": 0.000012455630823535845,
-    "liabilities": 0,
-    "timestamp": 1709754543
-  },
-  {
-    "index": 22,
-    "loop #": 21,
-    "total-borrowed": 753.9189925912838,
-    "rate": 0.1091126227864154,
-    "hourly-rate": 0.000012455778856896734,
-    "liabilities": 0,
-    "timestamp": 1709758143
-  },
-  {
-    "index": 23,
-    "loop #": 22,
-    "total-borrowed": 753.9283832395315,
-    "rate": 0.10911391959022103,
-    "hourly-rate": 0.000012455926893860847,
-    "liabilities": 0,
-    "timestamp": 1709761743
-  },
-  {
-    "index": 24,
-    "loop #": 23,
-    "total-borrowed": 753.9377741163563,
-    "rate": 0.10911521642559208,
-    "hourly-rate": 0.00001245607493442832,
-    "liabilities": 0,
-    "timestamp": 1709765343
-  },
-  {
-    "index": 25,
-    "loop #": 24,
-    "total-borrowed": 753.9471652217667,
-    "rate": 0.10911651329252968,
-    "hourly-rate": 0.00001245622297859928,
-    "liabilities": 0,
-    "timestamp": 1709768943
-  },
-  {
-    "index": 26,
-    "loop #": 25,
-    "total-borrowed": 753.9565565557708,
-    "rate": 0.109117810191035,
-    "hourly-rate": 0.000012456371026373859,
-    "liabilities": 0,
-    "timestamp": 1709772543
-  },
-  {
-    "index": 27,
-    "loop #": 26,
-    "total-borrowed": 753.965948118377,
-    "rate": 0.1091191071211092,
-    "hourly-rate": 0.000012456519077752192,
-    "liabilities": 0,
-    "timestamp": 1709776143
-  },
-  {
-    "index": 28,
-    "loop #": 27,
-    "total-borrowed": 753.9753399095937,
-    "rate": 0.10912040408275342,
-    "hourly-rate": 0.000012456667132734408,
-    "liabilities": 0,
-    "timestamp": 1709779743
-  },
-  {
-    "index": 29,
-    "loop #": 28,
-    "total-borrowed": 753.9847319294292,
-    "rate": 0.1091217010759688,
-    "hourly-rate": 0.000012456815191320638,
-    "liabilities": 0,
-    "timestamp": 1709783343
-  },
-  {
-    "index": 30,
-    "loop #": 29,
-    "total-borrowed": 753.9941241778921,
-    "rate": 0.10912299810075651,
-    "hourly-rate": 0.000012456963253511018,
-    "liabilities": 0,
-    "timestamp": 1709786943
-  },
-  {
-    "index": 31,
-    "loop #": 30,
-    "total-borrowed": 754.0035166549902,
-    "rate": 0.10912429515711769,
-    "hourly-rate": 0.000012457111319305674,
-    "liabilities": 0,
-    "timestamp": 1709790543
+    "hourly-rate": 0.000012489701153101618,
+    "liabilities": 753.7500172896048,
+    "timestamp": 1709831526
   }
 ]

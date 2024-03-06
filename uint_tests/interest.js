@@ -301,7 +301,7 @@ async function main() {
 
     let allData = [];
 
-    for (let i = 0; i <= 30; i++) {
+    for (let i = 0; i <= 20; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
     
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
@@ -334,7 +334,9 @@ async function main() {
         // Fetch current interest RATE USDT
         let Rate = await _Interest.fetchCurrentRate(await USDT.getAddress());
 
-       let usersIndex = DataHub.viewUsersInterestRateIndex(signers[0].address, await USDT.getAddress() )
+       let usersIndex = await DataHub.viewUsersInterestRateIndex(signers[0].address, await USDT.getAddress() )
+
+
 
 
     
@@ -354,7 +356,7 @@ async function main() {
 
     
         // Calculate hourly rate
-        let hourly_rate = Number(Rate.toString()) / 8760;
+        let hourly_rate = Number(Rate.toString()) / 8736;
     
         // Create a data object for the current iteration
         const newData = {
@@ -363,7 +365,7 @@ async function main() {
             "total-borrowed": Number(borrowed.toString()) / 10**18,
             "rate": Number(Rate.toString()) / 10**18,
             "hourly-rate": hourly_rate / 10**18,
-            "liabilities": Number(interestadjustedLiabilities.toString()) / 10**18,
+            "liabilities": Number((liabilitiesValue + interestadjustedLiabilities).toString()) / 10**18,
             "timestamp": Number(scaledTimestamp.toString()),
         };
     

@@ -73,6 +73,7 @@ contract interestData is Ownable {
         address token,
         uint256 index
     ) public view returns (uint256) {
+        console.log((interestInfo[token][index].interestRate) / 8736);
         return interestInfo[token][index].interestRate;
     }
 
@@ -118,7 +119,9 @@ contract interestData is Ownable {
 
         uint256 adjustedNewLiabilities = newLiabilities *
             (1 + fetchCurrentRate(token));
+
         uint256 initalMarginFeeAmount;
+
         if (adjustedNewLiabilities == 0) {
             initalMarginFeeAmount = 0;
         } else {
@@ -131,26 +134,100 @@ contract interestData is Ownable {
             return
                 ((adjustedNewLiabilities + initalMarginFeeAmount) -
                     newLiabilities) / 10 ** 18;
-        } else {
-            uint256 interestCharge;
 
+
+        }else {
+            uint256 interestCharge;
+            uint256 averageHourly = 1e18 + calculateInterestCharge(
+                token,
+                usersOriginIndex
+            ) / 8736;
+
+            (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY.normalize(averageHourly);
+            averageHourlyExp = averageHourlyExp - 18;
+
+            uint256 hourlyChargesBase = 1;
+            int256 hourlyChargesExp = 0;
+            
+            while (amountOfBilledHours > 0) {
+                if (amountOfBilledHours % 2 == 1) {
+                    (uint256 _base, int256 _exp) = REX_LIBRARY.normalize((hourlyChargesBase * averageHourlyBase));
+
+                    hourlyChargesBase = _base;
+                    hourlyChargesExp = hourlyChargesExp + averageHourlyExp + _exp;
+                }
+                (uint256 _bases, int256 _exps) = REX_LIBRARY.normalize((averageHourlyBase * averageHourlyBase));
+                averageHourlyBase = _bases;
+                averageHourlyExp = averageHourlyExp + averageHourlyExp + _exps;
+
+                amountOfBilledHours /= 2;
+            }
+
+            uint256 compoundedLiabilities = usersLiabilities * hourlyChargesBase;
+
+            unchecked {
+                if(hourlyChargesExp >= 0) {
+                    compoundedLiabilities = compoundedLiabilities * (10 ** uint256(hourlyChargesExp));
+                } else {
+                    compoundedLiabilities = compoundedLiabilities / (10 ** uint256(-hourlyChargesExp));
+                }
+
+                interestCharge =
+                    (compoundedLiabilities +
+                        adjustedNewLiabilities +
+                        initalMarginFeeAmount) -
+                    (usersLiabilities + newLiabilities);
+
+            }
+            console.log(interestCharge, "interestssss less gooo");
+            return interestCharge;
+        } /*else {
+            uint256 interestCharge;
+            /*
             uint256 hourlyCharges = (calculateInterestCharge(
                 token,
                 usersOriginIndex
             ) / 8736) ** amountOfBilledHours;
 
-            uint256 compoundedLiabilities = (usersLiabilities) *
-                (1e18 + hourlyCharges);
+         uint256 compoundedLiabilities = ((usersLiabilities) *
+              (1e18 + hourlyCharges)) / 10**18;
+             
 
+            uint256 compoundedLiabilities = 0;
             unchecked {
-                interestCharge =
+                compoundedLiabilities =
+                    ((usersLiabilities) * //CHECK THIS
+                        ((1e18 +
+                            (calculateInterestCharge(token, usersOriginIndex) /
+                                8736)) ** amountOfBilledHours)) /
+                    (10 ** (18 * (amountOfBilledHours))); // line 322 we might be doing this hourly twice
+
+                interestCharge = (compoundedLiabilities - usersLiabilities);
+            }
+            console.log( (calculateInterestCharge(token, usersOriginIndex) /
+                                8736), "interest charge");
+            console.log(amountOfBilledHours, "amount of blld hrs");
+            console.log(compoundedLiabilities, "compounded liabilities");
+            console.log(interestCharge, "interestCharge output");
+            /*
+                       interestCharge =
                     ((compoundedLiabilities +
                         adjustedNewLiabilities +
-                        initalMarginFeeAmount) / 10 ** 18) -
+                        initalMarginFeeAmount)) -
                     ((usersLiabilities + newLiabilities));
-            }
-            return interestCharge;
-        }
+            console.log(compoundedLiabilities,"compunded liab");
+            console.log(adjustedNewLiabilities, "adjusted new should be 0 ");
+            console.log(initalMarginFeeAmount, "inital margin fee should be 0");
+            console.log("mock equation",(compoundedLiabilities +
+                        adjustedNewLiabilities +
+                        initalMarginFeeAmount));
+            console.log(((usersLiabilities + newLiabilities)));
+        
+            
+            console.log(interestCharge, "intereest charrgeee");
+            */
+          //  return interestCharge;
+       // }
     }
 
     struct InterestDetails {
@@ -177,19 +254,23 @@ contract interestData is Ownable {
             /// IMPORTANT UNDERSTAND THE IMPLICATIONS OF THIS ON A DEEPER LEVEL, WHAT IF THEY HAVE BEEN IN FOR 30 MINS AND CASH OUT? NO CHARGE??
             return 0;
         }
-
         for (uint256 i = 0; i < 5; i++) {
             while (remainingTime >= timeFrames[i]) {
-                uint256[3] memory details = calculateInterestResults(
+                uint256[4] memory details = calculateInterestResults(
                     remainingTime,
                     runningOriginIndex,
                     timeFrames[i],
                     token
                 );
-                interestDetails[i].interestRateTracker += details[0];
+                interestDetails[i].interestRateTracker += details[0]; // this adds up the hourly rates
                 remainingTime = details[1];
                 runningOriginIndex = details[2];
-                interestDetails[i].counter++;
+                interestDetails[i].counter = details[3];
+
+                console.log(
+                    interestDetails[4].counter,
+                    "counter should be going up by 1 each time on the 4th index"
+                );
                 if (remainingTime <= 0) {
                     break;
                 }
@@ -201,6 +282,10 @@ contract interestData is Ownable {
                         interestDetails[i].interestRateTracker,
                         interestDetails[i].counter
                     );
+                console.log(
+                    interestDetails[i].interestRateTracker,
+                    "rate tracker value average rate"
+                );
             }
         }
 
@@ -214,7 +299,9 @@ contract interestData is Ownable {
         uint256 denominator = 0;
 
         for (uint i = 0; i < interestDetails.length; i++) {
-            console.log(interestDetails.length);
+            // console.log(interestDetails[i].counter, "should go up by 1 each cycle ");
+            //   console.log(fetchHoursInTimeSpanDecending(i), "fetchgin the amount of hours in the timespan we are targetting should always be 1");
+            //   console.log(interestDetails[i].interestRateTracker, "the interest rate tracker should give the bulk rate for the periods");
             numerator +=
                 interestDetails[i].counter *
                 fetchHoursInTimeSpanDecending(i) *
@@ -224,16 +311,17 @@ contract interestData is Ownable {
                 fetchHoursInTimeSpanDecending(i);
         }
 
+        //   console.log(numerator / denominator,fetchHoursInTimeSpanDecending(4),interestDetails[4].counter, "gross rate should scale");
+        console.log(numerator / denominator);
         return numerator / denominator;
     }
-
 
     function calculateInterestResults(
         uint256 remainingTime,
         uint256 usersOriginRateIndex,
         uint targetTimeFrame,
         address token
-    ) private view returns (uint256[3] memory) {
+    ) private view returns (uint256[4] memory) {
         uint[5] memory timeframes = [hour, day, week, month, year];
 
         if (targetTimeFrame == 3600) {
@@ -273,7 +361,7 @@ contract interestData is Ownable {
             endingIndex = fetchCurrentRateIndex(token);
         }
 
-        uint256[3] memory interestDetails = calculateInterest(
+        uint256[4] memory interestDetails = calculateInterest(
             targetTimeFrame, //
             usersOriginScaledDownTimeFrame, // months
             endingIndex, //
@@ -281,7 +369,17 @@ contract interestData is Ownable {
             token
         ); // this gets the next years month
 
-        return [interestDetails[0], interestDetails[1], interestDetails[2]];
+        console.log(interestDetails[0], "gross rate ");
+        console.log(interestDetails[1], "unbilled hrs");
+        console.log(interestDetails[2], "users origin index ");
+        console.log(interestDetails[3], " counter");
+
+        return [
+            interestDetails[0],
+            interestDetails[1],
+            interestDetails[2],
+            interestDetails[3]
+        ];
     }
 
     function calculateInterest(
@@ -290,19 +388,18 @@ contract interestData is Ownable {
         uint256 endingIndex,
         uint256 unbilledHours,
         address token
-    ) internal view returns (uint256[3] memory) {
-        uint256 interestCharge = 0;
+    ) internal view returns (uint256[4] memory) {
         uint256 GrossRate = 0;
+
+        uint256 CounterValue;
 
         for (uint256 i = originRateIndex; i < endingIndex; i++) {
             if (EpochRateId == 0) {
-                GrossRate += fetchRate(token, i);
-                interestCharge += GrossRate;
+                //  console.log((fetchRate(token, i) / 8736), "current hourly rate");
+                GrossRate += (fetchRate(token, i) / 8736); // this is a yearly rate at the index this must be here /// or done in a later function
             } else {
                 GrossRate += fetchTimeScaledRateIndex(EpochRateId, token, i)
                     .interestRate; // idivsion ehre by months to get average for the months
-
-                interestCharge += GrossRate;
             }
 
             if ((fetchHoursInTimeSpan(EpochRateId) * 3600) >= unbilledHours) {
@@ -313,9 +410,11 @@ contract interestData is Ownable {
             }
             // console.log("this should be 1",fetchHoursInTimeSpan(EpochRateId));
             originRateIndex += fetchHoursInTimeSpan(EpochRateId);
+
+            CounterValue++;
         }
 
-        return [interestCharge, unbilledHours, originRateIndex];
+        return [GrossRate, unbilledHours, originRateIndex, CounterValue];
     }
 
     function fetchHoursInTimeSpan(

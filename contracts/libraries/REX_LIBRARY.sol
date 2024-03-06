@@ -56,6 +56,18 @@ library REX_LIBRARY {
        uint256 total = value / divisor;
         return total;
     }
+
+        function normalize(
+        uint256 x
+    ) public pure returns (uint256 base, int256 exp) {
+        exp = 0;
+        base = x;
+        
+        while(base > 1e18) {
+            base = base / 10;
+            exp = exp + 1;
+        }
+    }
     // NEEDS REVIEW
 
     /*
