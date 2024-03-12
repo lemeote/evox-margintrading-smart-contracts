@@ -67,7 +67,7 @@ contract interestData is Ownable {
         address token,
         uint256 index
     ) public view returns (uint256) {
-       // console.log((interestInfo[token][index].interestRate) / 8736);
+        // console.log((interestInfo[token][index].interestRate) / 8736);
         return interestInfo[token][index].interestRate;
     }
 
@@ -88,15 +88,13 @@ contract interestData is Ownable {
         return currentInterestIndex[token];
     }
 
-
-
     function calculateCompoundedLiabilities(
         address token,
         uint256 newLiabilities,
         uint256 usersLiabilities,
         uint256 usersOriginIndex
     ) public view returns (uint256) {
-       uint256 amountOfBilledHours = fetchCurrentRateIndex(token) -
+        uint256 amountOfBilledHours = fetchCurrentRateIndex(token) -
             usersOriginIndex;
 
         uint256 adjustedNewLiabilities = newLiabilities *
@@ -120,7 +118,7 @@ contract interestData is Ownable {
             uint256 interestCharge;
             uint256 averageHourly;
             uint256 counter = 0;
-
+            /*
             if (
                 (usersOriginIndex % 24 != 0 ||
                     usersOriginIndex % 168 != 0 ||
@@ -148,30 +146,26 @@ contract interestData is Ownable {
                     }
                 }
             }
-    
 
-            averageHourly =  1e18 + (REX_LIBRARY.calculateAverageOfValue(
-                averageHourly,
-                counter
-            )) / 8736;
-       
-            if (usersOriginIndex + 24 < fetchCurrentRateIndex(token)) {
-                averageHourly +=
-                    1e18 +
-                    calculateAverageCumulativeInterest(
-                        usersOriginIndex,
-                        fetchCurrentRateIndex(token),
-                        token
-                    ) /
-                    8736;
-            }
+            averageHourly = (REX_LIBRARY.calculateAverageOfValue(averageHourly, counter)); //
+              //  8736;
+*/
 
-       console.log(averageHourly, "average hourly");
+            averageHourly += calculateAverageCumulativeInterest(
+                usersOriginIndex,
+                fetchCurrentRateIndex(token),
+                token
+            ); //
+            // 8736;
+
+            averageHourly = averageHourly / 8736;
+            averageHourly += 1e18;
+
+            console.log(averageHourly, "average hourly");
 
             (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY
                 .normalize(averageHourly);
             averageHourlyExp = averageHourlyExp - 18;
-
 
             uint256 hourlyChargesBase = 1;
             int256 hourlyChargesExp = 0;
@@ -198,8 +192,8 @@ contract interestData is Ownable {
             }
             console.log(averageHourly, "average hourly");
             uint256 compoundedLiabilities = usersLiabilities * averageHourly;
-               // hourlyChargesBase;
-            console.log(compoundedLiabilities / 10**18 , "compoundede libs");
+            // hourlyChargesBase;
+            console.log(compoundedLiabilities / 10 ** 18, "compoundede libs");
             unchecked {
                 if (hourlyChargesExp >= 0) {
                     compoundedLiabilities =
@@ -222,6 +216,30 @@ contract interestData is Ownable {
         }
     }
 
+        function FuckSolidity(address token, uint256 startindex, uint256 runningIndex, uint256 cumulativeInterestRates, uint256 cumulativeTimeToAverage) private view returns(uint256[3] memory) {
+                 for (
+                uint256 i = startindex;
+                i < fetchCurrentRateIndex(token) &&
+                    !(i % 24 == 0 ||
+                        i % 168 == 0 ||
+                        i % 672 == 0 ||
+                        i % 8736 == 0);
+                i++
+            ) {
+                cumulativeInterestRates += (fetchRate(token, i));
+                runningIndex++;
+                cumulativeTimeToAverage++;
+                if (
+                    runningIndex >= 24 &&
+                    fetchCurrentRateIndex(token) - startindex >= 24
+                ) {
+                    break;
+                }
+            }    
+
+            return [runningIndex, cumulativeInterestRates, cumulativeTimeToAverage];
+        }
+
     function calculateAverageCumulativeInterest(
         uint256 startindex, // 1
         uint256 endindex, //27
@@ -236,8 +254,31 @@ contract interestData is Ownable {
         uint256 runningIndex = startindex;
         uint256 largestTimeframe = 0;
         uint256 largestTimeframeIndex = 0;
+         uint256 AverageRateApplied;
 
         uint16[4] memory hoursInTimeframeDescending = [24, 168, 672, 8736];
+
+        if (
+            (startindex % 24 != 0 ||
+                startindex % 168 != 0 ||
+                startindex % 672 != 0 ||
+                startindex % 8736 != 0) &&
+            startindex < fetchCurrentRateIndex(token)
+        ) {
+        uint256[3] memory rateInfo = FuckSolidity(token,startindex,runningIndex,cumulativeInterestRates, cumulativeTimeToAverage);
+        runningIndex = rateInfo[0];
+        cumulativeInterestRates = rateInfo[1];
+        cumulativeTimeToAverage = rateInfo[2];
+
+        }
+        if(runningIndex == fetchCurrentRateIndex(token)){
+            AverageRateApplied = REX_LIBRARY.calculateAverageOfValue(
+            cumulativeInterestRates,
+            cumulativeTimeToAverage
+        );
+            return AverageRateApplied ;
+        }
+        console.log("we got here so.....");
         // Find the largest timeframe based on hours in debt
         // if 8600 + 8736 =< 20,000    --> this is correct it will spit yearly monthly or weekly, or dailt
         for (uint256 i = 0; i < hoursInTimeframeDescending.length; i++) {
@@ -249,16 +290,9 @@ contract interestData is Ownable {
             }
         }
 
-
-
-        // Scale down to the next available start time for the largest timeframe
-        // 8736 % 8736
-        // here
         uint256 currentSmallerTimeframe = 0;
         uint256 currentSmallerTimeframeIndex = 0;
-        uint256 divisorLarge = largestTimeframeIndex == 0
-            ? 1
-            : largestTimeframeIndex;
+
         if (largestTimeframe != 24) {
             while (
                 runningIndex % largestTimeframe != 0 && runningIndex < endindex
@@ -288,39 +322,31 @@ contract interestData is Ownable {
                 // Scale down to the start time of the current smaller timeframe
                 runningIndex += currentSmallerTimeframe;
 
-                uint256 divisor = currentSmallerTimeframe == 0
-                    ? 1
-                    : currentSmallerTimeframe;
-
+          
                 // Charge interest for the scaled-down timeframe
-                cumulativeInterestRates += fetchTimeScaledRateIndex(
-                    currentSmallerTimeframeIndex,
-                    token,
-                    currentSmallerTimeframe / divisor
-                ).interestRate; //* currentSmallerTimeframe;
+                cumulativeInterestRates +=
+                    fetchTimeScaledRateIndex(
+                        currentSmallerTimeframeIndex,
+                        token,
+                        runningIndex / currentSmallerTimeframe
+                    ).interestRate *
+                    currentSmallerTimeframe;
                 cumulativeTimeToAverage += currentSmallerTimeframe;
             }
-            divisorLarge = largestTimeframeIndex == 0
-                ? 1
-                : largestTimeframeIndex;
         } else {
             currentSmallerTimeframe = hoursInTimeframeDescending[0]; // months
             currentSmallerTimeframeIndex = 0;
         }
         // Charge the rates for the largest timeframe until reaching the end index
-        console.log(
-            runningIndex + largestTimeframeIndex,
-            endindex,
-            "what it is"
-        ); // 27 is end index
-        console.log(fetchTimeScaledRateIndex(0, token, 1).interestRate);
 
         while (runningIndex + largestTimeframe <= endindex) {
-            cumulativeInterestRates += fetchTimeScaledRateIndex(
-                largestTimeframeIndex,
-                token,
-                largestTimeframe / divisorLarge
-            ).interestRate;
+            cumulativeInterestRates +=
+                fetchTimeScaledRateIndex(
+                    largestTimeframeIndex,
+                    token,
+                    runningIndex / largestTimeframe
+                ).interestRate *
+                largestTimeframe;
             cumulativeTimeToAverage += largestTimeframe;
             runningIndex += largestTimeframe;
         }
@@ -328,17 +354,23 @@ contract interestData is Ownable {
         // Charge the rates for the remaining smaller timeframes
         for (uint256 i = 0; i < hoursInTimeframe.length; i++) {
             while (runningIndex + hoursInTimeframe[i] <= endindex) {
-                cumulativeInterestRates += fetchTimeScaledRateIndex(
-                    i,
-                    token,
-                    hoursInTimeframe[i] / i
-                ).interestRate;
+                cumulativeInterestRates +=
+                    fetchTimeScaledRateIndex(i, token, hoursInTimeframe[i] / i)
+                        .interestRate *
+                    hoursInTimeframe[i];
                 cumulativeTimeToAverage += hoursInTimeframe[i];
                 runningIndex += hoursInTimeframe[i];
             }
         }
 
-        uint256 AverageRateApplied = REX_LIBRARY.calculateAverageOfValue(
+        if (runningIndex != endindex) {
+            for (uint256 i = runningIndex; i < endindex; i++) {
+                cumulativeInterestRates += (fetchRate(token, i));
+                runningIndex++;
+                cumulativeTimeToAverage += 1;
+            }
+        }
+         AverageRateApplied = REX_LIBRARY.calculateAverageOfValue(
             cumulativeInterestRates,
             cumulativeTimeToAverage
         );
@@ -346,7 +378,8 @@ contract interestData is Ownable {
         console.log(
             cumulativeInterestRates,
             cumulativeTimeToAverage,
-            " average inputs"
+            AverageRateApplied,
+            " average inputs and output"
         );
 
         return AverageRateApplied;
