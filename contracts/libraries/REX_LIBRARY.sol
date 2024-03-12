@@ -35,11 +35,12 @@ library REX_LIBRARY {
             return 0;
         }
         uint256 total;
+        uint256 value = 0;
         for (uint256 i = 0; i < values.length; i++) {
             total += values[i];
         }
-        total / values.length;
-        return total;
+       value =  total / values.length;
+        return value;
 
     }
     function calculateAverageOfValue(uint256 value, uint divisor) public view returns(uint256){
@@ -52,7 +53,6 @@ library REX_LIBRARY {
         if(value == 0){
             return 0;
         }
-     ///   console.log("its still trying");
        uint256 total = value / divisor;
         return total;
     }

@@ -31,7 +31,11 @@ interface IDataHub {
     }
 
     function addAssets(address user, address token, uint256 amount) external;
-
+    function calculateAIMRForUser(
+        address user,
+        address trade_token,
+        uint256 trade_amount
+    ) external view returns (uint256);
     function removeAssets(address user, address token, uint256 amount) external;
 
     function alterUsersInterestRateIndex(address user, address token) external;

@@ -301,17 +301,20 @@ async function main() {
 
     let allData = [];
 
-    for (let i = 0; i <= 20; i++) {
+    for (let i = 0; i <= 173; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
     
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
         console.log(`Loop ${i}: Set timestamp to ${scaledTimestamp}`);
     
-        // CHARGE MASS INTEREST
-      //  const masscharge = await _Interest.chargeMassinterest(await USDT.getAddress());
-       // await masscharge.wait(); // Wait for the transaction to be mined
+        // we scale time by an hour
+        // do a trade on the 3rd index
+        // mass charge
+        // then calcualte their charge
+        // then loop again and mass charge again and again changing the rate and the current index 
+        // this is probably the problem i bet its to do with the origin index and hours involved
 
-        if( i == 3 ){
+        if( i == 1 ){
             await EX.SubmitOrder(pair, participants, trade_amounts)
 
             console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 

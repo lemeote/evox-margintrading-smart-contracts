@@ -55,6 +55,28 @@ contract Utility is Ownable {
         return margined;
     }
 
+
+
+    //// @notice calcualtes aimmr
+    /// @dev Explain to a developer any extra details
+    /// @param user being argetted
+    /// @param token being argetted
+    /// @param BalanceToLeave the balance to leave
+    function calculateAIMRRequirement(
+        address user,
+        address token,
+        uint256 BalanceToLeave
+    ) external view returns (bool) {
+        if (
+
+            Datahub.calculateAIMRForUser(user, token, BalanceToLeave) <=
+            Datahub.calculateTotalPortfolioValue(user)
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    }
     //// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param user being argetted
@@ -81,7 +103,23 @@ contract Utility is Ownable {
             return false;
         }
     }
-
+    //// @notice calcualtes aimmr
+    /// @dev Explain to a developer any extra details
+    /// @param user being argetted
+    function calculateAMMRRequirement(
+        address user
+    ) external view returns (bool) {
+        if (
+          Datahub.calculateAMMRForUser(
+         user
+    ) <=
+            Datahub.calculateTotalPortfolioValue(user)
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    }
     function calculateAmountToAddToLiabilities(
         address user,
         address token,

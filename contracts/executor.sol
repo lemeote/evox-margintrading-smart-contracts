@@ -65,6 +65,7 @@ contract REX_EXCHANGE is Ownable {
         address[][2] memory participants,
         uint256[][2] memory trade_amounts
     ) public {
+        // require(airnode address == airnode address set on deployment )
         uint256[] memory TakerliabilityAmounts = new uint256[](
             participants[0].length
         );
@@ -144,13 +145,14 @@ contract REX_EXCHANGE is Ownable {
             );
             if (trade_amounts[1][i] > assets) {
                 require(
-                    Utilities.calculateMarginRequirement(
+                    Utilities.calculateAIMRRequirement(
                         participants[1][i],
                         pair[1],
-                        trade_amounts[1][i],
-                        assets
-                    )
+                        trade_amounts[1][i]
+                    ),
+                    "you failed the margin requirements"
                 );
+
                 if (
                     Utilities.validateMarginStatus(
                         participants[1][i],

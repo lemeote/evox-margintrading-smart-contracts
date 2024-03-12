@@ -38,12 +38,6 @@ contract interestData is Ownable {
 
     mapping(address => uint256) currentInterestIndex;
 
-    uint public hour = 1 hours; // 3600
-    uint public day = 1 days; // 86400
-    uint public week = day * 7; // 604800
-    uint public month = week * 4; // 2419200
-    uint public year = month * 13; // 31449600
-
     /// @notice This alters the admin roles for the contract
     /// @param _executor the address of the new executor contract
     /// @param _DataHub the adddress of the new datahub
@@ -73,7 +67,7 @@ contract interestData is Ownable {
         address token,
         uint256 index
     ) public view returns (uint256) {
-        console.log((interestInfo[token][index].interestRate) / 8736);
+       // console.log((interestInfo[token][index].interestRate) / 8736);
         return interestInfo[token][index].interestRate;
     }
 
@@ -94,17 +88,7 @@ contract interestData is Ownable {
         return currentInterestIndex[token];
     }
 
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
-    /// @param token the token being targetted
-    /// @return currentInterestIndex[token]
-    function fetchTimeScaledRateIndex(
-        uint targetEpoch,
-        address token,
-        uint256 epochStartingIndex
-    ) public view returns (IInterestData.interestDetails memory) {
-        return InterestRateEpochs[targetEpoch][token][epochStartingIndex];
-    }
+
 
     function calculateCompoundedLiabilities(
         address token,
@@ -112,9 +96,7 @@ contract interestData is Ownable {
         uint256 usersLiabilities,
         uint256 usersOriginIndex
     ) public view returns (uint256) {
-        // oldLiabilities * ((1+averageHourlyInterest)^amountOfIndexes)
-
-        uint256 amountOfBilledHours = fetchCurrentRateIndex(token) -
+       uint256 amountOfBilledHours = fetchCurrentRateIndex(token) -
             usersOriginIndex;
 
         uint256 adjustedNewLiabilities = newLiabilities *
@@ -134,42 +116,99 @@ contract interestData is Ownable {
             return
                 ((adjustedNewLiabilities + initalMarginFeeAmount) -
                     newLiabilities) / 10 ** 18;
-
-
-        }else {
+        } else {
             uint256 interestCharge;
-            uint256 averageHourly = 1e18 + calculateInterestCharge(
-                token,
-                usersOriginIndex
-            ) / 8736;
+            uint256 averageHourly;
+            uint256 counter = 0;
 
-            (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY.normalize(averageHourly);
+            if (
+                (usersOriginIndex % 24 != 0 ||
+                    usersOriginIndex % 168 != 0 ||
+                    usersOriginIndex % 672 != 0 ||
+                    usersOriginIndex % 8736 != 0) &&
+                usersOriginIndex < fetchCurrentRateIndex(token)
+            ) {
+                for (
+                    uint256 i = usersOriginIndex;
+                    i < fetchCurrentRateIndex(token) &&
+                        !(i % 24 == 0 ||
+                            i % 168 == 0 ||
+                            i % 672 == 0 ||
+                            i % 8736 == 0);
+                    i++
+                ) {
+                    averageHourly += (fetchRate(token, i));
+                    counter++;
+                    usersOriginIndex++;
+                    if (
+                        usersOriginIndex >= 24 &&
+                        fetchCurrentRateIndex(token) - usersOriginIndex >= 24
+                    ) {
+                        break;
+                    }
+                }
+            }
+    
+
+            averageHourly =  1e18 + (REX_LIBRARY.calculateAverageOfValue(
+                averageHourly,
+                counter
+            )) / 8736;
+       
+            if (usersOriginIndex + 24 < fetchCurrentRateIndex(token)) {
+                averageHourly +=
+                    1e18 +
+                    calculateAverageCumulativeInterest(
+                        usersOriginIndex,
+                        fetchCurrentRateIndex(token),
+                        token
+                    ) /
+                    8736;
+            }
+
+       console.log(averageHourly, "average hourly");
+
+            (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY
+                .normalize(averageHourly);
             averageHourlyExp = averageHourlyExp - 18;
+
 
             uint256 hourlyChargesBase = 1;
             int256 hourlyChargesExp = 0;
-            
+
             while (amountOfBilledHours > 0) {
                 if (amountOfBilledHours % 2 == 1) {
-                    (uint256 _base, int256 _exp) = REX_LIBRARY.normalize((hourlyChargesBase * averageHourlyBase));
+                    (uint256 _base, int256 _exp) = REX_LIBRARY.normalize(
+                        (hourlyChargesBase * averageHourlyBase)
+                    );
 
                     hourlyChargesBase = _base;
-                    hourlyChargesExp = hourlyChargesExp + averageHourlyExp + _exp;
+                    hourlyChargesExp =
+                        hourlyChargesExp +
+                        averageHourlyExp +
+                        _exp;
                 }
-                (uint256 _bases, int256 _exps) = REX_LIBRARY.normalize((averageHourlyBase * averageHourlyBase));
+                (uint256 _bases, int256 _exps) = REX_LIBRARY.normalize(
+                    (averageHourlyBase * averageHourlyBase)
+                );
                 averageHourlyBase = _bases;
                 averageHourlyExp = averageHourlyExp + averageHourlyExp + _exps;
 
                 amountOfBilledHours /= 2;
             }
-
-            uint256 compoundedLiabilities = usersLiabilities * hourlyChargesBase;
-
+            console.log(averageHourly, "average hourly");
+            uint256 compoundedLiabilities = usersLiabilities * averageHourly;
+               // hourlyChargesBase;
+            console.log(compoundedLiabilities / 10**18 , "compoundede libs");
             unchecked {
-                if(hourlyChargesExp >= 0) {
-                    compoundedLiabilities = compoundedLiabilities * (10 ** uint256(hourlyChargesExp));
+                if (hourlyChargesExp >= 0) {
+                    compoundedLiabilities =
+                        compoundedLiabilities *
+                        (10 ** uint256(hourlyChargesExp));
                 } else {
-                    compoundedLiabilities = compoundedLiabilities / (10 ** uint256(-hourlyChargesExp));
+                    compoundedLiabilities =
+                        compoundedLiabilities /
+                        (10 ** uint256(-hourlyChargesExp));
                 }
 
                 interestCharge =
@@ -177,258 +216,152 @@ contract interestData is Ownable {
                         adjustedNewLiabilities +
                         initalMarginFeeAmount) -
                     (usersLiabilities + newLiabilities);
-
             }
             console.log(interestCharge, "interestssss less gooo");
             return interestCharge;
-        } /*else {
-            uint256 interestCharge;
-            /*
-            uint256 hourlyCharges = (calculateInterestCharge(
-                token,
-                usersOriginIndex
-            ) / 8736) ** amountOfBilledHours;
-
-         uint256 compoundedLiabilities = ((usersLiabilities) *
-              (1e18 + hourlyCharges)) / 10**18;
-             
-
-            uint256 compoundedLiabilities = 0;
-            unchecked {
-                compoundedLiabilities =
-                    ((usersLiabilities) * //CHECK THIS
-                        ((1e18 +
-                            (calculateInterestCharge(token, usersOriginIndex) /
-                                8736)) ** amountOfBilledHours)) /
-                    (10 ** (18 * (amountOfBilledHours))); // line 322 we might be doing this hourly twice
-
-                interestCharge = (compoundedLiabilities - usersLiabilities);
-            }
-            console.log( (calculateInterestCharge(token, usersOriginIndex) /
-                                8736), "interest charge");
-            console.log(amountOfBilledHours, "amount of blld hrs");
-            console.log(compoundedLiabilities, "compounded liabilities");
-            console.log(interestCharge, "interestCharge output");
-            /*
-                       interestCharge =
-                    ((compoundedLiabilities +
-                        adjustedNewLiabilities +
-                        initalMarginFeeAmount)) -
-                    ((usersLiabilities + newLiabilities));
-            console.log(compoundedLiabilities,"compunded liab");
-            console.log(adjustedNewLiabilities, "adjusted new should be 0 ");
-            console.log(initalMarginFeeAmount, "inital margin fee should be 0");
-            console.log("mock equation",(compoundedLiabilities +
-                        adjustedNewLiabilities +
-                        initalMarginFeeAmount));
-            console.log(((usersLiabilities + newLiabilities)));
-        
-            
-            console.log(interestCharge, "intereest charrgeee");
-            */
-          //  return interestCharge;
-       // }
-    }
-
-    struct InterestDetails {
-        uint256 interestRateTracker;
-        uint256 counter;
-    }
-
-    function calculateInterestCharge(
-        address token,
-        uint256 usersOriginRateIndex
-    ) private view returns (uint256) {
-        uint256 TimeInHoursInDebt = fetchCurrentRateIndex(token) -
-            usersOriginRateIndex;
-        uint256 convertedHoursInDebt = TimeInHoursInDebt * 3600;
-
-        uint256 remainingTime = convertedHoursInDebt;
-        uint256 runningOriginIndex = usersOriginRateIndex;
-
-        InterestDetails[5] memory interestDetails; // yearly, monthly, weekly, daily, hourly
-
-        uint256[5] memory timeFrames = [year, month, week, day, hour];
-
-        if (TimeInHoursInDebt == 0) {
-            /// IMPORTANT UNDERSTAND THE IMPLICATIONS OF THIS ON A DEEPER LEVEL, WHAT IF THEY HAVE BEEN IN FOR 30 MINS AND CASH OUT? NO CHARGE??
-            return 0;
         }
-        for (uint256 i = 0; i < 5; i++) {
-            while (remainingTime >= timeFrames[i]) {
-                uint256[4] memory details = calculateInterestResults(
-                    remainingTime,
-                    runningOriginIndex,
-                    timeFrames[i],
-                    token
-                );
-                interestDetails[i].interestRateTracker += details[0]; // this adds up the hourly rates
-                remainingTime = details[1];
-                runningOriginIndex = details[2];
-                interestDetails[i].counter = details[3];
+    }
 
-                console.log(
-                    interestDetails[4].counter,
-                    "counter should be going up by 1 each time on the 4th index"
-                );
-                if (remainingTime <= 0) {
-                    break;
+    function calculateAverageCumulativeInterest(
+        uint256 startindex, // 1
+        uint256 endindex, //27
+        address token
+    ) public view returns (uint256) {
+        uint256 cumulativeInterestRates = 0;
+        uint256 cumulativeTimeToAverage = 0;
+
+        // uint256[4] memory timeframes = [year, month, week, day];
+        uint16[4] memory hoursInTimeframe = [8736, 672, 168, 24];
+
+        uint256 runningIndex = startindex;
+        uint256 largestTimeframe = 0;
+        uint256 largestTimeframeIndex = 0;
+
+        uint16[4] memory hoursInTimeframeDescending = [24, 168, 672, 8736];
+        // Find the largest timeframe based on hours in debt
+        // if 8600 + 8736 =< 20,000    --> this is correct it will spit yearly monthly or weekly, or dailt
+        for (uint256 i = 0; i < hoursInTimeframeDescending.length; i++) {
+            if (runningIndex + hoursInTimeframeDescending[i] <= endindex) {
+                largestTimeframe = hoursInTimeframeDescending[i];
+                largestTimeframeIndex = i;
+            } else {
+                break;
+            }
+        }
+
+
+
+        // Scale down to the next available start time for the largest timeframe
+        // 8736 % 8736
+        // here
+        uint256 currentSmallerTimeframe = 0;
+        uint256 currentSmallerTimeframeIndex = 0;
+        uint256 divisorLarge = largestTimeframeIndex == 0
+            ? 1
+            : largestTimeframeIndex;
+        if (largestTimeframe != 24) {
+            while (
+                runningIndex % largestTimeframe != 0 && runningIndex < endindex
+            ) {
+                currentSmallerTimeframe = 0;
+                currentSmallerTimeframeIndex = 0;
+
+                // Find the current smaller timeframe
+                for (
+                    uint256 i = 0;
+                    i < hoursInTimeframeDescending.length;
+                    i++
+                ) {
+                    // 8600 + 8736 <= endindex (true) && 8736 <=
+                    if (
+                        runningIndex + hoursInTimeframeDescending[i] <=
+                        endindex &&
+                        hoursInTimeframeDescending[i] <= largestTimeframe
+                    ) {
+                        currentSmallerTimeframe = hoursInTimeframeDescending[i]; // months
+                        currentSmallerTimeframeIndex = i;
+                    } else {
+                        break;
+                    }
                 }
+
+                // Scale down to the start time of the current smaller timeframe
+                runningIndex += currentSmallerTimeframe;
+
+                uint256 divisor = currentSmallerTimeframe == 0
+                    ? 1
+                    : currentSmallerTimeframe;
+
+                // Charge interest for the scaled-down timeframe
+                cumulativeInterestRates += fetchTimeScaledRateIndex(
+                    currentSmallerTimeframeIndex,
+                    token,
+                    currentSmallerTimeframe / divisor
+                ).interestRate; //* currentSmallerTimeframe;
+                cumulativeTimeToAverage += currentSmallerTimeframe;
             }
-            // console.log(interestDetails[i].interestRateTracker,interestDetails[i].counter, "should give me the interest and counter" );
-            if (interestDetails[i].interestRateTracker != 0) {
-                interestDetails[i].interestRateTracker = REX_LIBRARY
-                    .calculateAverageOfValue(
-                        interestDetails[i].interestRateTracker,
-                        interestDetails[i].counter
-                    );
-                console.log(
-                    interestDetails[i].interestRateTracker,
-                    "rate tracker value average rate"
-                );
-            }
-        }
-
-        return calculateGrossRate(interestDetails);
-    }
-
-    function calculateGrossRate(
-        InterestDetails[5] memory interestDetails
-    ) private view returns (uint256) {
-        uint256 numerator = 0;
-        uint256 denominator = 0;
-
-        for (uint i = 0; i < interestDetails.length; i++) {
-            // console.log(interestDetails[i].counter, "should go up by 1 each cycle ");
-            //   console.log(fetchHoursInTimeSpanDecending(i), "fetchgin the amount of hours in the timespan we are targetting should always be 1");
-            //   console.log(interestDetails[i].interestRateTracker, "the interest rate tracker should give the bulk rate for the periods");
-            numerator +=
-                interestDetails[i].counter *
-                fetchHoursInTimeSpanDecending(i) *
-                interestDetails[i].interestRateTracker;
-            denominator +=
-                interestDetails[i].counter *
-                fetchHoursInTimeSpanDecending(i);
-        }
-
-        //   console.log(numerator / denominator,fetchHoursInTimeSpanDecending(4),interestDetails[4].counter, "gross rate should scale");
-        console.log(numerator / denominator);
-        return numerator / denominator;
-    }
-
-    function calculateInterestResults(
-        uint256 remainingTime,
-        uint256 usersOriginRateIndex,
-        uint targetTimeFrame,
-        address token
-    ) private view returns (uint256[4] memory) {
-        uint[5] memory timeframes = [hour, day, week, month, year];
-
-        if (targetTimeFrame == 3600) {
-            targetTimeFrame = 0;
-        }
-        if (targetTimeFrame == 86400) {
-            targetTimeFrame = 1;
-        }
-        if (targetTimeFrame == 604800) {
-            targetTimeFrame = 2;
-        }
-        if (targetTimeFrame == 2419200) {
-            targetTimeFrame = 3;
-        }
-        if (targetTimeFrame == 31449600) {
-            targetTimeFrame = 4;
-        }
-
-        uint usersOriginTimeFrame = (usersOriginRateIndex * 3600) /
-            timeframes[targetTimeFrame];
-        // i.e if we want to find what year or month a user took their debt this will spit that out
-        // if they took debt after the first rate year cycles done but not the second then it would be like 1.5
-        uint usersOriginScaledDownTimeFrame;
-
-        uint256 endingIndex;
-        // cause if their origin year was 1 then would spit back 2 which is the orign of the next year
-        if (targetTimeFrame != 0) {
-            usersOriginScaledDownTimeFrame =
-                (usersOriginRateIndex * 3600) /
-                timeframes[targetTimeFrame - 1]; // --> use this and go if its like 10 scale to 12
-            endingIndex =
-                (usersOriginTimeFrame + timeframes[targetTimeFrame]) /
-                timeframes[targetTimeFrame - 1];
-            // month that they took the debt on so it would be like 15 if they took the debt 3 months after the origin year
+            divisorLarge = largestTimeframeIndex == 0
+                ? 1
+                : largestTimeframeIndex;
         } else {
-            usersOriginScaledDownTimeFrame = usersOriginRateIndex;
-            endingIndex = fetchCurrentRateIndex(token);
+            currentSmallerTimeframe = hoursInTimeframeDescending[0]; // months
+            currentSmallerTimeframeIndex = 0;
+        }
+        // Charge the rates for the largest timeframe until reaching the end index
+        console.log(
+            runningIndex + largestTimeframeIndex,
+            endindex,
+            "what it is"
+        ); // 27 is end index
+        console.log(fetchTimeScaledRateIndex(0, token, 1).interestRate);
+
+        while (runningIndex + largestTimeframe <= endindex) {
+            cumulativeInterestRates += fetchTimeScaledRateIndex(
+                largestTimeframeIndex,
+                token,
+                largestTimeframe / divisorLarge
+            ).interestRate;
+            cumulativeTimeToAverage += largestTimeframe;
+            runningIndex += largestTimeframe;
         }
 
-        uint256[4] memory interestDetails = calculateInterest(
-            targetTimeFrame, //
-            usersOriginScaledDownTimeFrame, // months
-            endingIndex, //
-            remainingTime, // remaing time to bill
-            token
-        ); // this gets the next years month
-
-        console.log(interestDetails[0], "gross rate ");
-        console.log(interestDetails[1], "unbilled hrs");
-        console.log(interestDetails[2], "users origin index ");
-        console.log(interestDetails[3], " counter");
-
-        return [
-            interestDetails[0],
-            interestDetails[1],
-            interestDetails[2],
-            interestDetails[3]
-        ];
-    }
-
-    function calculateInterest(
-        uint EpochRateId,
-        uint256 originRateIndex,
-        uint256 endingIndex,
-        uint256 unbilledHours,
-        address token
-    ) internal view returns (uint256[4] memory) {
-        uint256 GrossRate = 0;
-
-        uint256 CounterValue;
-
-        for (uint256 i = originRateIndex; i < endingIndex; i++) {
-            if (EpochRateId == 0) {
-                //  console.log((fetchRate(token, i) / 8736), "current hourly rate");
-                GrossRate += (fetchRate(token, i) / 8736); // this is a yearly rate at the index this must be here /// or done in a later function
-            } else {
-                GrossRate += fetchTimeScaledRateIndex(EpochRateId, token, i)
-                    .interestRate; // idivsion ehre by months to get average for the months
+        // Charge the rates for the remaining smaller timeframes
+        for (uint256 i = 0; i < hoursInTimeframe.length; i++) {
+            while (runningIndex + hoursInTimeframe[i] <= endindex) {
+                cumulativeInterestRates += fetchTimeScaledRateIndex(
+                    i,
+                    token,
+                    hoursInTimeframe[i] / i
+                ).interestRate;
+                cumulativeTimeToAverage += hoursInTimeframe[i];
+                runningIndex += hoursInTimeframe[i];
             }
-
-            if ((fetchHoursInTimeSpan(EpochRateId) * 3600) >= unbilledHours) {
-                unbilledHours = 0;
-            } else {
-                /// console.log( unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600), "this is hitting");
-                unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600);
-            }
-            // console.log("this should be 1",fetchHoursInTimeSpan(EpochRateId));
-            originRateIndex += fetchHoursInTimeSpan(EpochRateId);
-
-            CounterValue++;
         }
 
-        return [GrossRate, unbilledHours, originRateIndex, CounterValue];
+        uint256 AverageRateApplied = REX_LIBRARY.calculateAverageOfValue(
+            cumulativeInterestRates,
+            cumulativeTimeToAverage
+        );
+
+        console.log(
+            cumulativeInterestRates,
+            cumulativeTimeToAverage,
+            " average inputs"
+        );
+
+        return AverageRateApplied;
     }
 
-    function fetchHoursInTimeSpan(
-        uint EpochRateId
-    ) public view returns (uint256) {
-        uint[5] memory timeframes = [hour, day, week, month, year];
-        return timeframes[EpochRateId] / hour;
-    }
-
-    function fetchHoursInTimeSpanDecending(
-        uint EpochRateId
-    ) public view returns (uint256) {
-        uint[5] memory timeframes = [year, month, week, day, hour];
-        return timeframes[EpochRateId] / hour;
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param token the token being targetted
+    /// @return currentInterestIndex[token]
+    function fetchTimeScaledRateIndex(
+        uint targetEpoch,
+        address token,
+        uint256 epochStartingIndex
+    ) public view returns (IInterestData.interestDetails memory) {
+        return InterestRateEpochs[targetEpoch][token][epochStartingIndex];
     }
 
     function fetchLiabilitiesOfIndex(
@@ -471,6 +404,11 @@ contract interestData is Ownable {
                     token
                 )
             );
+            console.log(
+                InterestRateEpochs[0][token][1].interestRate,
+                "daily rate"
+            );
+
             InterestRateEpochs[0][token][uint(currentInterestIndex[token] / 24)]
                 .lastUpdatedTime = block.timestamp;
             InterestRateEpochs[0][token][uint(currentInterestIndex[token] / 24)]
@@ -484,68 +422,75 @@ contract interestData is Ownable {
         if (index % 168 == 0) {
             console.log("SET WEEKLY RATE");
             InterestRateEpochs[1][token][
-                uint(currentInterestIndex[token] / (24 * 7))
+                uint(currentInterestIndex[token] / 168)
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 24 * 7,
+                    currentInterestIndex[token] - 168,
                     currentInterestIndex[token],
                     token
                 )
             );
+            console.log(
+                InterestRateEpochs[1][token][
+                    uint(currentInterestIndex[token] / 168)
+                ].interestRate,
+                "weekly rate"
+            );
+
             InterestRateEpochs[1][token][
-                uint(currentInterestIndex[token] / (24 * 7))
+                uint(currentInterestIndex[token] / 168)
             ].lastUpdatedTime = block.timestamp;
             InterestRateEpochs[1][token][
-                uint(currentInterestIndex[token] / (24 * 7))
+                uint(currentInterestIndex[token] / 168)
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
 
             InterestRateEpochs[1][token][
-                uint(currentInterestIndex[token] / (24 * 7))
+                uint(currentInterestIndex[token] / 168)
             ].rateInfo = interestInfo[token][currentInterestIndex[token]]
                 .rateInfo;
         }
         if (index % 672 == 0) {
             console.log("SET MONTHLY RATE");
             InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / (24 * month))
+                uint(currentInterestIndex[token] / 672) //8736, 672, 168, 24
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 24 * month,
+                    currentInterestIndex[token] - 672,
                     currentInterestIndex[token],
                     token
                 )
             );
             InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / (24 * month))
+                uint(currentInterestIndex[token] / 672)
             ].lastUpdatedTime = block.timestamp;
             InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / (24 * month))
+                uint(currentInterestIndex[token] / 672)
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
 
             InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / (24 * month))
+                uint(currentInterestIndex[token] / 672)
             ].rateInfo = interestInfo[token][currentInterestIndex[token]]
                 .rateInfo;
         }
         if (index % 8736 == 0) {
             InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / (24 * year))
+                uint(currentInterestIndex[token] / 8736)
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 24 * year,
+                    currentInterestIndex[token] - 8736,
                     currentInterestIndex[token],
                     token
                 )
             );
             InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / (24 * year))
+                uint(currentInterestIndex[token] / 8736)
             ].lastUpdatedTime = block.timestamp;
             InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / (24 * year))
+                uint(currentInterestIndex[token] / 8736)
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
 
             InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / (24 * year))
+                uint(currentInterestIndex[token] / 8736)
             ].rateInfo = interestInfo[token][currentInterestIndex[token]]
                 .rateInfo;
         }
@@ -643,6 +588,576 @@ contract interestData is Ownable {
     receive() external payable {}
 }
 
+/*
+    function fetchHoursInTimeSpan(
+        uint EpochRateId
+    ) public view returns (uint256) {
+        uint[5] memory timeframes = [hour, day, week, month, year];
+        return timeframes[EpochRateId] / hour;
+    }
+
+    function fetchHoursInTimeSpanDecending(
+        uint EpochRateId
+    ) public view returns (uint256) {
+        uint[5] memory timeframes = [year, month, week, day, hour];
+        return timeframes[EpochRateId] / hour;
+    }
+*/
+
+/*else {
+            uint256 interestCharge;
+            /*
+            uint256 hourlyCharges = (calculateInterestCharge(
+                token,
+                usersOriginIndex
+            ) / 8736) ** amountOfBilledHours;
+
+         uint256 compoundedLiabilities = ((usersLiabilities) *
+              (1e18 + hourlyCharges)) / 10**18;
+             
+
+            uint256 compoundedLiabilities = 0;
+            unchecked {
+                compoundedLiabilities =
+                    ((usersLiabilities) * //CHECK THIS
+                        ((1e18 +
+                            (calculateInterestCharge(token, usersOriginIndex) /
+                                8736)) ** amountOfBilledHours)) /
+                    (10 ** (18 * (amountOfBilledHours))); // line 322 we might be doing this hourly twice
+
+                interestCharge = (compoundedLiabilities - usersLiabilities);
+            }
+            console.log( (calculateInterestCharge(token, usersOriginIndex) /
+                                8736), "interest charge");
+            console.log(amountOfBilledHours, "amount of blld hrs");
+            console.log(compoundedLiabilities, "compounded liabilities");
+            console.log(interestCharge, "interestCharge output");
+            /*
+                       interestCharge =
+                    ((compoundedLiabilities +
+                        adjustedNewLiabilities +
+                        initalMarginFeeAmount)) -
+                    ((usersLiabilities + newLiabilities));
+            console.log(compoundedLiabilities,"compunded liab");
+            console.log(adjustedNewLiabilities, "adjusted new should be 0 ");
+            console.log(initalMarginFeeAmount, "inital margin fee should be 0");
+            console.log("mock equation",(compoundedLiabilities +
+                        adjustedNewLiabilities +
+                        initalMarginFeeAmount));
+            console.log(((usersLiabilities + newLiabilities)));
+        
+            
+            console.log(interestCharge, "intereest charrgeee");
+            */
+//  return interestCharge;
+// }
+//  }
+
+/*
+    struct InterestDetails {
+        uint256 interestRateTracker;
+        uint256 counter;
+    }
+
+    function calculateInterestCharge(
+        address token,
+        uint256 usersOriginRateIndex
+    ) private view returns (uint256) {
+        uint256 TimeInHoursInDebt = fetchCurrentRateIndex(token) -
+            usersOriginRateIndex +
+            1; // we do this because we charged them 1 hour post trade we dont want to double charge
+
+        // timehinhours in debt and use this
+        uint256 convertedHoursInDebt = TimeInHoursInDebt * 3600;
+
+        uint256 remainingTime = convertedHoursInDebt; // just hours in debt
+        uint256 runningOriginIndex = usersOriginRateIndex;
+
+        InterestDetails[5] memory interestDetails; // yearly, monthly, weekly, daily, hourly
+
+        uint256[5] memory timeFrames = [year, month, week, day, hour];
+
+        if (TimeInHoursInDebt == 0) {
+            /// IMPORTANT UNDERSTAND THE IMPLICATIONS OF THIS ON A DEEPER LEVEL, WHAT IF THEY HAVE BEEN IN FOR 30 MINS AND CASH OUT? NO CHARGE??
+            return 0;
+        }
+        // 24
+        for (uint256 i = 0; i < 5; i++) {
+            while (remainingTime >= timeFrames[i]) {
+                uint256[4] memory details = calculateInterestResults(
+                    remainingTime, // 26
+                    runningOriginIndex, // 2
+                    timeFrames[i], // 24
+                    token
+                );
+                interestDetails[i].interestRateTracker += details[0]; // this adds up the hourly rates
+                remainingTime = details[1];
+                runningOriginIndex = details[2];
+                interestDetails[i].counter = details[3];
+
+                if (remainingTime <= 0) {
+                    break;
+                }
+            }
+            // console.log(interestDetails[i].interestRateTracker,interestDetails[i].counter, "should give me the interest and counter" );
+            if (interestDetails[i].interestRateTracker != 0) {
+                interestDetails[i].interestRateTracker = REX_LIBRARY
+                    .calculateAverageOfValue(
+                        interestDetails[i].interestRateTracker,
+                        interestDetails[i].counter
+                    );
+            }
+        }
+
+        return calculateGrossRate(interestDetails);
+    }
+
+    function calculateGrossRate(
+        InterestDetails[5] memory interestDetails
+    ) private view returns (uint256) {
+        uint256 numerator = 0;
+        uint256 denominator = 0;
+
+        for (uint i = 0; i < interestDetails.length; i++) {
+            // console.log(interestDetails[i].counter, "should go up by 1 each cycle ");
+            //   console.log(fetchHoursInTimeSpanDecending(i), "fetchgin the amount of hours in the timespan we are targetting should always be 1");
+            //   console.log(interestDetails[i].interestRateTracker, "the interest rate tracker should give the bulk rate for the periods");
+            numerator +=
+                interestDetails[i].counter *
+                fetchHoursInTimeSpanDecending(i) *
+                interestDetails[i].interestRateTracker;
+            denominator +=
+                interestDetails[i].counter *
+                fetchHoursInTimeSpanDecending(i);
+        }
+
+        //   console.log(numerator / denominator,fetchHoursInTimeSpanDecending(4),interestDetails[4].counter, "gross rate should scale");
+        console.log(numerator / denominator);
+        return numerator / denominator;
+    }
+
+    function calculateInterestResults(
+        uint256 remainingTime, //26
+        uint256 usersOriginRateIndex, // 2
+        uint targetTimeFrame, // 24
+        address token // pepe
+    ) private view returns (uint256[4] memory) {
+        uint[5] memory timeframes = [hour, day, week, month, year];
+
+        if (targetTimeFrame == 3600) {
+            targetTimeFrame = 0;
+        }
+        if (targetTimeFrame == 86400) {
+            targetTimeFrame = 1;
+        }
+        if (targetTimeFrame == 604800) {
+            targetTimeFrame = 2;
+        }
+        if (targetTimeFrame == 2419200) {
+            targetTimeFrame = 3;
+        }
+        if (targetTimeFrame == 31449600) {
+            targetTimeFrame = 4;
+        }
+
+        uint usersOriginTimeFrame = (usersOriginRateIndex * 3600) /
+            timeframes[targetTimeFrame]; // 2 / 24 --> 0
+        //
+        // i.e if we want to find what year or month a user took their debt this will spit that out
+        // if they took debt after the first rate year cycles done but not the second then it would be like 1.5
+        uint usersOriginScaledDownTimeFrame;
+
+        uint256 endingIndex;
+        // cause if their origin year was 1 then would spit back 2 which is the orign of the next year
+
+        // for here we have to do this
+        // we know they have been in for over whatever target time frame we are on say a week right
+        // we need to know how close they are to the next down rate like the days
+        // if they are hours away from that then we scale up x hours to the day
+        // then charge the day
+
+        // if statement end index and start index
+
+        if (targetTimeFrame != 0) {
+            if (targetTimeFrame == 1) {
+                usersOriginScaledDownTimeFrame = 0;
+            } else {
+                usersOriginScaledDownTimeFrame =
+                    (usersOriginRateIndex * 3600) /
+                    timeframes[targetTimeFrame - 1];
+            }
+            // need to find a better way to scale this down to 0 right now it returns 1 which is not a fucking scaled down timeframe
+            endingIndex =
+                (usersOriginTimeFrame + timeframes[targetTimeFrame]) /
+                timeframes[targetTimeFrame - 1];
+
+            console.log(endingIndex, "this is the ending index");
+            console.log(
+                usersOriginScaledDownTimeFrame,
+                "this is the scaled down timefram"
+            );
+            // month that they took the debt on so it would be like 15 if they took the debt 3 months after the origin year
+        } else {
+            usersOriginScaledDownTimeFrame = usersOriginRateIndex;
+            endingIndex = fetchCurrentRateIndex(token);
+        }
+
+        uint256[4] memory interestDetails = calculateInterest(
+            targetTimeFrame, //
+            usersOriginScaledDownTimeFrame, // months
+            endingIndex, //
+            remainingTime, // remaing time to bill
+            token
+        ); // this gets the next years month
+
+        console.log(interestDetails[0], "gross rate ");
+        console.log(interestDetails[1], "unbilled hrs");
+        console.log(interestDetails[2], "users origin index ");
+        console.log(interestDetails[3], " counter");
+
+        return [
+            interestDetails[0],
+            interestDetails[1],
+            interestDetails[2],
+            interestDetails[3]
+        ];
+    }
+
+/*
+    function calculateInterest(
+        uint EpochRateId,
+        uint256 originRateIndex,
+        uint256 endingIndex,
+        uint256 unbilledHours,
+        address token
+    ) internal view returns (uint256[4] memory) {
+        uint256 GrossRate = 0;
+
+        uint256 CounterValue = 0;
+
+        console.log(
+            originRateIndex,
+            endingIndex,
+            "origin and ending rate index"
+        );
+
+        console.log(originRateIndex / endingIndex == 1, "a day rate");
+
+        for (uint256 i = originRateIndex; i < endingIndex; i++) {
+            if (EpochRateId == 0) {
+                //  console.log((fetchRate(token, i) / 8736), "current hourly rate");
+                GrossRate += (fetchRate(token, i) / 8736); // this is a yearly rate at the index this must be here /// or done in a later function
+            } else {
+                GrossRate += fetchTimeScaledRateIndex(EpochRateId, token, i)
+                    .interestRate; // idivsion ehre by months to get average for the months
+                console.log(GrossRate, "rate for day"); // divide by hours in year?
+            }
+
+            if ((fetchHoursInTimeSpan(EpochRateId) * 3600) >= unbilledHours) {
+                unbilledHours = 0;
+            } else {
+                /// console.log( unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600), "this is hitting");
+                unbilledHours -= (fetchHoursInTimeSpan(EpochRateId) * 3600);
+            }
+            // console.log(fetchHoursInTimeSpan(EpochRateId), CounterValue, "this should be 24");
+
+            originRateIndex += fetchHoursInTimeSpan(EpochRateId); // 24 --> 22 times
+
+            CounterValue++;
+
+            // EpochRateId == 0 ? CounterValue % 24 ?
+
+            // originRateIndex = originRateIndex / CounterValue; // 24 / 24
+        }
+        //   EpochRateId == 0 ? CounterValue % 24 ?
+
+        return [GrossRate, unbilledHours, originRateIndex, CounterValue];
+    }
+*/
+
+/*
+cumulativeInterestRates = 0
+cumulativeTimeToAverage = 0
+
+gatherUserTimeframesToBeCharged(startIndex + 1, endIndex){
+   
+if there are any year indexes where startHourOfYearIndex > startIndex+1 && endHourOfYearIndex < endIndex
+
+  cumulativeInterestRates +=  interestRateOfYearIndex * 8736
+  cumulativeTimeToAverage += 8736
+
+
+ if there are any month indexes where the month start index and the month end index is greater 
+ than the newest year index end index && less than the users end index
+
+Add them the same way as above
+
+if there are any month indexes where the month start index is less than
+ the oldest year index start index && greater than the users startIndex+1 same shit as above
+
+Rinse and repeat for all timeframes
+
+Then (cumulativeInterestRate/cumulativeTimeToAverage) = Average Interest Rate
+
+
+starting index ending index we know where we start billing from and where we end 
+
+if amount of time in debt is less than the timeframe size dont check that just skip to the lower one 
+
+use tinos conditionals --> if users index < index for the period -> go to lower timeframe to get it there
+                            if users index 
+
+conditionals:  if we can charge a time period --> if not we know to check the next lower down timeframe etc and go back up
+i.e if index = y and y is < than timeframe start time descend and scale
+
+we need two ver
+
+scale up index --> we need to make sure that when a function runs that adds up rates we have an updated variable
+that reflects what have we already charged be it months, weeks, days etc. 
+
+
+parent function
+
+
+
+running index 
+
+biggest timeframe the user can be charged --> use their hours in debt 
+
+scale up index 
+scale down index 
+
+
+y = usersStartIndex
+
+x = amountOfDebtHours
+
+
+we know what hour they got in and how many hours 
+
+// we know for a fact we will need to use one of the smaller timeframes to work up in time 
+
+// we know after we charge the largest and there is not bigger we have to go down
+// we know that if we go R = Endindex - usersIndex = its going to be hours in debt and if R / year = 2
+// we know we will only max scale them up a year
+
+
+
+
+deliver the difference between the index origin in year timeframe, month,week day, 
+
+
+usersStartingIndex /24  = 1.23
+
+
+if(index = y and y is < than timeframe start time descend and scale ) 
+
+if(index = y and y is < than timeframe start time descend and scale ) {
+    auto scale
+}
+
+if(index = y and y is < than timeframe start time descend and scale ) 
+{
+ auto scale 
+}
+if(index = y and y is < than timeframe start time descend and scale ) {
+ autoscale 
+
+}
+    function simpleForLoop(uint256 originIndex, uint256 endIndex) external pure returns (uint256) {
+        uint256 result = 0;
+
+        for (uint256 i = originIndex; i < endIndex; i++) {
+            // Perform some operation here
+            result += i;
+        }
+
+        return result;
+    }
+
+
+
+
+    function BIGBew(
+        uint256 startindex,
+        uint256 endindex,
+        address token
+    ) external view returns (uint256, uint256) {
+        uint256 cumulativeInterestRates = 0;
+
+        uint256 cumulativeTimeToAverage = 0;
+
+        uint[4] memory timeframes = [year, month, week, day];
+
+        uint16[4] memory hoursInTimeframe = [8736, 672, 168, 24];
+
+
+            //uint BillStartTIme = startindex / hoursInTimeframe[i]; //good
+
+            uint currentTimeframeIndex = fetchCurrentRateIndex(token) /
+                hoursInTimeframe[0];
+
+            for (uint256 j; j <= fetchCurrentRateIndex(token) /
+                hoursInTimeframe[0]; ) {
+                //if there are any year indexes where startHourOfYearIndex > startIndex+1 && endHourOfYearIndex < endIndex
+                if (
+                    j * i > startindex + 1 &&
+                    ((j + 1) * hoursInTimeframe[i]) <= endindex
+                ) {
+                    // j = 1 * 8736 > users origin index + 1 && [ 1 + 1] * 8736 < ending index being currnet index
+                    // 8600  8736 -- 17472 <= 20000
+                    cumulativeInterestRates +=
+                        fetchTimeScaledRateIndex(0, token, j).interestRate *
+                        hoursInTimeframe[0]; //8736
+                    cumulativeTimeToAverage += hoursInTimeframe[0]; // 8736
+                }
+                   unchecked {
+                    ++j;
+                }
+                }
+                //  if there are any month indexes where the month start index and the month end index is greater
+                //than the newest year index end index && less than the users end index
+                // 1 
+                if (
+                    j * (i - 1) > startindex + 1 &&
+                    ((j + 1) * hoursInTimeframe[i - 1]) <= endindex
+                ) {
+                    cumulativeInterestRates +=
+                        fetchTimeScaledRateIndex(i - 1, token, j).interestRate *
+                        hoursInTimeframe[i - 1]; //8736
+                    cumulativeTimeToAverage += hoursInTimeframe[i - 1]; // 8736
+                }
+
+                // if there are any month indexes where the month start index is less than
+                //the oldest year index start index && greater than the users startIndex+1 same shit as above
+                if (
+                    j * (i - 2) > startindex + 1 &&
+                    ((j + 1) * hoursInTimeframe[i - 2]) <= endindex
+                ) {
+                    cumulativeInterestRates +=
+                        fetchTimeScaledRateIndex(i - 2, token, j).interestRate *
+                        hoursInTimeframe[i - 2]; //8736
+                    cumulativeTimeToAverage += hoursInTimeframe[i - 2]; // 8736
+                }
+                if (
+                    j * (i - 3) > startindex + 1 &&
+                    ((j + 1) * hoursInTimeframe[i - 3]) <= endindex
+                ) {
+                    cumulativeInterestRates +=
+                        fetchTimeScaledRateIndex(i - 3, token, j).interestRate *
+                        hoursInTimeframe[i - 3]; //8736
+                    cumulativeTimeToAverage += hoursInTimeframe[i - 3]; // 8736
+                }
+         
+            }
+  
+            //there are any year/month/week/day indexes where startHourOfYearIndex > startIndex+1 && endHourOfYearIndex < endIndex
+        }
+    }
+
+
+
+    function calculateAverageCumulativeInterest(
+        uint256 startindex,
+        uint256 endindex,
+        address token
+    ) external view returns (uint256, uint256) {
+        uint256 cumulativeInterestRates = 0;
+
+        uint256 cumulativeTimeToAverage = 0;
+
+        uint[4] memory timeframes = [year, month, week, day];
+
+        uint16[4] memory hoursInTimeframe = [8736, 672, 168, 24];
+
+
+            //uint BillStartTIme = startindex / hoursInTimeframe[i]; //good
+
+            uint currentTimeframeIndex = fetchCurrentRateIndex(token) /
+                hoursInTimeframe[0];
+
+            /// usrs current time period
+
+            // start index 8,600
+            // end index 20,000
+
+            uint256 runningDownIndex = startindex;
+
+            uint256 runningUpIndex = startindex;
+
+                //if there are any year indexes where startHourOfYearIndex > startIndex+1 && endHourOfYearIndex < endIndex
+                if (
+                    j * i > startindex + 1 &&
+                    ((j + 1) * hoursInTimeframe[i]) <= endindex
+                ) {
+// FIRST YEAR IF CHECK
+                    // j = 1 * 8736 > users origin index + 1 && [ 1 + 1] * 8736 < ending index being currnet index
+                    // 8600  8736 -- 17472 <= 2000
+                    cumulativeInterestRates +=
+                        fetchTimeScaledRateIndex(i, token, j).interestRate *
+                        hoursInTimeframe[i]; //8736
+                    cumulativeTimeToAverage += hoursInTimeframe[i]; // 8736
+                    runningDownIndex = i * hoursInTimeframe[0]; //8736
+                    // i + 8736 + 8736?
+                    // end inde xof year 2 if its
+                    // if endof year 2 is greater than our current index charge it
+                    // if 1 * 8736 > 8736 +  1
+                    // 8600 > runningDownIndex - month && 17400 <= 20,000
+                    if (
+                        startindex + 1 > runningDownIndex - month &&
+                        ((j + 1) * hoursInTimeframe[i]) <= endindex
+                    ) {
+// FIRST MONTHLY IF CHECK
+                        cumulativeInterestRates +=
+                            fetchTimeScaledRateIndex(i, token, j).interestRate *
+                            hoursInTimeframe[i]; //8736
+                        cumulativeTimeToAverage += hoursInTimeframe[i]; // 8736
+                        runningDownIndex = i * hoursInTimeframe[i]; //8736
+
+                        // 1 * 8736 > 8736 - week &&
+                        if (
+                            startindex + 1 > runningDownIndex - week &&
+                            ((j + 1) * hoursInTimeframe[i]) <= endindex
+                        ) {
+// FIRST WEEKLY IF CHECK
+                            cumulativeInterestRates +=
+                                fetchTimeScaledRateIndex(i, token, j)
+                                    .interestRate *
+                                hoursInTimeframe[i]; //8736
+                            cumulativeTimeToAverage += hoursInTimeframe[i]; // 8736
+                            uint256 runningDownIndex = i * hoursInTimeframe[i]; //8736
+
+                            if (
+                                startindex + 1 > runningDownIndex - day &&
+                                ((j + 1) * hoursInTimeframe[i]) <= endindex
+                            ) {
+// FIRST WEEKLY IF CHECK
+                                cumulativeInterestRates +=
+                                    fetchTimeScaledRateIndex(i, token, j)
+                                        .interestRate *
+                                    hoursInTimeframe[i]; //8736
+                                cumulativeTimeToAverage += hoursInTimeframe[i]; // 8736
+                                uint256 runningDownIndex = i *
+                                    hoursInTimeframe[i]; //8736
+                                if (
+                                    startindex + 1 > runningDownIndex - 1 &&
+                                    ((j + 1) * hoursInTimeframe[i]) <= endindex
+                                ) {
+// FIRST HOURLY IF CHECK
+                                    cumulativeInterestRates +=
+                                        fetchTimeScaledRateIndex(i, token, j)
+                                            .interestRate *
+                                        hoursInTimeframe[i]; //8736
+                                    cumulativeTimeToAverage += hoursInTimeframe[
+                                        i
+                                    ]; // 8736
+                                    uint256 runningDownIndex = i *
+                                        hoursInTimeframe[i]; //8736
+                                }
+                            }
+                        }}}}
+
+*/
 /*
     function calculateInterestCharge(
         address token,

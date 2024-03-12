@@ -15,6 +15,12 @@ interface IUtilityContract {
         uint256 userAssets
     ) external view returns (bool);
 
+        function calculateAIMRRequirement(
+        address user,
+        address token,
+        uint256 BalanceToLeave
+    ) external view returns (bool);
+
     function AlterExchange(address _executor) external;
 
     function returnPending(
