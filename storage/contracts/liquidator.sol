@@ -3,24 +3,16 @@ pragma solidity =0.8.20;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/token/ERC20/ERC20.sol" as ERC20;
+import "@openzeppelin/contracts/interfaces/IERC20.sol" as IERC20;
 import "./interfaces/IDataHub.sol";
-import "./interfaces/IDepositVault.sol";
-import "./interfaces/IOracle.sol";
-import "./interfaces/IUtilityContract.sol";
 import "./libraries/REX_LIBRARY.sol";
-import "hardhat/console.sol";
 import "./interfaces/IExecutor.sol";
+import "hardhat/console.sol";
 
 contract Liquidator is Ownable {
-    /* LIQUIDATION + INTEREST FUNCTIONS */
 
     IDataHub public Datahub;
-
-    IOracle public Oracle;
-
-    IDepositVault public DepositVault;
-
-    IUtilityContract public Utilities;
 
     IExecutor public Executor;
 
@@ -38,6 +30,12 @@ contract Liquidator is Ownable {
 
     mapping(address => uint256) FeesCollected; // token --> amount
 
+
+    function feeCollection(address token) public onlyOwner {
+       IERC20.IERC20 _token =  IERC20.IERC20(token);
+       require(_token.transfer(owner(),FeesCollected[token]));
+       FeesCollected[token] = 0;
+    }
 
     /// @notice This checks if the user is liquidatable
     /// @dev add in the users address to check their Aggregate Maintenance Margin Requirement and see if its higher that their Total Portfolio value

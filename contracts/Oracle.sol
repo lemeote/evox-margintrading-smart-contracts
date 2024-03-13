@@ -95,6 +95,9 @@ contract Oracle is Ownable  {
         Executor = IExecutor(_new_executor);
     }
 
+
+    // function mock tx? if no just set balances back
+
     function ProcessTrade(
         address[2] memory pair,
         address[][2] memory participants,
