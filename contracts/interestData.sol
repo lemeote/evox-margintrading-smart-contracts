@@ -183,6 +183,7 @@ contract interestData is Ownable {
         }
     }
 
+    /*
         function calculateHourlyCharges(address token, uint256 startindex, uint256 runningIndex, uint256 cumulativeInterestRates, uint256 cumulativeTimeToAverage) private view returns(uint256[3] memory) {
                  for (
                 uint256 i = startindex;
@@ -204,6 +205,80 @@ contract interestData is Ownable {
             return [runningIndex, cumulativeInterestRates, cumulativeTimeToAverage];
         }
 
+
+}
+
+*/
+
+    function calculateAverageCumulativeInterest(
+        uint256 startIndex, // 1
+        uint256 endIndex, //27
+        address token
+    ) public view returns (uint256) {
+        uint256 cumulativeInterestRates = 0;
+        uint256 cumulativeTimeToAverage = 0;
+        // uint256[4] memory timeframes = [year, month, week, day];
+        uint16[5] memory timeframes = [8736, 672, 168, 24, 1];
+        startIndex += 1;
+        //uint256 largestTimeframe = 0;
+        //uint256 largestTimeframeIndex = 0;
+        uint256 runningUpIndex = 0;
+        uint256 runningDownIndex = 0;
+        uint biggestPossibleStartTimeframe = 0;
+       // uint16[5] memory hoursInTimeframeDescending = [1, 24, 168, 672, 8736];
+
+       // if(fetchCurrentRateIndex(token) < 8736){
+        ///uint16[5] memory timeframes = [ 672, 168, 24, 1];  exclude timeframes we dont even have a charge in 
+       // }
+
+       // 1,3
+
+       uint16[5] memory timeframesAscending = [1,24,168, 672,8736];
+       // [8736, 672, 168, 24, 1]; // 101 20,000
+        for (uint256 i = 0; i < timeframesAscending.length; i++) {
+            if(startIndex + timeframesAscending[i] <= endIndex){
+             biggestPossibleStartTimeframe = startIndex / timeframesAscending[i]; // we need to use this value to set the running down index
+             runningDownIndex = biggestPossibleStartTimeframe; // this will be a problem if we do this it needs to be done just once
+             runningUpIndex = biggestPossibleStartTimeframe;
+             break;
+            }
+        }
+
+        for (uint256 i = 0; i < timeframes.length; i++) {
+            if (runningUpIndex + timeframes[i] < endIndex) {
+                while (runningUpIndex + timeframes[i] < endIndex) {
+                    cumulativeInterestRates +=
+                        fetchTimeScaledRateIndex(i, token, i / timeframes[i]).interestRate *
+                        timeframes[i];  //timeframes[i][timeFrameIndexInterestRate];
+                    runningUpIndex + timeframes[i];
+                }
+            } else {
+                break;
+            }
+
+            if (runningDownIndex > startIndex) {
+                while (runningDownIndex > startIndex) {
+                    cumulativeInterestRates +=
+                        fetchTimeScaledRateIndex(i, token, i / timeframes[i]).interestRate *
+                        timeframes[i]; //timeframes[i][timeFrameIndexInterestRate];
+                    
+                    runningDownIndex -= timeframes[i]; // if on months for instance - months from the shiet 
+
+                }
+            } else {
+                break;
+            }
+
+            if (runningDownIndex == startIndex && runningUpIndex == endIndex) {
+                return cumulativeInterestRates; // divide by endIndex - (startIndex-1)
+            } else {
+                i++;
+            }
+        }
+    }
+
+
+    /*
     function calculateAverageCumulativeInterest(
         uint256 startindex, // 1
         uint256 endindex, //27
@@ -235,7 +310,6 @@ contract interestData is Ownable {
         cumulativeTimeToAverage = rateInfo[2];
 
         }
-        console.log(runningIndex, endindex, " detials i want");
         if(runningIndex >= endindex){
             AverageRateApplied = REX_LIBRARY.calculateAverageOfValue(
             cumulativeInterestRates,
@@ -243,15 +317,10 @@ contract interestData is Ownable {
         );
             return AverageRateApplied ;
         }
-      //  console.log("we got here so.....");
-       //  console.log(runningIndex, "running index");
 
-        // Find the largest timeframe based on hours in debt
-        // if 8600 + 8736 =< 20,000    --> this is correct it will spit yearly monthly or weekly, or dailt
-        largestTimeframe =hoursInTimeframeDescending[0];
+        largestTimeframe = hoursInTimeframeDescending[0];
         largestTimeframeIndex = 0;
         console.log(runningIndex + hoursInTimeframeDescending[0] <= endindex);
-        console.log(runningIndex, hoursInTimeframeDescending[0], endindex, "data requested");
         for (uint256 i = 0; i < hoursInTimeframeDescending.length; i++) {
             if (runningIndex + hoursInTimeframeDescending[i] <= endindex) {
                 largestTimeframe = hoursInTimeframeDescending[i];
@@ -263,7 +332,6 @@ contract interestData is Ownable {
 
         uint256 currentSmallerTimeframe = 0;
         uint256 currentSmallerTimeframeIndex = 0;
-        console.log(largestTimeframe, "largestTImeframe");
 
         if (largestTimeframe != 24) {
             while (
@@ -347,16 +415,9 @@ contract interestData is Ownable {
             cumulativeTimeToAverage
         );
 
-        console.log(
-            cumulativeInterestRates,
-            cumulativeTimeToAverage,
-            AverageRateApplied,
-            " average inputs and output"
-        );
-
         return AverageRateApplied;
     }
-
+*/
     /// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param token the token being targetted
