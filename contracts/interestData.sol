@@ -319,13 +319,7 @@ contract interestData is Ownable {
                 runningUpIndex += timeframes[i];
             }
 
-            bool available = true;
-            unchecked {
-                if (runningDownIndex - timeframes[i] < runningDownIndex) {
-                    available = false;
-                }
-            }
-            
+
             // Calculate cumulative interest rates for decreasing indexes
             while (runningDownIndex >= startIndex && runningDownIndex >= timeframes[i] ) { //&& available
                 uint256 adjustedIndex = timeframes.length - 1 - i;
@@ -341,11 +335,10 @@ contract interestData is Ownable {
                  runningDownIndex -= timeframes[i];
             }
         }
-        console.log(runningDownIndex, runningUpIndex);
-        console.log(cumulativeInterestRates, "rates");
+
 
         // Return the cumulative interest rates
-        return cumulativeInterestRates;
+        return cumulativeInterestRates / (endIndex - (startIndex -1));
     }
 
     /// @notice Explain to an end user what this does
