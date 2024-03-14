@@ -198,7 +198,7 @@ contract DataHub is Ownable {
         address token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].liability_info[token] *= amount;
+        userdata[user].liability_info[token] = userdata[user].liability_info[token] * amount / (10 ** 18);
     }
 
     /// @notice Adds to a users liabilities
