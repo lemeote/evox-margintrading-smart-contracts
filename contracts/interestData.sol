@@ -32,8 +32,6 @@ contract interestData is Ownable {
         Executor = IExecutor(_executor);
     }
 
-    //mapping(address => mapping(uint256 => IInterestData.interestDetails)) interestInfo;
-
     mapping(uint => mapping(address => mapping(uint256 => IInterestData.interestDetails))) InterestRateEpochs;
 
     mapping(address => uint256) currentInterestIndex;
@@ -292,6 +290,7 @@ contract interestData is Ownable {
         uint256 runningDownIndex = endIndex;
         uint256 biggestPossibleStartTimeframe;
 
+        startIndex +=1;
 
         for (uint256 i = 0; i < timeframes.length; i++) {
             if (startIndex + timeframes[i] <= endIndex) {
@@ -305,9 +304,11 @@ contract interestData is Ownable {
         }
 
         for (uint256 i = 0; i < timeframes.length; i++) {
-            while (runningUpIndex + timeframes[i] <= endIndex) {
-                uint256 adjustedIndex = timeframes.length - 1 - i;
 
+            while (runningUpIndex + timeframes[i] <= endIndex) {
+                // this inverses the list order due to interest being stored in the opposite index format 0-4
+                uint256 adjustedIndex = timeframes.length - 1 - i;
+               
                 cumulativeInterestRates +=
                     fetchTimeScaledRateIndex(
                         adjustedIndex,
@@ -317,14 +318,16 @@ contract interestData is Ownable {
                     timeframes[i];
                 runningUpIndex += timeframes[i];
             }
+
             bool available = true;
             unchecked {
                 if (runningDownIndex - timeframes[i] < runningDownIndex) {
                     available = false;
                 }
             }
+            
             // Calculate cumulative interest rates for decreasing indexes
-            while (runningDownIndex >= startIndex && available) {
+            while (runningDownIndex >= startIndex && runningDownIndex >= timeframes[i] ) { //&& available
                 uint256 adjustedIndex = timeframes.length - 1 - i;
 
                 cumulativeInterestRates +=
@@ -334,11 +337,8 @@ contract interestData is Ownable {
                         runningDownIndex / timeframes[i]
                     ).interestRate *
                     timeframes[i];
-                if (runningDownIndex > timeframes[i]) {
-                    runningDownIndex -= timeframes[i];
-                } else {
-                    runningDownIndex = 0;
-                }
+
+                 runningDownIndex -= timeframes[i];
             }
         }
         console.log(runningDownIndex, runningUpIndex);
