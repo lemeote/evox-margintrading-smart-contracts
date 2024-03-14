@@ -98,7 +98,7 @@ contract interestData is Ownable {
             usersOriginIndex;
 
         uint256 adjustedNewLiabilities = newLiabilities *
-            (1 + fetchCurrentRate(token));
+            (1e18 + fetchCurrentRate(token)) / (10 ** 18);
 
         uint256 initalMarginFeeAmount;
 
@@ -112,11 +112,10 @@ contract interestData is Ownable {
         }
         if (usersLiabilities == 0) {
             return
-                ((adjustedNewLiabilities + initalMarginFeeAmount) -
-                    newLiabilities) / 10 ** 18;
+                (adjustedNewLiabilities + initalMarginFeeAmount) -
+                    newLiabilities;
         } else {
             uint256 interestCharge;
-            uint256 averageHourly;
 
             console.log(
                 usersOriginIndex,
@@ -125,15 +124,11 @@ contract interestData is Ownable {
                 "trade details"
             );
 
-            averageHourly += calculateAverageCumulativeInterest(
+            uint256 averageHourly = 1e18 + calculateAverageCumulativeInterest(
                 usersOriginIndex,
                 fetchCurrentRateIndex(token),
                 token
-            ); //
-            // 8736;
-
-            averageHourly = averageHourly / 8736;
-            averageHourly += 1e18;
+            ) / 8736; //
 
             console.log(averageHourly, "average hourly");
 
@@ -165,8 +160,7 @@ contract interestData is Ownable {
                 amountOfBilledHours /= 2;
             }
             console.log(averageHourly, "average hourly");
-            uint256 compoundedLiabilities = usersLiabilities * averageHourly;
-            // hourlyChargesBase;
+            uint256 compoundedLiabilities = usersLiabilities * hourlyChargesBase;
             console.log(compoundedLiabilities / 10 ** 18, "compoundede libs");
             unchecked {
                 if (hourlyChargesExp >= 0) {
