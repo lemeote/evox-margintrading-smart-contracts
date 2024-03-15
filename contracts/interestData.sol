@@ -541,7 +541,7 @@ contract interestData is Ownable {
         }
 
         uint256 MassCharge = (LiabilityToCharge *
-            ((fetchCurrentRate(token)) / 8760)) / 10 ** 18; // this has an erro i think
+            ((fetchCurrentRate(token)) / 8736)) / 10 ** 18; // this has an erro i think
         return MassCharge;
     }
 
