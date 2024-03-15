@@ -108,7 +108,7 @@ contract Utility is Ownable {
         uint256 interestRateForHour = REX_LIBRARY.calculateInterestRate(
             amount,
             assetLogs
-        ) / 8760;
+        ) / 8736;
 
         console.log("interest Rate for the hour", interestRateForHour);
 
