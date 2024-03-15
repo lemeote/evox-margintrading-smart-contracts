@@ -155,7 +155,7 @@ contract interestData is Ownable {
                 amountOfBilledHours /= 2;
             }
 
-          uint256 compoundedLiabilities = (usersLiabilities * hourlyChargesBase) / 10**18;
+          uint256 compoundedLiabilities = usersLiabilities * hourlyChargesBase;
 
             // hourlyChargesBase;
         console.log(compoundedLiabilities, "compoundede libs");
