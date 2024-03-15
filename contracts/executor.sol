@@ -12,6 +12,8 @@ import "./interfaces/IinterestData.sol";
 import "hardhat/console.sol";
 
 contract REX_EXCHANGE is Ownable {
+    error OracleCallFailed(uint256);
+
     /** Address's  */
 
     IDataHub public Datahub;
@@ -66,16 +68,50 @@ contract REX_EXCHANGE is Ownable {
         uint256[][2] memory trade_amounts
     ) public {
         // require(airnode address == airnode address set on deployment )
-        uint256[] memory TakerliabilityAmounts = new uint256[](
-            participants[0].length
-        );
-        uint256[] memory MakerliabilityAmounts = new uint256[](
-            participants[1].length
+        (
+            uint256[] memory takerLiabilities,
+            uint256[] memory makerLiabilities
+        ) = Utilities.calculateTradeLiabilityAddtions(
+                pair,
+                participants,
+                trade_amounts
+            );
+        /*
+        bool success = confirmOracleStatus(
+            pair,
+            participants,
+            trade_amounts,
+            takerLiabilities,
+            makerLiabilities
         );
 
+        if (!success) {
+            revert OracleCallFailed(block.timestamp);
+        }
+*/
         // this checks if the asset they are trying to trade isn't pass max borrow
+        maxBorrowCheck(pair, participants, trade_amounts);
+
+        processMarginAndPendingStatus(pair, participants, trade_amounts);
+
+        Oracle.ProcessTrade(
+            pair,
+            participants,
+            trade_amounts,
+            takerLiabilities,
+            makerLiabilities
+        );
+    }
+
+    /// @notice Checks that the trade will not push the asset over maxBorrowProportion
+    function maxBorrowCheck(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) public view returns (bool) {
+        uint256 newLiabilitiesIssued;
         for (uint256 i = 0; i < pair.length; i++) {
-            uint256 newLiabilitiesIssued = REX_LIBRARY.calculateTotal(
+            newLiabilitiesIssued = REX_LIBRARY.calculateTotal(
                 trade_amounts[i]
             ) > Utilities.returnBulkAssets(participants[i], pair[i])
                 ? REX_LIBRARY.calculateTotal(trade_amounts[i]) -
@@ -83,113 +119,81 @@ contract REX_EXCHANGE is Ownable {
                 : 0;
 
             if (newLiabilitiesIssued > 0) {
-                require(
+                return
                     REX_LIBRARY.calculateBorrowProportionAfterTrades(
-                        Datahub.returnAssetLogs(pair[i]),
+                        returnAssetLogs(pair[i]),
                         newLiabilitiesIssued
-                    ),
-                    "asset is not tradeable because it would be over max borrow proportion of"
-                );
-            }
-        }
-
-        for (uint256 i = 0; i < participants[0].length; i++) {
-            (uint256 assets, , , , ) = Datahub.ReadUserData(
-                participants[0][i],
-                pair[0]
-            );
-
-            if (trade_amounts[0][i] > assets) {
-                require(
-                    Utilities.calculateMarginRequirement(
-                        participants[0][i],
-                        pair[0],
-                        trade_amounts[0][i],
-                        assets
-                    ),
-                    "you failed the margin requirements"
-                );
-                // now here right we know for a fucking fact this will be a margin trade should i mark it as such?
-
-                if (
-                    Utilities.validateMarginStatus(
-                        participants[0][i],
-                        pair[0]
-                    ) == false
-                ) {
-                    Datahub.SetMarginStatus(participants[0][i], true);
-                }
-                uint256 TakeramountToAddToLiabilities = Utilities
-                    .calculateAmountToAddToLiabilities(
-                        participants[0][i],
-                        pair[0],
-                        trade_amounts[0][i]
                     );
-
-                TakerliabilityAmounts[i] = TakeramountToAddToLiabilities;
-                AlterPendingBalances(participants[0][i], pair[0], assets);
-            } else {
-                TakerliabilityAmounts[i] = 0;
-                AlterPendingBalances(
-                    participants[0][i],
-                    pair[0],
-                    trade_amounts[0][i]
-                );
             }
         }
+        return true;
+    }
 
-        for (uint256 i = 0; i < participants[1].length; i++) {
-            (uint256 assets, , , , ) = Datahub.ReadUserData(
-                participants[1][i],
-                pair[1]
-            );
-            if (trade_amounts[1][i] > assets) {
-                require(
-                    Utilities.calculateAIMRRequirement(
-                        participants[1][i],
-                        pair[1],
-                        trade_amounts[1][i]
-                    ),
-                    "you failed the margin requirements"
-                );
-
-                if (
-                    Utilities.validateMarginStatus(
-                        participants[1][i],
-                        pair[1]
-                    ) == false
-                ) {
-                    Datahub.SetMarginStatus(participants[1][i], true);
-                }
-
-                /// becauswe we know that the trade amount is larger than that users assets
-                // we calcualte how much to add to their liabilities right
-                uint256 amountToAddToLiabilities = Utilities
-                    .calculateAmountToAddToLiabilities(
-                        participants[1][i],
-                        pair[1],
-                        trade_amounts[1][i]
-                    );
-
-                MakerliabilityAmounts[i] = amountToAddToLiabilities;
-
-                AlterPendingBalances(participants[1][i], pair[1], assets);
-            } else {
-                MakerliabilityAmounts[i] = 0;
-                AlterPendingBalances(
-                    participants[1][i],
-                    pair[1],
-                    trade_amounts[1][i]
-                );
-            }
-        }
-        Oracle.ProcessTrade(
-            pair,
-            participants,
-            trade_amounts,
-            TakerliabilityAmounts,
-            MakerliabilityAmounts
+    /// @notice this function runs the margin checks, changes margin status if applicable and adds pending balances
+    /// @param pair the pair of tokens being traded
+    /// @param participants of the trade 2 nested arrays
+    /// @param trade_amounts the trades amounts for each participant
+    function processMarginAndPendingStatus(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) internal returns (bool) {
+        bool takerTradeConfirmation = processChecks(
+            participants[0],
+            trade_amounts[0],
+            pair[0]
         );
+        bool makerTradeConfirmation = processChecks(
+            participants[1],
+            trade_amounts[1],
+            pair[1]
+        );
+
+        if (!makerTradeConfirmation || !takerTradeConfirmation) {
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    /// @notice Processes a trade details
+    /// @param  participants the participants on the trade
+    /// @param  tradeAmounts the trade amounts in the trade
+    /// @param  pair the token involved in the trade
+    function processChecks(
+        address[] memory participants,
+        uint256[] memory tradeAmounts,
+        address pair
+    ) internal returns (bool) {
+        for (uint256 i = 0; i < participants.length; i++) {
+            (uint256 assets, , , , ) = Datahub.ReadUserData(
+                participants[i],
+                pair
+            );
+
+            if (tradeAmounts[i] > assets) {
+                if (
+                    !Utilities.calculateMarginRequirement(
+                        participants[i],
+                        pair,
+                        tradeAmounts[i],
+                        assets
+                    )
+                ) {
+                    return false; // failed the margin check
+                }
+
+                if (!Utilities.validateMarginStatus(participants[i], pair)) {
+                    Datahub.SetMarginStatus(participants[i], true);
+                }
+            }
+            AlterPendingBalances(
+                participants[i],
+                pair,
+                tradeAmounts[i] > assets ? assets : tradeAmounts[i]
+            );
+        }
+        return true;
     }
 
     /// @notice This called the execute trade functions on the particpants and checks if the assets are already in their portfolio
@@ -248,7 +252,6 @@ contract REX_EXCHANGE is Ownable {
     ) private {
         for (uint256 i = 0; i < users.length; i++) {
             uint256 amountToAddToLiabilities = liabilityAmounts[i];
-
             if (amountToAddToLiabilities != 0) {
                 chargeinterest(
                     users[i],
@@ -322,6 +325,35 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
+    /// @notice This simulates an airnode call to see if it is a success or fail
+    /// @param pair the pair of tokens being traded
+    /// @param participants of the trade 2 nested arrays
+    /// @param trade_amounts the trades amounts for each participant
+    /// @param takerLiabilities new taker liabilities accrued
+    /// @param makerLiabilities  new maker liabilities accrued
+    /// @return bool success on airnode call simulation
+    function confirmOracleStatus(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts,
+        uint256[] memory takerLiabilities,
+        uint256[] memory makerLiabilities
+    ) private returns (bool) {
+        //(success, returnValue) = abi.decode(address(this).call(abi.encodeWithSignature("myFunction(uint256)", _newValue)), (bool, uint256));
+        (bool success, ) = address(Oracle).call(
+            abi.encodeWithSignature(
+                "ProcessTrade(address[2],address[][2],uint256[][2],uint256[],uint256[])",
+                pair,
+                participants,
+                trade_amounts,
+                takerLiabilities,
+                makerLiabilities
+            )
+        );
+
+        return success;
+    }
+
     /// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param user the address of the user beign confirmed
@@ -335,7 +367,6 @@ contract REX_EXCHANGE is Ownable {
         bool minus
     ) private {
         if (minus == false) {
-            // problem is in the function relow
             uint256 interestCharge = interestContract
                 .calculateCompoundedLiabilities(
                     token,
@@ -484,6 +515,24 @@ contract REX_EXCHANGE is Ownable {
     ) private {
         Datahub.removeAssets(participant, asset, trade_amount);
         Datahub.addPendingBalances(participant, asset, trade_amount);
+    }
+
+    function revertTrade(
+        address[2] memory pair,
+        address[] memory takers,
+        address[] memory makers,
+        uint256[] memory taker_amounts,
+        uint256[] memory maker_amounts
+    ) public checkRoleAuthority {
+        for (uint256 i = 0; i < takers.length; i++) {
+            Datahub.addAssets(takers[i], pair[0], taker_amounts[i]);
+            Datahub.removePendingBalances(takers[i], pair[0], taker_amounts[i]);
+        }
+
+        for (uint256 i = 0; i < makers.length; i++) {
+            Datahub.addAssets(makers[i], pair[1], maker_amounts[i]);
+            Datahub.removePendingBalances(makers[i], pair[0], maker_amounts[i]);
+        }
     }
 
     /// @notice This returns all asset data from the asset data struct from IDatahub

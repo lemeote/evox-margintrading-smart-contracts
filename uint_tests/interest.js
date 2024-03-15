@@ -150,7 +150,7 @@ async function main() {
     const REXEprice = "2000000000000000000"; /// 0.5 cents  = "500000000000000000"
 
     const REXEinitialMarginFee = "10000000000000000";
-    const REXEliquidationFee = "10000000000000000";
+    const REXEliquidationFee = "100000000000000000";
     const REXEinitialMarginRequirement = "500000000000000000"
     const REXEMaintenanceMarginRequirement = "250000000000000000"
     const REXEoptimalBorrowProportion = "700000000000000000"
@@ -313,6 +313,10 @@ async function main() {
         // then calcualte their charge
         // then loop again and mass charge again and again changing the rate and the current index 
         // this is probably the problem i bet its to do with the origin index and hours involved
+                // CHARGE MASS INTEREST
+                const masscharges = await _Interest.chargeMassinterest(await USDT.getAddress());
+                await masscharges.wait(); // Wait for the transaction to be mined
+        
 
         if( i == 1 ){
             await EX.SubmitOrder(pair, participants, trade_amounts)
@@ -326,9 +330,6 @@ async function main() {
             console.log(await DataHub.returnPairMMROfUser(signers[0].address, USDT, REXE), "mmr");
         
         }
-        // CHARGE MASS INTEREST
-        const masscharges = await _Interest.chargeMassinterest(await USDT.getAddress());
-        await masscharges.wait(); // Wait for the transaction to be mined
 
         // Fetch total borrowed amount of USDT
         let  borrowed = await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress());
@@ -346,6 +347,8 @@ async function main() {
         // Fetch user data including liabilities
         let userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress());
         let liabilitiesValue = userData[1];
+
+  
 
 
         let interestadjustedLiabilities = await _Interest.calculateCompoundedLiabilities(
