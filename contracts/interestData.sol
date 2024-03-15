@@ -531,7 +531,7 @@ contract interestData is Ownable {
             LiabilityDelta =
                 Datahub.fetchTotalBorrowedAmount(token) -
                 fetchLiabilitiesOfIndex(token, index);
-            LiabilityToCharge -= LiabilityDelta;
+            LiabilityToCharge += LiabilityDelta;
         } else {
             LiabilityDelta =
                 fetchLiabilitiesOfIndex(token, index) -
