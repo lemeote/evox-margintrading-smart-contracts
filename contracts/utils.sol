@@ -55,8 +55,6 @@ contract Utility is Ownable {
         return margined;
     }
 
-
-
     //// @notice calcualtes aimmr
     /// @dev Explain to a developer any extra details
     /// @param user being argetted
@@ -68,7 +66,6 @@ contract Utility is Ownable {
         uint256 BalanceToLeave
     ) external view returns (bool) {
         if (
-
             Datahub.calculateAIMRForUser(user, token, BalanceToLeave) <=
             Datahub.calculateTotalPortfolioValue(user)
         ) {
@@ -77,6 +74,7 @@ contract Utility is Ownable {
             return false;
         }
     }
+
     //// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param user being argetted
@@ -103,6 +101,7 @@ contract Utility is Ownable {
             return false;
         }
     }
+
     //// @notice calcualtes aimmr
     /// @dev Explain to a developer any extra details
     /// @param user being argetted
@@ -110,9 +109,7 @@ contract Utility is Ownable {
         address user
     ) external view returns (bool) {
         if (
-          Datahub.calculateAMMRForUser(
-         user
-    ) <=
+            Datahub.calculateAMMRForUser(user) <=
             Datahub.calculateTotalPortfolioValue(user)
         ) {
             return true;
@@ -120,13 +117,49 @@ contract Utility is Ownable {
             return false;
         }
     }
+
     function calculateAmountToAddToLiabilities(
         address user,
         address token,
         uint256 amount
-    ) external view returns (uint256) {
+    ) public view returns (uint256) {
         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
         return amount > assets ? amount - assets : 0;
+    }
+
+    function calculateTradeLiabilityAddtions(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) public view returns (uint256[] memory, uint256[] memory) {
+        uint256[] memory TakerliabilityAmounts = new uint256[](
+            participants[0].length
+        );
+        uint256[] memory MakerliabilityAmounts = new uint256[](
+            participants[1].length
+        );
+
+        for (uint256 i = 0; i < participants[0].length; i++) {
+            uint256 TakeramountToAddToLiabilities = calculateAmountToAddToLiabilities(
+                    participants[0][i],
+                    pair[0],
+                    trade_amounts[0][i]
+                );
+
+            TakerliabilityAmounts[i] = TakeramountToAddToLiabilities;
+        }
+
+        for (uint256 i = 0; i < participants[1].length; i++) {
+            uint256 MakeramountToAddToLiabilities = calculateAmountToAddToLiabilities(
+                    participants[1][i],
+                    pair[1],
+                    trade_amounts[1][i]
+                );
+
+            MakerliabilityAmounts[i] = MakeramountToAddToLiabilities;
+        }
+
+        return (TakerliabilityAmounts, MakerliabilityAmounts);
     }
 
     function returnBulkAssets(

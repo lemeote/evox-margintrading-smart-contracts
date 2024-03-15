@@ -23,6 +23,12 @@ interface IUtilityContract {
 
     function AlterExchange(address _executor) external;
 
+    function calculateTradeLiabilityAddtions(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) external returns (uint256[] memory, uint256[] memory);
+
     function returnPending(
         address user,
         address token
