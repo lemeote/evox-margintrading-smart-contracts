@@ -118,6 +118,8 @@ contract DepositVault is Ownable {
             if (amount <= liabilities) {
                 // if the amount is less or equal to their current liabilities -> lower their liabilities using the multiplier
 
+                modifyMMROnDeposit(msg.sender, token, amount);
+
                 uint256 liabilityMultiplier = REX_LIBRARY
                     .calculatedepositLiabilityRatio(liabilities, amount);
 

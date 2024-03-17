@@ -24,7 +24,6 @@ contract DataHub is Ownable {
         admins[_deposit_vault] = true;
         admins[_oracle] = true;
         admins[_interest] = true;
-        admins[initialOwner] = true;
         interestContract = IInterestData(_interest);
     }
 
@@ -70,18 +69,6 @@ contract DataHub is Ownable {
             .fetchCurrentRateIndex(token); // updates to be the current rate index..... 1+
     }
 
-    /// @notice Alter users earning index
-    /// @dev this index lets us know when the user depositted assets and starting iearning interest on them
-    /// @param user the user being targetted
-    /// @param token the token address being targetted
-    function setUsresEarningIndex(
-        address user,
-        address token,
-        uint256 _updatedindex
-    ) external checkRoleAuthority {
-        require(_updatedindex > userdata[user].earningIndex[token]);
-        userdata[user].earningIndex[token] = _updatedindex;
-    }
 
     /// @notice provides to the caller the users current rate epoch
     /// @dev This is to keep track of the last epoch the user paid at
@@ -98,37 +85,133 @@ contract DataHub is Ownable {
     /// Assets
     /// -----------------------------------------------------------------------
 
-    /// @notice This adds to the users assets
-    /// @dev this function is to add to the users assets of a token
-    /// @param user the users address
-    /// @param token the token being targetted
-    /// @param amount the amount to be added to their balance
-    function addAssets(
-        address user,
-        address token,
-        uint256 amount
-    ) external checkRoleAuthority {
-        userdata[user].asset_info[token] += amount;
-    }
-
-    /// @notice This removes balance from the users assets
-    /// @dev this function is to remove assets from the users assets of a token
-    /// @param user the users address
-    /// @param token the token being targetted
-    /// @param amount the amount to be removed to their balance
-    function removeAssets(
-        address user,
-        address token,
-        uint256 amount
-    ) external checkRoleAuthority {
-        userdata[user].asset_info[token] -= amount;
-    }
 
     function changeTotalBorrowedAmountOfAsset(
         address token,
         uint256 _updated_value
-    ) external checkRoleAuthority {
+    ) external onlyOwner {
         assetdata[token].totalBorrowedAmount = _updated_value;
+    }
+
+    /// -----------------------------------------------------------------------
+    /// Maintenance Margin Requirement
+    /// -----------------------------------------------------------------------
+
+    /// @notice This alters a users maintenance margin requirement of a given asset pair
+    /// @param user the users address
+    /// @param in_token the base token being targetted
+    /// @param out_token the other token of the pair being targetted
+    /// @param amount the amount to multiply their MMR by
+    function alterMMR(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ] *= amount;
+    }
+
+    /// @notice This adds to  a users maintenance margin requirement of a given asset pair
+    /// @param user the users address
+    /// @param in_token the base token being targetted
+    /// @param out_token the other token of the pair being targetted
+    /// @param amount the amount to add to their MMR
+    function addMaintenanceMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ] += amount;
+    }
+
+    /// @notice This removes maintenance margin requirement of a given asset pair
+    /// @param user the users address
+    /// @param in_token the base token being targetted
+    /// @param out_token the other token of the pair being targetted
+    /// @param amount the amount to remove from MMR
+    function removeMaintenanceMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ] -= amount;
+    }
+
+    /// @notice This returns the users current MMR
+    /// @param user the users address
+    /// @param in_token the base token being targetted
+    /// @param out_token the other token of the pair being targetted
+    function returnPairMMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) external view returns (uint256) {
+        uint256 mmr = userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ];
+        return mmr;
+    }
+
+    /// @notice Explain to an end user what this does
+    /// @dev Explain to a developer any extra details
+    /// @param setting what asset class to change 
+        /// @param token what asset to target
+        /// @param  user we are targetting 
+    /// @param direction adding, or subtracting balance
+    /// @param amount the amount to hcnage the balance by 
+    function editAccountDetails(uint256 setting, address token, address user, bool direction, uint256 amount) public checkRoleAuthority  returns(bool) {
+
+        if(setting == 0){
+            if(direction){
+                userdata[user].asset_info[token] += amount;
+
+            }else{
+                userdata[user].asset_info[token] -= amount;
+
+            }
+
+        }
+        if(setting == 1){
+          if(direction){
+        userdata[user].liability_info[token] += amount;
+            }else{
+        userdata[user].liability_info[token] -= amount;
+                
+            }
+        }
+        if(setting ==3){
+          if(direction){
+ userdata[user].pending_balances[token] += amount
+            }else{
+                 userdata[user].pending_balances[token] -= amount
+                
+            }
+        }
+    }
+
+
+        function calculateAIMRForUser(
+        address user
+    ) external view returns (uint256) {
+        uint256 AIMR;
+        for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
+            address token = userdata[user].tokens[i];
+            uint256 liabilities = userdata[user].liability_info[token];
+            if (liabilities > 0) {
+                        AIMR +=
+                            ((assetdata[token].assetPrice * userdata[user].liability_info[token]) * assetdata[token].initialMarginRequirement) /
+                            10 ** 18;
+            }
+        }
+        return AIMR;
     }
 
     /// -----------------------------------------------------------------------
@@ -144,7 +227,7 @@ contract DataHub is Ownable {
         address token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].liability_info[token] *= amount / (10 ** 18);
+        userdata[user].liability_info[token] *= amount / (10**18);
     }
 
     /// @notice Adds to a users liabilities
@@ -400,7 +483,6 @@ contract DataHub is Ownable {
     function InitTokenMarket(
         address token,
         uint256 assetPrice,
-        uint256 collateralMultiplier,
         uint256 initialMarginFee,
         uint256 liquidationFee,
         uint256 initialMarginRequirement,
@@ -412,7 +494,6 @@ contract DataHub is Ownable {
         // require liquidation fee cannot be bigger than MMR setting
 
         assetdata[token] = IDataHub.AssetData({
-            collateralMultiplier :collateralMultiplier,
             initialMarginFee: initialMarginFee,
             assetPrice: assetPrice,
             liquidationFee: liquidationFee,
@@ -463,6 +544,8 @@ contract DataHub is Ownable {
         return (assets, liabilities, pending, margined, tokens);
     }
 
+
+
     /// @notice calculates the total dollar value of the users assets
     /// @param user the address of the user we want to query
     /// @return sumOfAssets the cumulative value of all their assets
@@ -509,27 +592,6 @@ contract DataHub is Ownable {
     /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
     /// @param user the address of the user we want to query
     /// @return returns their AMMR
-    function calculateAIMRForUser(
-        address user
-    ) external view returns (uint256) {
-        uint256 AIMR;
-        for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
-            uint256 liabilities = userdata[user].liability_info[token];
-            if (liabilities > 0) {
-                AIMR +=
-                    ((assetdata[token].assetPrice *
-                        userdata[user].liability_info[token]) *
-                        assetdata[token].initialMarginRequirement) /
-                    10 ** 18;
-            }
-        }
-        return AIMR;
-    }
-
-    /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
-    /// @param user the address of the user we want to query
-    /// @return returns their AMMR
     function calculateAMMRForUser(
         address user
     ) external view returns (uint256) {
@@ -538,14 +600,47 @@ contract DataHub is Ownable {
             address token = userdata[user].tokens[i];
             uint256 liabilities = userdata[user].liability_info[token];
             if (liabilities > 0) {
-                AMMR +=
-                    (assetdata[token].assetPrice *
-                        (liabilities *
-                            assetdata[token].MaintenanceMarginRequirement)) /
-                    10 ** 18;
+                for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
+                    address token_2 = userdata[user].tokens[j];
+                    if (
+                        userdata[user].maintenance_margin_requirement[token][
+                            token_2
+                        ] > 0
+                    ) {
+                        AMMR +=
+                            (assetdata[token].assetPrice *
+                                userdata[user].maintenance_margin_requirement[
+                                    token
+                                ][token_2]) /
+                            10 ** 18;
+                    }
+                }
             }
         }
         return AMMR;
     }
+
+    /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
+    /// @param user the address of the user we want to query
+    /// @return returns their AMMR
+    function calculateAIMRForUser(
+        address user
+    ) external view returns (uint256) {
+        //uint256 initalMarginOfTradeToken = assetdata[trade_token].initialMarginRequirement;
+        //uint256 priceOfToken = assetdata[trade_token].assetPrice;
+        //uint256 AIMRFORTRADE = (priceOfToken * (trade_amount * initalMarginOfTradeToken)) /10**18;
+        uint256 AIMR;
+        for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
+            address token = userdata[user].tokens[i];
+
+            AIMR +=
+                (assetdata[token].assetPrice *
+                    (assetdata[token].initialMarginRequirement *
+                        userdata[user].asset_info[token])) /
+                10 ** 18;
+        }
+        return AIMR;
+    }
+
     receive() external payable {}
 }
