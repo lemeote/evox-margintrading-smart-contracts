@@ -1,5 +1,3 @@
-# Sample Hardhat Project
-
 This is the Repository for the EVOX Smart contracts:
 
 Its has 3 choices of deployment environments:
@@ -11,8 +9,40 @@ Its has 3 choices of deployment environments:
 You can deploy to any network you choose by adding the --network flag to you deployment command, 
 if you do not it will default to hardhat.
 
+When you choose the environment you wish to target just drag the appropriate contracts folder out of either
+
+/hardhat_env_contracts
+or
+/testnet_env_contracts
+
+into the parent rep folder (REXTEST)
+
+run npm run compile to compile your contracts ( to ensure you have the right abi's in the artifacts folder)
+and run your deploy command to deploy, or if you are in the hardhat environment you can jump directly into the unit_tests folder
+to begin your amazing, lucrative, exciting, and stunning journey into the abyss of our repoistory. 
+
+
+You may run the following commands in this repo to deploy or compile : 
+
+Compile:
+
+npm run compile
+
+Deploy --hardhat:
+
+npm run deploy 
+
+Deploy --zkevm:
+
+npm run deployzk
+
+Deploy --mumbai: 
+
+npm run deploymumbai
 
 There are multiple signers for the network you choose. 
+
+
 
 The main files are:
 
@@ -31,16 +61,8 @@ The main files are:
 
 
 
-You May run the following commands in this repo
-
-Compile:
-npm run compile
-
-Deploy --hardhat:
-
-Deploy --zkevm:
-
-Deploy --mumbai: 
+There are various notes left, and past contract versions in the storage folder, the folder hardhat_env_contracts are contracts that should 
+be moved into the main contract folder for the hardhat env, moved out for testnet.
 
 
 ```shell

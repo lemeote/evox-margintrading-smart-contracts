@@ -17,7 +17,7 @@ const MAKERPK = "c58f4e631d9c80ac977fc9d1b51c6ba7600eb35129b7b6658e3932dd05aa51d
 
 module.exports = {
   solidity: "0.8.20",
-  defaultNetwork: "zkevm",
+  defaultNetwork: "hardhat",
 
   paths: {
     sources: "./contracts", // The directory where your contracts are located
@@ -43,13 +43,6 @@ module.exports = {
         { privateKey: '0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d', balance: '1000000000000000000000' },
         // ... other accounts
       ],
-    },
-    mumbai: {
-      url: `https://polygon-mumbai.g.alchemy.com/v2/ebPip_MjwdmPr5ZGZfua4SgAjSwEELvw`,
-      accounts: [PRIVATE_KEY,TAKERPK,MAKERPK],
-      gasPrice: 50000000000,
-      blockGasLimit: 100000000429720 // whatever you want here,
-
     },
 
     zkevm: {

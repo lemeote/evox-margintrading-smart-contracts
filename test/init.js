@@ -9,6 +9,14 @@ const LiquidatorAbi = require("../artifacts/contracts/liquidator.sol/Liquidator.
 describe("Init the contracts", function () {
   it("Init token market ", async function () {
 
+    const ex = "0x51A18FeE98838D6D056De3df50DB70AbA60236A4"
+    const DH = "0xeC449bEDE2B6ef411B2c16fc5E71755ec5d9958a"
+    const DV = "0xc229bf510DE89AB60cEAD17dFD2F335897bb5Ab8"
+    const oracle = "0xa4601c91Aa948a3223375a17d3F3A35CC6484ef5"
+    const util = "0x4dC3dd7858c8d1347B30923E4Fb0E04a27D33082"
+    const liq = "0xAD6dECc5dA0E5E2F1Be76116E947aF1953274aF6"
+    const interest = "0x44F5a094dCF5ADa14EAEb31932070BB044ACd981"
+
     const USDT = "0xaBAD60e4e01547E2975a96426399a5a0578223Cb"
 
     const USDTprice = "1000000000000000000"
@@ -151,13 +159,7 @@ Exchange deployed to 0x829a929b1d5c9CE0fF480E107bBDF6Aa434DFc72
     const util = "0x045C3e05CB6b446f9d5D85046CdAafA6De7b840f"
 */
 
-const ex = "0x51A18FeE98838D6D056De3df50DB70AbA60236A4"
-const DH = "0xeC449bEDE2B6ef411B2c16fc5E71755ec5d9958a"
-const DV = "0xc229bf510DE89AB60cEAD17dFD2F335897bb5Ab8"
-const oracle = "0xa4601c91Aa948a3223375a17d3F3A35CC6484ef5"
-const util = "0x4dC3dd7858c8d1347B30923E4Fb0E04a27D33082"
-const liq = "0xAD6dECc5dA0E5E2F1Be76116E947aF1953274aF6"
-const interest = "0x44F5a094dCF5ADa14EAEb31932070BB044ACd981"
+
 
     const deployer = await hre.ethers.provider.getSigner(0); // change 0 / 1 for different wallets 
 

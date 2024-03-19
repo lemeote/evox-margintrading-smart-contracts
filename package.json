@@ -6,8 +6,7 @@
   "scripts": {
     "test": "npx hardhat run test/test.js",
     "deploy": "npx hardhat run scripts/deploy.js",
-    "deployzk": "npx hardhat run scripts/mumbai_deploy.js --network zkevm",
-    "deploymumbai":"npx hardhat run scripts/mumbai_deploy.js --network mumbai",
+    "deployzk": "npx hardhat run scripts/zkevm_deploy.js --network zkevm",
     "compile": "npx hardhat compile"
   },
   "author": "",

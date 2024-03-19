@@ -319,7 +319,7 @@ async function main() {
                 await masscharges.wait(); // Wait for the transaction to be mined
         
 
-        if( i == 1 ){
+        if( i == 2 ){
             await EX.SubmitOrder(pair, participants, trade_amounts)
 
             console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 

@@ -65,10 +65,7 @@ contract REX_EXCHANGE is Ownable {
     function SubmitOrder(
         address[2] memory pair,
         address[][2] memory participants,
-        uint256[][2] memory trade_amounts,
-        address[3] memory airnode_details,
-        bytes32 endpointId,
-        bytes calldata parameters
+        uint256[][2] memory trade_amounts
     ) public {
         // require(airnode address == airnode address set on deployment )
         (
@@ -90,10 +87,7 @@ contract REX_EXCHANGE is Ownable {
             participants,
             trade_amounts,
             takerLiabilities,
-            makerLiabilities,
-            airnode_details,
-            endpointId,
-            parameters
+            makerLiabilities
         );
     }
 
@@ -357,7 +351,7 @@ contract REX_EXCHANGE is Ownable {
             Datahub.setTotalBorrowedAmount(token, liabilitiesAccrued, true);
         }
 
-        Datahub.alterUsersInterestRateIndex(user, token);
+        ///Datahub.alterUsersInterestRateIndex(user, token);
 
         if (
             interestContract

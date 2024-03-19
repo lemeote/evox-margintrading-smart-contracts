@@ -184,7 +184,6 @@ contract interestData is Ownable {
                 ) /
                 8736;
 
-            console.log(averageHourly, "average hourly");
 
             (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY
                 .normalize(averageHourly);
@@ -256,29 +255,46 @@ contract interestData is Ownable {
 
         uint32 counter;
 
-        startIndex += 1;
+        startIndex += 1; /// took on 2 paid to 3 + 1 = 4 
 
+        console.log(startIndex, "start index"); /// 3 + 24 true   3/24 = 0
+
+        // what we need to do is if the end index say is 169 and start is 1 the biggest should be 168
+        // if their start index is 3 and the end is 171 it should be 168
+        // endindex 877
+        // 877 - 3 = 874 / 672  = 1 * 672 == biggest start 672 
+        // biggestPossibleStartTimeframe = ((endIndex - startIndex) / timeframes[i]) * timeframes[i];
+        // 168 / 168 * 168 = 168;
+        // (starindex + timeframes[i])/ timeframes[i]
+        //  3 + 168 / 168 = 1            biggestPossibleStartTimeframe = startIndex / timeframes[i]; 
+          // 3/ 168 = 0
         for (uint256 i = 0; i < timeframes.length; i++) {
-            if (startIndex + timeframes[i] <= endIndex) {
-                biggestPossibleStartTimeframe = startIndex / timeframes[i];
-                runningDownIndex = biggestPossibleStartTimeframe;
-                runningUpIndex = biggestPossibleStartTimeframe;
+            if (startIndex + timeframes[i] <= endIndex) { 
+                biggestPossibleStartTimeframe = ((endIndex - startIndex) / timeframes[i]) * timeframes[i]; 
+                runningDownIndex = biggestPossibleStartTimeframe; // 168
+                runningUpIndex = biggestPossibleStartTimeframe; // 168
                 break;
             }
-        }
+        } // 168 + <= endindex charge an hour
+        // 
 
         for (uint256 i = 0; i < timeframes.length; i++) {
             while (runningUpIndex + timeframes[i] <= endIndex) {
                 // this inverses the list order due to interest being stored in the opposite index format 0-4
                 uint256 adjustedIndex = timeframes.length - 1 - i;
-
+//2   length 5  5 - 1 - 2 = 2
                 cumulativeInterestRates +=
                     fetchTimeScaledRateIndex(
                         adjustedIndex,
                         token,
-                        runningUpIndex / timeframes[i]
+                        runningUpIndex / timeframes[i]   // 168 / 168 = 1
                     ).interestRate *
                     timeframes[i];
+                console.log( runningUpIndex,       fetchTimeScaledRateIndex(
+                        adjustedIndex,
+                        token,
+                        runningUpIndex / timeframes[i]   // 168 / 168 = 1
+                    ).interestRate, "rate index from loop");
                 runningUpIndex += timeframes[i];
                 counter++;
             }
@@ -310,6 +326,7 @@ contract interestData is Ownable {
         ) {
             return 0;
         }
+               console.log(cumulativeInterestRates, "cumulative rate");
         // Return the cumulative interest rates
         return cumulativeInterestRates / (endIndex - (startIndex - 1));
     }
@@ -348,6 +365,8 @@ contract interestData is Ownable {
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .interestRate = value;
 
+        console.log("hourly", value);
+
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .lastUpdatedTime = block.timestamp;
 
@@ -369,7 +388,7 @@ contract interestData is Ownable {
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 24, // 1
+                    currentInterestIndex[token] - 23, // 1
                     currentInterestIndex[token], //24
                     token
                 )
@@ -394,7 +413,7 @@ contract interestData is Ownable {
                 uint(currentInterestIndex[token] / 168)
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 168,
+                    currentInterestIndex[token] - 167,
                     currentInterestIndex[token],
                     token
                 )
@@ -431,7 +450,7 @@ contract interestData is Ownable {
                 uint(currentInterestIndex[token] / 672) //8736, 672, 168, 24
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 672,
+                    currentInterestIndex[token] - 671,
                     currentInterestIndex[token],
                     token
                 )
@@ -460,7 +479,7 @@ contract interestData is Ownable {
                 uint(currentInterestIndex[token] / 8736)
             ].interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
-                    currentInterestIndex[token] - 8736,
+                    currentInterestIndex[token] - 8735,
                     currentInterestIndex[token],
                     token
                 )

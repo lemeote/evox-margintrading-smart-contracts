@@ -196,10 +196,11 @@ contract Oracle is Ownable, RrpRequesterV0 {
                 participants[i],
                 pair
             );
+            uint256 balanceToAdd =  tradeAmounts[i] > assets ? assets : tradeAmounts[i];
             AlterPendingBalances(
                 participants[i],
                 pair,
-                tradeAmounts[i] > assets ? assets : tradeAmounts[i]
+                balanceToAdd
             );
         }
         return true;
