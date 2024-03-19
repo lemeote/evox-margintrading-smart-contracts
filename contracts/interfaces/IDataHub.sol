@@ -5,9 +5,9 @@ interface IDataHub {
     struct UserData {
         mapping(address => uint256) asset_info; // tracks their portfolio (margined, and depositted)
         mapping(address => uint256) liability_info; // tracks what they owe per token * price
+        mapping(address => mapping(address => uint256)) maintenance_margin_requirement; // tracks the MMR per token the user has in liabilities
         mapping(address => uint256) pending_balances;
         mapping(address => uint256) interestRateIndex;
-        mapping(address => uint256) earningIndex;
         bool margined; // if user has open margin positions this is true
         address[] tokens; // these are the tokens that comprise their portfolio ( assets, and liabilites, margined funds)
     }
@@ -17,7 +17,7 @@ interface IDataHub {
     // boom jackpot
 
     struct AssetData {
-        uint256 collateralMultiplier; // used to check on borrow if they have proper coll to borrow
+        uint256 collateralMultiplier;
         uint256 initialMarginFee; // assigned in function Ex
         // inital margin fee -> add and charge on insuance of libilities -> goes to TINO + CONNER + WAKAKKIIIIII and maybe some to dao
         uint256 assetPrice;
@@ -176,4 +176,11 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
         address in_token,
         address out_token
     ) external view returns (uint256);
+
+        function calculateCollateralValue(
+        address user
+    ) external view returns (uint256) ;
+        function calculatePendingCollateralValue(
+        address user
+    ) external view returns (uint256) ;
 }

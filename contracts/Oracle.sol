@@ -148,12 +148,12 @@ contract Oracle is Ownable {
         uint256[][2] memory trade_amounts
     ) private {
         //(success, returnValue) = abi.decode(address(this).call(abi.encodeWithSignature("myFunction(uint256)", _newValue)), (bool, uint256));
-        bool takerTradeConfirmation = alterPending(
+       alterPending(
             participants[0],
             trade_amounts[0],
             pair[0]
         );
-        bool makerTradeConfirmation = alterPending(
+         alterPending(
             participants[1],
             trade_amounts[1],
             pair[1]
@@ -202,43 +202,9 @@ contract Oracle is Ownable {
         address[][2] memory participants,
         uint256[][2] memory trade_amounts
     ) internal returns (uint) {
-        if (lastOracleRequestTime >= block.timestamp + waitPeriod) {
-            if (
-                1 == 2
-            ) //!airnodeRrp.requestIsAwaitingFulfillment(lastRequestId)){
-            {
-                address[2] memory pair;
-                pair[0] = OrderDetails[lastRequestId].taker_token;
-                pair[1] = OrderDetails[lastRequestId].maker_token;
-
-                Executor.revertTrade(
-                    pair,
-                    OrderDetails[lastRequestId].takers,
-                    OrderDetails[lastRequestId].makers,
-                    OrderDetails[lastRequestId].taker_amounts,
-                    OrderDetails[lastRequestId].maker_amounts
-                );
-
-                revert Error_FufillUnSuccessful(requestId, block.timestamp); //
-            } else {
-                freezeTempBalance(pair, participants, trade_amounts);
-            }
-        }
-
-        lastRequestId = requestId;
-        /*
-        bytes32 requestId = airnodeRrp.makeFullRequest(
-            airnode, // airnode address
-            endpointId, // endpointId
-            sponsor, // sponsor's address
-            sponsorWallet, // sponsorWallet
-            address(this), // fulfillAddress
-            this.fulfill.selector, // fulfillFunctionId
-            parameters // encoded API parameters
-        );
-        incomingFulfillments[requestId] = true;
-*/
-
+      
+        freezeTempBalance(pair, participants, trade_amounts);
+      
         requestId = bytes32(uint256(2636288841321219110873651998422106944));
 
         fulfill(requestId);

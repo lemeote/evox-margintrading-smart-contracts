@@ -51,7 +51,8 @@ contract Liquidator is Ownable {
             return false;
         }
     }
-// TO DO when we pull TPV we need to add pending balances in here as well --> loop through pending convert to price add to tpv 
+
+    // TO DO when we pull TPV we need to add pending balances in here as well --> loop through pending convert to price add to tpv
     /// @notice This function is for liquidating a user
     /// @dev Explain to a developer any extra details
     /// @param user the address of the user being liquidated
@@ -75,7 +76,7 @@ contract Liquidator is Ownable {
 
         require(
             spendingCap <= fetchliabilities(user, tokens[0]),
-            "cannot liquidate that amount"
+            "cannot liquidate that amount of the users assets"
         );
 
         // max borrow proportion check
@@ -85,64 +86,60 @@ contract Liquidator is Ownable {
                 [takers, makers],
                 [
                     REX_LIBRARY.createNumberArray(0),
-                    REX_LIBRARY.createNumberArray(0)
+                    REX_LIBRARY.createNumberArray(0) // this makes a 0 array lol
                 ]
-            )
+            ),
+            "this liquidation would exceed max borrow proportion please lower the spending cap"
         );
 
-        if (spendingCap > fetchAssets(msg.sender, tokens[0])) {
-            // margin requirement check for checking if spending cap is larger than the margin requirement of the liquidator
+        require(
+            spendingCap <= fetchAssets(msg.sender, tokens[0]),
+            "you do not have the assets required for this size of liquidation, please lower your spending cap"
+        );
 
-            // TODO: add AIMR -->  check AIMR liquidator , replace this Utilities.calculateMarginRequirement
-            require(
-                Utilities.calculateMarginRequirement(
-                    msg.sender,
-                    tokens[0],
-                    spendingCap,
-                   fetchAssets(msg.sender, tokens[0])
-                )
-            );
-            if (!Utilities.validateMarginStatus(msg.sender, tokens[0])) {
-                Datahub.SetMarginStatus(msg.sender, true);
-            }
-        }
-
-     //   uint256 discountMultiplier = 10 ** 18 - fetchLogs(tokens[1]).liquidationFee; //100000000000000000
-
-     //   uint256 shortMultiplier = 10 ** 18 + fetchLogs(tokens[1]).liquidationFee;
-
+        require(
+            Datahub.calculateCollateralValue(user) +
+                Datahub.calculatePendingCollateralValue(user) <
+                Datahub.calculateAMMRForUser(user)
+        );
         uint256 amountToLiquidate = (spendingCap * 10 ** 18) /
             ((fetchLogs(tokens[1]).assetPrice * fetchAssets(user, tokens[1]))) /
             10 ** 18;
 
         /// careful look here could equal 0
-      //  uint256 toLiquidator = (((amountToLiquidate * discountMultiplier) /
-      //      10 ** 18) / 100) * 80;
+        //  uint256 toLiquidator = (((amountToLiquidate * discountMultiplier) /
+        //      10 ** 18) / 100) * 80;
 
         FeesCollected[tokens[1]] +=
-            (((amountToLiquidate * returnMultiplier(false, tokens[1])) / 10 ** 18) / 100) *
+            (((amountToLiquidate * returnMultiplier(false, tokens[1])) /
+                10 ** 18) / 100) *
             20;
 
         if (long) {
             // takes the asset price of the asset, multiplies it by the users assets of that token, then applied the discount multiplier
             uint256 discountedAmount = (((fetchLogs(tokens[1]).assetPrice *
-                fetchAssets(user, tokens[1])) / 10 ** 18) * (returnMultiplier(false, tokens[1]))) / 10 ** 18;
+                fetchAssets(user, tokens[1])) / 10 ** 18) *
+                (returnMultiplier(false, tokens[1]))) / 10 ** 18;
 
             taker_amounts[0] = (discountedAmount > spendingCap)
                 ? spendingCap
                 : discountedAmount;
 
-            maker_amounts[0] =  (((amountToLiquidate * returnMultiplier(false, tokens[1])) /
-            10 ** 18) / 100) * 80;
+            maker_amounts[0] =
+                (((amountToLiquidate * returnMultiplier(false, tokens[1])) /
+                    10 ** 18) / 100) *
+                80;
 
             taker_amounts[0] = (discountedAmount > spendingCap)
                 ? spendingCap
                 : discountedAmount;
-            maker_amounts[0] =  (((amountToLiquidate * returnMultiplier(false, tokens[1])) /
-            10 ** 18) / 100) * 80;
+            maker_amounts[0] =
+                (((amountToLiquidate * returnMultiplier(false, tokens[1])) /
+                    10 ** 18) / 100) *
+                80;
         } else {
             uint256 premiumAmount = ((fetchLogs(tokens[0]).assetPrice *
-               spendingCap) * returnMultiplier(true, tokens[1])) / 10 ** 18;
+                spendingCap) * returnMultiplier(true, tokens[1])) / 10 ** 18;
             ////////////////////////////////////////////////////
             FeesCollected[tokens[0]] +=
                 (((((spendingCap / fetchliabilities(user, tokens[0])) *
@@ -173,121 +170,38 @@ contract Liquidator is Ownable {
         );
     }
 
-
-    function returnMultiplier(bool short, address token) private view returns (uint256){
-
-        if(!short){
-        return  10 ** 18 - fetchLogs(token).liquidationFee; //100000000000000000
-        }else{
-        return 10 ** 18 + fetchLogs(token).liquidationFee;
+    function returnMultiplier(
+        bool short,
+        address token
+    ) private view returns (uint256) {
+        if (!short) {
+            return 10 ** 18 - fetchLogs(token).liquidationFee; //100000000000000000
+        } else {
+            return 10 ** 18 + fetchLogs(token).liquidationFee;
         }
-
     }
 
-
-    function fetchLogs(address token) private view returns(IDataHub.AssetData memory){
-        IDataHub.AssetData memory assetLogs = Executor.returnAssetLogs(
-            token
-        );
+    function fetchLogs(
+        address token
+    ) private view returns (IDataHub.AssetData memory) {
+        IDataHub.AssetData memory assetLogs = Executor.returnAssetLogs(token);
 
         return assetLogs;
     }
 
-
-    function fetchAssets(address user, address token) private view returns(uint256){
-         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
+    function fetchAssets(
+        address user,
+        address token
+    ) private view returns (uint256) {
+        (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
         return assets;
-
     }
-        function fetchliabilities(address user, address token) private view returns(uint256){
-         (,uint256 liabilities , , , ) = Datahub.ReadUserData(user, token);
-        return liabilities;
 
+    function fetchliabilities(
+        address user,
+        address token
+    ) private view returns (uint256) {
+        (, uint256 liabilities, , , ) = Datahub.ReadUserData(user, token);
+        return liabilities;
     }
 }
-/*
-
-    function Liquidate(
-        //  bytes32 requestId,
-        address user,
-        address[2] memory tokens, // liability tokens first, tokens to liquidate after
-        uint256 spendingCap,
-        bool long
-    ) public {
-        require(CheckForLiquidation(user));
-        require(tokens.length == 2);
-        require(userdata[msg.sender].asset_info[tokens[0]] > spendingCap);
-
-        uint256[] memory taker_amounts = new uint256[](1);
-        uint256[] memory maker_amounts = new uint256[](1);
-
-        uint256 amountToLiquidate = (spendingCap * 10 ** 18) /
-            ((assetdata[tokens[1]].assetPrice *
-                userdata[user].asset_info[tokens[1]]) / 10 ** 18);
-
-        uint256 discountMultiplier = (1 +
-            assetdata[tokens[1]].liquidationFee *
-            1000);
-
-        uint256 toLiquidator = amountToLiquidate +
-            ((((amountToLiquidate * discountMultiplier) / 1000) -
-                amountToLiquidate) / 100) *
-            80;
-
-        FeesCollected[tokens[1]] +=
-            ((((amountToLiquidate * discountMultiplier) / 1000) -
-                amountToLiquidate) / 100) *
-            20;
-
-        //uint256 priceOfUsersLiabilities = assetdata[tokens[0]].assetPrice * userdata[user].liability_info[tokens[0]];
-
-        if (long) {
-            uint256 discountedAmount = (((assetdata[tokens[1]].assetPrice *
-                userdata[user].asset_info[tokens[1]]) / 10 ** 18) *
-                (1 - assetdata[tokens[1]].liquidationFee * 1000)) / 1000;
-            taker_amounts[0] = (discountedAmount > spendingCap)
-                ? spendingCap
-                : discountedAmount;
-            maker_amounts[0] = toLiquidator;
-        } else {
-            uint256 discountedAmount = ((assetdata[tokens[0]].assetPrice *
-                userdata[user].liability_info[tokens[0]]) *
-                discountMultiplier) / 1000;
-            FeesCollected[tokens[0]] +=
-                (((((spendingCap / userdata[user].liability_info[tokens[0]]) *
-                    discountMultiplier) / 1000) -
-                    (spendingCap / userdata[user].liability_info[tokens[0]])) /
-                    100) *
-                20;
-
-            taker_amounts[0] = (discountedAmount >
-                (spendingCap * assetdata[tokens[0]].assetPrice))
-                ? spendingCap
-                : (spendingCap * assetdata[tokens[0]].assetPrice) /
-                    (assetdata[tokens[0]].assetPrice *
-                        userdata[user].liability_info[tokens[0]]);
-            maker_amounts[0] = (discountedAmount >
-                (spendingCap * assetdata[tokens[0]].assetPrice))
-                ? toLiquidator
-                : (((spendingCap / userdata[user].liability_info[tokens[0]]) *
-                    discountMultiplier) / 1000) +
-                    (((((spendingCap /
-                        userdata[user].liability_info[tokens[0]]) *
-                        discountMultiplier) / 1000) -
-                        (spendingCap /
-                            userdata[user].liability_info[tokens[0]])) / 100) *
-                    80;
-
-            /// MAKE SURE TO CHECK ALL MATH ON THIS -> CHATGPT MIGHT HAVE FUCKD US
-        }
-
-        TransferBalances(
-            tokens,
-            createArray(msg.sender),
-            createArray(user),
-            taker_amounts,
-            maker_amounts
-        );
-    }
-    
-*/

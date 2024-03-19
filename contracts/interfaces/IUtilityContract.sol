@@ -33,6 +33,7 @@ interface IUtilityContract {
         address user,
         address token
     ) external view returns (uint256);
+
 /*
     function chargeInterest(
         address token,

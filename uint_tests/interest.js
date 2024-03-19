@@ -135,7 +135,7 @@ async function main() {
     // INIT CONTRACTS
 
     const USDTprice = "1000000000000000000"
-
+    const USDTCollValue = '1000000000000000000'
     const USDTinitialMarginFee = "5000000000000000" // 0.5% //0.05 (5*16)
     const USDTliquidationFee = "30000000000000000"//( 3**17) was 30
     const USDTinitialMarginRequirement = "200000000000000000"//( 2**18) was 200
@@ -149,6 +149,7 @@ async function main() {
 
     const REXEprice = "2000000000000000000"; /// 0.5 cents  = "500000000000000000"
 
+      const EVOXCollValue = '500000000000000000'
     const REXEinitialMarginFee = "10000000000000000";
     const REXEliquidationFee = "100000000000000000";
     const REXEinitialMarginRequirement = "500000000000000000"
@@ -206,13 +207,13 @@ async function main() {
     InitRatesUSDT.wait();
 
 
-    const USDT_init_transaction = await DataHub.InitTokenMarket(await USDT.getAddress(), USDTprice, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
+    const USDT_init_transaction = await DataHub.InitTokenMarket(await USDT.getAddress(), USDTprice,USDTCollValue, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
 
     USDT_init_transaction.wait();
 
 
-    const REXE_init_transaction = await DataHub.InitTokenMarket(await REXE.getAddress(), REXEprice, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);
+    const REXE_init_transaction = await DataHub.InitTokenMarket(await REXE.getAddress(), REXEprice,EVOXCollValue, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);
 
     REXE_init_transaction.wait();
 

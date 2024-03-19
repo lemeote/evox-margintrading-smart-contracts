@@ -246,12 +246,24 @@ contract REX_EXCHANGE is Ownable {
                     amountToAddToLiabilities,
                     false
                 ); // this sets total borrowed amount, adds to liabilities
+
+                Datahub.addMaintenanceMarginRequirement(
+                    users[i],
+                    out_token,
+                    in_token,
+                    REX_LIBRARY.calculateMaintenanceRequirementForTrade(
+                        returnAssetLogs(in_token),
+                        amountToAddToLiabilities
+                    )
+                );
             }
             if (
                 amounts_in_token[i] <=
                 Utilities.returnliabilities(users[i], in_token)
             ) {
                 chargeinterest(users[i], in_token, amounts_in_token[i], true);
+
+                Modifymmr(users[i], in_token, out_token, amounts_in_token[i]);
             } else {
                 uint256 subtractedFromLiabilites = Utilities.returnliabilities(
                     users[i],
@@ -272,6 +284,12 @@ contract REX_EXCHANGE is Ownable {
                         true
                     );
 
+                    Modifymmr(
+                        users[i],
+                        in_token,
+                        out_token,
+                        amounts_in_token[i]
+                    );
                 }
 
                 amounts_out_token[i] >
@@ -345,8 +363,6 @@ contract REX_EXCHANGE is Ownable {
                 1 hours <
             block.timestamp
         ) {
-
-            /// TO DO we are double chargin the borrow pool 
             Datahub.setTotalBorrowedAmount(
                 token,
                 interestContract.chargeStaticLiabilityInterest(
@@ -375,9 +391,11 @@ contract REX_EXCHANGE is Ownable {
     /// @dev Explain to a developer any extra details
     /// @param amount the amount of token to borrow
     /// @param borrowToken the token the user wishes to borrow
+    /// @param collateralToken the token the user wants to use as the collaterally token for MMR
     function Borrow(
         uint256 amount,
-        address borrowToken
+        address borrowToken,
+        address collateralToken
     ) public {
         require(
             REX_LIBRARY.calculateBorrowProportionAfterTrades(
@@ -401,8 +419,91 @@ contract REX_EXCHANGE is Ownable {
 
         chargeinterest(msg.sender, borrowToken, amount, false);
 
+        Datahub.addMaintenanceMarginRequirement(
+            msg.sender,
+            collateralToken,
+            borrowToken,
+            REX_LIBRARY.calculateMaintenanceRequirementForTrade(
+                returnAssetLogs(borrowToken),
+                amount
+            )
+        );
     }
 
+    /// @notice This modify's a users maintenance margin requirement
+    /// @dev Explain to a developer any extra details
+    /// @param user the user we are modifying the mmr of
+    /// @param in_token the token entering the users wallet
+    /// @param out_token the token leaving the users wallet
+    /// @param amount the amount being adjected
+    function Modifymmr(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) private {
+        IDataHub.AssetData memory assetLogsOutToken = returnAssetLogs(
+            out_token
+        );
+        IDataHub.AssetData memory assetLogsInToken = returnAssetLogs(in_token);
+        if (amount <= Utilities.returnliabilities(user, in_token)) {
+            uint256 StartingDollarMMR = (amount *
+                assetLogsOutToken.MaintenanceMarginRequirement) / 10 ** 18; // check to make sure this is right
+            if (
+                StartingDollarMMR >
+                Datahub.returnPairMMROfUser(user, in_token, out_token)
+            ) {
+                uint256 overage = (StartingDollarMMR -
+                    Datahub.returnPairMMROfUser(user, in_token, out_token)) /
+                    assetLogsInToken.MaintenanceMarginRequirement;
+
+                Datahub.removeMaintenanceMarginRequirement(
+                    user,
+                    in_token,
+                    out_token,
+                    Datahub.returnPairMMROfUser(user, in_token, out_token)
+                );
+
+                uint256 liabilityMultiplier = REX_LIBRARY
+                    .calculatedepositLiabilityRatio(
+                        Utilities.returnliabilities(user, in_token),
+                        overage
+                    );
+
+                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
+
+                for (uint256 i = 0; i < tokens.length; i++) {
+                    Datahub.alterMMR(
+                        user,
+                        in_token,
+                        tokens[i],
+                        liabilityMultiplier
+                    );
+                }
+            } else {
+                Datahub.removeMaintenanceMarginRequirement(
+                    user,
+                    in_token,
+                    out_token,
+                    StartingDollarMMR
+                );
+            }
+        } else {
+            for (
+                uint256 i = 0;
+                i < Datahub.returnUsersAssetTokens(user).length;
+                i++
+            ) {
+                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
+                Datahub.removeMaintenanceMarginRequirement(
+                    user,
+                    in_token,
+                    tokens[i],
+                    Datahub.returnPairMMROfUser(user, in_token, tokens[i])
+                );
+            }
+        }
+    }
 
     function revertTrade(
         address[2] memory pair,
@@ -454,4 +555,3 @@ contract REX_EXCHANGE is Ownable {
 
     receive() external payable {}
 }
-

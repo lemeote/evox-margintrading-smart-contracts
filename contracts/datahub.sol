@@ -70,18 +70,7 @@ contract DataHub is Ownable {
             .fetchCurrentRateIndex(token); // updates to be the current rate index..... 1+
     }
 
-    /// @notice Alter users earning index
-    /// @dev this index lets us know when the user depositted assets and starting iearning interest on them
-    /// @param user the user being targetted
-    /// @param token the token address being targetted
-    function setUsresEarningIndex(
-        address user,
-        address token,
-        uint256 _updatedindex
-    ) external checkRoleAuthority {
-        require(_updatedindex > userdata[user].earningIndex[token]);
-        userdata[user].earningIndex[token] = _updatedindex;
-    }
+
 
     /// @notice provides to the caller the users current rate epoch
     /// @dev This is to keep track of the last epoch the user paid at
@@ -201,6 +190,50 @@ contract DataHub is Ownable {
         userdata[user].pending_balances[token] -= amount;
     }
 
+
+
+
+    function returnPairMMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) public view returns (uint256) {
+        return
+            userdata[user].maintenance_margin_requirement[in_token][out_token];
+    }
+
+     function alterMMR(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ] *= amount;
+    }
+
+    function addMaintenanceMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ] += amount;
+    }
+
+    function removeMaintenanceMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ] -= amount;
+    }
     /// -----------------------------------------------------------------------
     /// Margin modifiers.
     /// -----------------------------------------------------------------------
@@ -412,7 +445,7 @@ contract DataHub is Ownable {
         // require liquidation fee cannot be bigger than MMR setting
 
         assetdata[token] = IDataHub.AssetData({
-            collateralMultiplier :collateralMultiplier,
+            collateralMultiplier: collateralMultiplier,
             initialMarginFee: initialMarginFee,
             assetPrice: assetPrice,
             liquidationFee: liquidationFee,
@@ -506,6 +539,40 @@ contract DataHub is Ownable {
         return calculateTotalAssetValue(user) - calculateLiabilitiesValue(user);
     }
 
+    /// @notice calculates the total dollar value of the users Collateral
+    /// @param user the address of the user we want to query
+    /// @return returns their assets - liabilities value in dollars
+    function calculatePendingCollateralValue(
+        address user
+    ) external view returns (uint256) {
+          uint256 sumOfAssets;
+        for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
+            address token = userdata[user].tokens[i];
+            sumOfAssets +=
+                (((assetdata[token].assetPrice *
+                    userdata[user].pending_balances[token]) / 10**18 )* assetdata[token].collateralMultiplier) /
+                10 ** 18; // want to get like a whole normal number so balance and price correction
+        }
+        return sumOfAssets - calculateLiabilitiesValue(user);
+    }
+
+
+    /// @notice calculates the total dollar value of the users Collateral
+    /// @param user the address of the user we want to query
+    /// @return returns their assets - liabilities value in dollars
+    function calculateCollateralValue(
+        address user
+    ) external view returns (uint256) {
+          uint256 sumOfAssets;
+        for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
+            address token = userdata[user].tokens[i];
+            sumOfAssets +=
+                (((assetdata[token].assetPrice *
+                    userdata[user].asset_info[token]) / 10**18 )* assetdata[token].collateralMultiplier) /
+                10 ** 18; // want to get like a whole normal number so balance and price correction
+        }
+        return sumOfAssets - calculateLiabilitiesValue(user);
+    }
     /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
     /// @param user the address of the user we want to query
     /// @return returns their AMMR
@@ -527,6 +594,8 @@ contract DataHub is Ownable {
         return AIMR;
     }
 
+
+
     /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
     /// @param user the address of the user we want to query
     /// @return returns their AMMR
@@ -538,14 +607,25 @@ contract DataHub is Ownable {
             address token = userdata[user].tokens[i];
             uint256 liabilities = userdata[user].liability_info[token];
             if (liabilities > 0) {
-                AMMR +=
-                    (assetdata[token].assetPrice *
-                        (liabilities *
-                            assetdata[token].MaintenanceMarginRequirement)) /
-                    10 ** 18;
+                for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
+                    address token_2 = userdata[user].tokens[j];
+                    if (
+                        userdata[user].maintenance_margin_requirement[token][
+                            token_2
+                        ] > 0
+                    ) {
+                        AMMR +=
+                            (assetdata[token].assetPrice *
+                                userdata[user].maintenance_margin_requirement[
+                                    token
+                                ][token_2]) /
+                            10 ** 18;
+                    }
+                }
             }
         }
         return AMMR;
     }
+
     receive() external payable {}
 }
