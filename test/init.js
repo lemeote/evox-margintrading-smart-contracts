@@ -1,9 +1,10 @@
 const hre = require("hardhat");
-const depositABI = require("../artifacts/contracts/depositvault.sol/DepositVault.json")
 const OracleABI  = require("../artifacts/contracts/Oracle.sol/Oracle.json")
 const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.json") 
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json") 
 const DataHubAbi  = require("../artifacts/contracts/datahub.sol/DataHub.json");
+const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
+const LiquidatorAbi = require("../artifacts/contracts/liquidator.sol/Liquidator.json")
 
 describe("Init the contracts", function () {
   it("Init token market ", async function () {
@@ -150,12 +151,13 @@ Exchange deployed to 0x829a929b1d5c9CE0fF480E107bBDF6Aa434DFc72
     const util = "0x045C3e05CB6b446f9d5D85046CdAafA6De7b840f"
 */
 
-const ex = "0x99550F10f0d057c791919A2833b67b3d8d77a03B"
-const DH = "0xAEEcf43DAF5Cb9126ce6cbc09F28457Da999C7BE"
-const DV = "0xE9A58a63d8a84D18f354e59A56FFcc1e9582c598"
-const oracle = "0xBB3cEEB264b4412a61d7C4089fD8fa52F6F971a1"
-const util = "0x66B8FAf7B63fE0ad9303b6D1ed40BD696208D4dD"
-const liq = ""
+const ex = "0x51A18FeE98838D6D056De3df50DB70AbA60236A4"
+const DH = "0xeC449bEDE2B6ef411B2c16fc5E71755ec5d9958a"
+const DV = "0xc229bf510DE89AB60cEAD17dFD2F335897bb5Ab8"
+const oracle = "0xa4601c91Aa948a3223375a17d3F3A35CC6484ef5"
+const util = "0x4dC3dd7858c8d1347B30923E4Fb0E04a27D33082"
+const liq = "0xAD6dECc5dA0E5E2F1Be76116E947aF1953274aF6"
+const interest = "0x44F5a094dCF5ADa14EAEb31932070BB044ACd981"
 
     const deployer = await hre.ethers.provider.getSigner(0); // change 0 / 1 for different wallets 
 
@@ -174,12 +176,11 @@ const liq = ""
 
     const Exchange = new hre.ethers.Contract(ex, ExecutorAbi.abi, deployer);
 
-    const SETUPEX = await Exchange.alterAdminRoles(DH, DV, oracle, util);
+    const SETUPEX = await Exchange.alterAdminRoles(DH, DV, oracle, util, interest);
 
     SETUPEX.wait()
 
-    
-    const setup = await DataHub.AlterAdminRoles(DV, ex, oracle);
+    const setup = await DataHub.AlterAdminRoles(DV, ex, oracle,interest);
 
     setup.wait();
 
@@ -187,31 +188,38 @@ const liq = ""
 
     oraclesetup.wait();
 
-    const CurrentLiquidator  = new hre.ethers.Contract(await liq, LiquidatorAbi.abi, signers[0]);
+    const CurrentLiquidator  = new hre.ethers.Contract(liq, LiquidatorAbi.abi, deployer);
 
-    const liqSetup = CurrentLiquidator.AlterAdmins(ex);
+    const liqSetup = await CurrentLiquidator.AlterAdmins(ex);
   
     liqSetup.wait();
 
-    const USDT_init_transaction = await DataHub.InitTokenMarket(USDT, USDTprice,colval, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion,USDTInterestRate, USDT_interestRateInfo);
+    const _Interest = new hre.ethers.Contract(interest, InterestAbi.abi, deployer);
+
+
+    const interestSetup = await _Interest.AlterAdmins( ex, DH);
+
+    interestSetup.wait();
+
+    const USDT_init_transaction = await DataHub.InitTokenMarket(USDT, USDTprice,colval, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
 
     USDT_init_transaction.wait();
 
 
-    const REXE_init_transaction = await DataHub.InitTokenMarket(REXE, REXEprice,colval, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion,REXEInterestRate, REXEinterestRateInfo);
+    const REXE_init_transaction = await DataHub.InitTokenMarket(REXE, REXEprice,colval, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);
 
     REXE_init_transaction.wait();
 
-    const ETH_init_transaction = await DataHub.InitTokenMarket(ETH, ETHprice,colval, ETHinitialMarginFee, ETHliquidationFee, ETHinitialMarginRequirement, ETHMaintenanceMarginRequirement, ETHoptimalBorrowProportion, ETHmaximumBorrowProportion,ETH_interestRate, ETH_interestRateInfo);
+    const ETH_init_transaction = await DataHub.InitTokenMarket(ETH, ETHprice,colval, ETHinitialMarginFee, ETHliquidationFee, ETHinitialMarginRequirement, ETHMaintenanceMarginRequirement, ETHoptimalBorrowProportion, ETHmaximumBorrowProportion);
 
     ETH_init_transaction.wait();
 
-    const MATIC_init_transaction = await DataHub.InitTokenMarket(MATIC, MATICprice,colval, MATICinitialMarginFee, MATICliquidationFee, MATICinitialMarginRequirement, MATICMaintenanceMarginRequirement, MATICoptimalBorrowProportion, MATICmaximumBorrowProportion,MATIC_interestRate, MATIC_interestRateInfo);
+    const MATIC_init_transaction = await DataHub.InitTokenMarket(MATIC, MATICprice, colval, MATICinitialMarginFee, MATICliquidationFee, MATICinitialMarginRequirement, MATICMaintenanceMarginRequirement, MATICoptimalBorrowProportion, MATICmaximumBorrowProportion);
 
     MATIC_init_transaction.wait();
 
-    const wBTC_init_transaction = await DataHub.InitTokenMarket(wBTC, wBTCprice,colval, wBTCinitialMarginFee, wBTCliquidationFee, wBTCinitialMarginRequirement, wBTCMaintenanceMarginRequirement,wBTCoptimalBorrowProportion, wBTCmaximumBorrowProportion,wBTC_interestRate, wBTC_interestRateInfo);
+    const wBTC_init_transaction = await DataHub.InitTokenMarket(wBTC, wBTCprice, colval, wBTCinitialMarginFee, wBTCliquidationFee, wBTCinitialMarginRequirement, wBTCMaintenanceMarginRequirement,wBTCoptimalBorrowProportion, wBTCmaximumBorrowProportion);
 
     wBTC_init_transaction.wait();
 

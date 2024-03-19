@@ -17,7 +17,7 @@ const MAKERPK = "c58f4e631d9c80ac977fc9d1b51c6ba7600eb35129b7b6658e3932dd05aa51d
 
 module.exports = {
   solidity: "0.8.20",
-  defaultNetwork: "hardhat",
+  defaultNetwork: "zkevm",
 
   paths: {
     sources: "./contracts", // The directory where your contracts are located

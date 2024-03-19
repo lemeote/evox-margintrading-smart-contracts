@@ -18,14 +18,33 @@ async function main() {
   const oracle = initialOwner;
   // Deploy REXE library
 
+  console.log("Deploying contracts with the account:", deployer.address);
+
+
+  // Deploy REXE library
+
   const REX_LIB = await hre.ethers.deployContract("REX_LIBRARY");
 
   await REX_LIB.waitForDeployment();
 
   console.log("REX Library deployed to", await REX_LIB.getAddress());
 
-  const DATAHUB = await hre.ethers.getContractFactory("DataHub");
-  const Deploy_dataHub = await DATAHUB.deploy(initialOwner, executor, depositvault, oracle);
+  const Interest = await hre.ethers.getContractFactory("interestData", {
+    libraries: {
+      REX_LIBRARY: await REX_LIB.getAddress(),
+    },
+  });
+
+  const Deploy_interest = await Interest.deploy(initialOwner, executor, depositvault);
+
+  await Deploy_interest.waitForDeployment();
+
+  console.log("Interest deployed to", await Deploy_interest.getAddress());
+
+
+  const Deploy_dataHub = await hre.ethers.deployContract("DataHub", [initialOwner, executor, depositvault, oracle, Deploy_interest.getAddress()]);
+
+  ///const Deploy_dataHub = await DATAHUB.deploy(initialOwner, executor, depositvault, oracle);
 
   await Deploy_dataHub.waitForDeployment();
 
@@ -36,11 +55,13 @@ async function main() {
       REX_LIBRARY: await REX_LIB.getAddress(),
     },
   });
-  const Deploy_depositVault = await depositVault.deploy(initialOwner, Deploy_dataHub.getAddress());
+
+  const Deploy_depositVault = await depositVault.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner, Deploy_interest.getAddress());
 
   await Deploy_depositVault.waitForDeployment();
 
   console.log("Deposit Vault deployed to", await Deploy_depositVault.getAddress());
+
 
 
   const DeployOracle = await hre.ethers.deployContract("Oracle", 
@@ -49,7 +70,7 @@ async function main() {
     Deploy_depositVault.getAddress(),
     airnodeRRPAddress,
     initialOwner])
-// chnage ex
+  // chnage ex
   console.log("Oracle deployed to", await DeployOracle.getAddress());
 
   const Utility = await hre.ethers.getContractFactory("Utility", {
@@ -57,15 +78,9 @@ async function main() {
       REX_LIBRARY: await REX_LIB.getAddress(),
     },
   });
-  const Deploy_Utilities = await Utility.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), initialOwner);
+  const Deploy_Utilities = await Utility.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), initialOwner, Deploy_interest.getAddress());
 
   console.log("Utils deployed to", await Deploy_Utilities.getAddress());
-
-
-  const Deploy_Liquidator = await Liquidator.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner); // need to alter the ex after 
-
-  console.log("Liquidator deployed to", await Deploy_Liquidator.getAddress());
-
 
   const Exchange = await hre.ethers.getContractFactory("REX_EXCHANGE", {
     libraries: {
@@ -73,10 +88,19 @@ async function main() {
     },
   });
 
+  const Liquidator = await hre.ethers.getContractFactory("Liquidator", {
+    libraries: {
+      REX_LIBRARY: await REX_LIB.getAddress(),
+    },
+  });
+  const Deploy_Liquidator = await Liquidator.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner); // need to alter the ex after 
 
-  const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress());
+  console.log("Liquidator deployed to", await Deploy_Liquidator.getAddress());
 
+  const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress(),await Deploy_interest.getAddress(),Deploy_Liquidator.getAddress());
+  
   console.log("Exchange deployed to", await Deploy_Exchange.getAddress());
+
 
 }
 //npx hardhat run scripts/deploy.js --network mumbai
