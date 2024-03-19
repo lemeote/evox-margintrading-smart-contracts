@@ -32,11 +32,13 @@ interface IDataHub {
     }
 
     function addAssets(address user, address token, uint256 amount) external;
+
     function calculateAIMRForUser(
         address user,
         address trade_token,
         uint256 trade_amount
     ) external view returns (uint256);
+
     function removeAssets(address user, address token, uint256 amount) external;
 
     function alterUsersInterestRateIndex(address user, address token) external;
@@ -46,8 +48,9 @@ interface IDataHub {
         address token
     ) external view returns (uint256);
 
-
-function fetchTotalBorrowedAmount(address token) external view returns(uint256);
+    function fetchTotalBorrowedAmount(
+        address token
+    ) external view returns (uint256);
 
     function alterLiabilities(
         address user,
@@ -101,9 +104,8 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
     ) external;
 
     function SetMarginStatus(address user, bool onOrOff) external;
-       function calculateAIMRForUser(
-        address user
-    ) external view returns (uint256) ;
+
+    function calculateAIMRForUser(address user) external view returns (uint256);
 
     function checkIfAssetIsPresent(
         address[] memory users,
@@ -177,10 +179,11 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
         address out_token
     ) external view returns (uint256);
 
-        function calculateCollateralValue(
+    function calculateCollateralValue(
         address user
-    ) external view returns (uint256) ;
-        function calculatePendingCollateralValue(
+    ) external view returns (uint256);
+
+    function calculatePendingCollateralValue(
         address user
-    ) external view returns (uint256) ;
+    ) external view returns (uint256);
 }

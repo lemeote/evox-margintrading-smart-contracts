@@ -65,7 +65,10 @@ contract REX_EXCHANGE is Ownable {
     function SubmitOrder(
         address[2] memory pair,
         address[][2] memory participants,
-        uint256[][2] memory trade_amounts
+        uint256[][2] memory trade_amounts,
+        address[3] memory airnode_details,
+        bytes32 endpointId,
+        bytes calldata parameters
     ) public {
         // require(airnode address == airnode address set on deployment )
         (
@@ -87,7 +90,10 @@ contract REX_EXCHANGE is Ownable {
             participants,
             trade_amounts,
             takerLiabilities,
-            makerLiabilities
+            makerLiabilities,
+            airnode_details,
+            endpointId,
+            parameters
         );
     }
 
@@ -387,49 +393,7 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
-    /// @notice Borrow allows a trader to just borrow funds from the exchange
-    /// @dev Explain to a developer any extra details
-    /// @param amount the amount of token to borrow
-    /// @param borrowToken the token the user wishes to borrow
-    /// @param collateralToken the token the user wants to use as the collaterally token for MMR
-    function Borrow(
-        uint256 amount,
-        address borrowToken,
-        address collateralToken
-    ) public {
-        require(
-            REX_LIBRARY.calculateBorrowProportionAfterTrades(
-                returnAssetLogs(borrowToken),
-                amount
-            ),
-            "cannot exceed max borrow"
-        );
-        uint256 initalMarginFeeAmount = REX_LIBRARY
-            .calculateinitialMarginFeeAmount(
-                returnAssetLogs(borrowToken),
-                amount
-            );
-        initalMarginFeeAmount *= returnAssetLogs(borrowToken).assetPrice;
-        require(
-            Datahub.calculateTotalPortfolioValue(msg.sender) >=
-                Datahub.calculateAIMRForUser(msg.sender) +
-                    initalMarginFeeAmount,
-            "your portfolio value is too low to borrow this much asset"
-        );
-
-        chargeinterest(msg.sender, borrowToken, amount, false);
-
-        Datahub.addMaintenanceMarginRequirement(
-            msg.sender,
-            collateralToken,
-            borrowToken,
-            REX_LIBRARY.calculateMaintenanceRequirementForTrade(
-                returnAssetLogs(borrowToken),
-                amount
-            )
-        );
-    }
-
+ 
     /// @notice This modify's a users maintenance margin requirement
     /// @dev Explain to a developer any extra details
     /// @param user the user we are modifying the mmr of

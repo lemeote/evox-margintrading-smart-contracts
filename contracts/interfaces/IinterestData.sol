@@ -10,12 +10,13 @@ interface IInterestData {
         uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
         uint256 interestRate; // current interestRate
     }
+
     function calculateCompoundedLiabilities(
         address token,
         uint256 newLiabilities,
         uint256 usersLiabilities,
         uint256 usersOriginIndex
-    ) external view returns (uint256) ;
+    ) external view returns (uint256);
 
     function fetchRateInfo(
         address token,

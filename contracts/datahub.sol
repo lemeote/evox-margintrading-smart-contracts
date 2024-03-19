@@ -70,8 +70,6 @@ contract DataHub is Ownable {
             .fetchCurrentRateIndex(token); // updates to be the current rate index..... 1+
     }
 
-
-
     /// @notice provides to the caller the users current rate epoch
     /// @dev This is to keep track of the last epoch the user paid at
     /// @param user the users address
@@ -190,9 +188,6 @@ contract DataHub is Ownable {
         userdata[user].pending_balances[token] -= amount;
     }
 
-
-
-
     function returnPairMMROfUser(
         address user,
         address in_token,
@@ -202,7 +197,7 @@ contract DataHub is Ownable {
             userdata[user].maintenance_margin_requirement[in_token][out_token];
     }
 
-     function alterMMR(
+    function alterMMR(
         address user,
         address in_token,
         address out_token,
@@ -234,6 +229,7 @@ contract DataHub is Ownable {
             out_token
         ] -= amount;
     }
+
     /// -----------------------------------------------------------------------
     /// Margin modifiers.
     /// -----------------------------------------------------------------------
@@ -545,17 +541,17 @@ contract DataHub is Ownable {
     function calculatePendingCollateralValue(
         address user
     ) external view returns (uint256) {
-          uint256 sumOfAssets;
+        uint256 sumOfAssets;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
             address token = userdata[user].tokens[i];
             sumOfAssets +=
                 (((assetdata[token].assetPrice *
-                    userdata[user].pending_balances[token]) / 10**18 )* assetdata[token].collateralMultiplier) /
+                    userdata[user].pending_balances[token]) / 10 ** 18) *
+                    assetdata[token].collateralMultiplier) /
                 10 ** 18; // want to get like a whole normal number so balance and price correction
         }
         return sumOfAssets - calculateLiabilitiesValue(user);
     }
-
 
     /// @notice calculates the total dollar value of the users Collateral
     /// @param user the address of the user we want to query
@@ -563,16 +559,18 @@ contract DataHub is Ownable {
     function calculateCollateralValue(
         address user
     ) external view returns (uint256) {
-          uint256 sumOfAssets;
+        uint256 sumOfAssets;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
             address token = userdata[user].tokens[i];
             sumOfAssets +=
                 (((assetdata[token].assetPrice *
-                    userdata[user].asset_info[token]) / 10**18 )* assetdata[token].collateralMultiplier) /
+                    userdata[user].asset_info[token]) / 10 ** 18) *
+                    assetdata[token].collateralMultiplier) /
                 10 ** 18; // want to get like a whole normal number so balance and price correction
         }
         return sumOfAssets - calculateLiabilitiesValue(user);
     }
+
     /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
     /// @param user the address of the user we want to query
     /// @return returns their AMMR
@@ -593,8 +591,6 @@ contract DataHub is Ownable {
         }
         return AIMR;
     }
-
-
 
     /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
     /// @param user the address of the user we want to query

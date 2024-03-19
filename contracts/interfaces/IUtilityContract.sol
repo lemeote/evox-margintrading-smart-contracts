@@ -15,7 +15,7 @@ interface IUtilityContract {
         uint256 userAssets
     ) external view returns (bool);
 
-        function calculateAIMRRequirement(
+    function calculateAIMRRequirement(
         address user,
         address token,
         uint256 BalanceToLeave
@@ -34,14 +34,7 @@ interface IUtilityContract {
         address token
     ) external view returns (uint256);
 
-/*
-    function chargeInterest(
-        address token,
-        uint256 liabilities,
-        uint256 amount_to_be_added, 
-        uint256 rateIndex
-    ) external view returns (uint256);
-*/
+ 
     function calculateAmountToAddToLiabilities(
         address user,
         address token,
@@ -57,6 +50,7 @@ interface IUtilityContract {
         address[] memory users,
         address token
     ) external view returns (uint256);
+
     function returnliabilities(
         address user,
         address token
@@ -66,5 +60,4 @@ interface IUtilityContract {
         address token,
         uint256 amount
     ) external view returns (uint256);
-
 }

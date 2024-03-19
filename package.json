@@ -6,6 +6,8 @@
   "scripts": {
     "test": "npx hardhat run test/test.js",
     "deploy": "npx hardhat run scripts/deploy.js",
+    "deployzk": "npx hardhat run scripts/deploy.js --network zkevm",
+    "deploymumbai":"npx hardhat run scripts/deploy.js --network mumbai",
     "compile": "npx hardhat compile"
   },
   "author": "",
@@ -17,6 +19,7 @@
     "hardhat-deploy": "^0.11.45"
   },
   "dependencies": {
+    "@api3/airnode-protocol": "^0.14.0",
     "@openzeppelin/contracts": "^5.0.1",
     "fs": "^0.0.1-security",
     "hardhat-abi-exporter": "^2.10.1",
