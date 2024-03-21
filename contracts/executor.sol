@@ -65,7 +65,10 @@ contract REX_EXCHANGE is Ownable {
     function SubmitOrder(
         address[2] memory pair,
         address[][2] memory participants,
-        uint256[][2] memory trade_amounts
+        uint256[][2] memory trade_amounts,
+        address[3] memory airnode_details,
+        bytes32 endpointId,
+        bytes calldata parameters
     ) public {
         // require(airnode address == airnode address set on deployment )
         (
@@ -86,8 +89,11 @@ contract REX_EXCHANGE is Ownable {
             pair,
             participants,
             trade_amounts,
-            takerLiabilities,
-            makerLiabilities
+            takerLiabilities, // this is being given a vlaue
+            makerLiabilities, // or this 
+            airnode_details,
+            endpointId,
+            parameters
         );
     }
 
@@ -200,8 +206,8 @@ contract REX_EXCHANGE is Ownable {
         uint256[] memory TakerliabilityAmounts,
         uint256[] memory MakerliabilityAmounts
     ) external checkRoleAuthority {
-        Datahub.checkIfAssetIsPresent(takers, pair[1]);
-        Datahub.checkIfAssetIsPresent(makers, pair[0]);
+        Datahub.checkIfAssetIsPresent(takers, pair[1]); 
+        Datahub.checkIfAssetIsPresent(makers, pair[0]);  
         // checks if the asset is in the users portfolio already or not and adds it if it isnt
         executeTrade(
             makers,
@@ -256,11 +262,12 @@ contract REX_EXCHANGE is Ownable {
                         amountToAddToLiabilities
                     )
                 );
-            }
+            } // no
             if (
                 amounts_in_token[i] <=
                 Utilities.returnliabilities(users[i], in_token)
             ) {
+                // no
                 chargeinterest(users[i], in_token, amounts_in_token[i], true);
 
                 Modifymmr(users[i], in_token, out_token, amounts_in_token[i]);
@@ -291,7 +298,8 @@ contract REX_EXCHANGE is Ownable {
                         amounts_in_token[i]
                     );
                 }
-
+// this
+/*
                 amounts_out_token[i] >
                     Utilities.returnPending(users[i], out_token)
                     ? Datahub.removePendingBalances(
@@ -304,7 +312,7 @@ contract REX_EXCHANGE is Ownable {
                         out_token,
                         amounts_out_token[i]
                     );
-
+*/
                 Datahub.addAssets(users[i], in_token, input_amount);
 
                 // Conditions met assets changed, set flag to true
@@ -351,8 +359,6 @@ contract REX_EXCHANGE is Ownable {
             Datahub.setTotalBorrowedAmount(token, liabilitiesAccrued, true);
         }
 
-        ///Datahub.alterUsersInterestRateIndex(user, token);
-
         if (
             interestContract
                 .fetchRateInfo(
@@ -387,7 +393,6 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
- 
     /// @notice This modify's a users maintenance margin requirement
     /// @dev Explain to a developer any extra details
     /// @param user the user we are modifying the mmr of
@@ -471,13 +476,27 @@ contract REX_EXCHANGE is Ownable {
         uint256[] memory maker_amounts
     ) public checkRoleAuthority {
         for (uint256 i = 0; i < takers.length; i++) {
-            Datahub.addAssets(takers[i], pair[0], taker_amounts[i]);
-            Datahub.removePendingBalances(takers[i], pair[0], taker_amounts[i]);
+            (uint256 assets, , , , ) = Datahub.ReadUserData(takers[i], pair[0]);
+            uint256 balanceToAdd = taker_amounts[i] > assets
+                ? assets
+                : taker_amounts[i];
+
+            Datahub.addAssets(takers[i], pair[0], balanceToAdd);
+            Datahub.removePendingBalances(takers[i], pair[0], balanceToAdd);
         }
 
         for (uint256 i = 0; i < makers.length; i++) {
-            Datahub.addAssets(makers[i], pair[1], maker_amounts[i]);
-            Datahub.removePendingBalances(makers[i], pair[0], maker_amounts[i]);
+            (uint256 assets, , , , ) = Datahub.ReadUserData(makers[i], pair[1]);
+            uint256 MakerbalanceToAdd = maker_amounts[i] > assets
+                ? assets
+                : maker_amounts[i];
+
+            Datahub.addAssets(makers[i], pair[1], MakerbalanceToAdd);
+            Datahub.removePendingBalances(
+                makers[i],
+                pair[0],
+                MakerbalanceToAdd
+            );
         }
     }
 

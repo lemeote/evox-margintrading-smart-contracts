@@ -205,7 +205,7 @@ contract DataHub is Ownable {
     ) external checkRoleAuthority {
         userdata[user].maintenance_margin_requirement[in_token][
             out_token
-        ] *= amount;
+        ] *= amount / (10**18);
     }
 
     function addMaintenanceMarginRequirement(
