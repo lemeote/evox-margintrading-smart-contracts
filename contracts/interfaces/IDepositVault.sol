@@ -12,7 +12,7 @@ interface IDepositVault {
     function withdraw_token(
         address token,
         uint256 amount
-    ) external returns (bool);
+    ) external;
 
     function fetchDecimals(address token) external view returns (uint256);
 

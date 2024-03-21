@@ -165,20 +165,19 @@ contract DepositVault is Ownable {
     /// @dev Explain to a developer any extra details
     /// @param token - the address of the token to be withdrawn
     /// @param amount - the amount of tokens to be withdrawn
-    /// @return returns a bool to let the user know if withdraw was successful.
 
     // IMPORTANT MAKE SURE USERS CAN'T WITHDRAW PAST THE LIMIT SET FOR AMOUNT OF FUNDS BORROWED
     function withdraw_token(
         address token,
         uint256 amount
-    ) external returns (bool) {
+    ) external {
         (uint256 assets, , uint256 pending, , ) = Datahub.ReadUserData(
             msg.sender,
             token
         );
 
-        require(pending == 0);
-        require(amount <= assets);
+        require(pending == 0, "no sir");
+        require(amount <= assets, "no");
 
         IDataHub.AssetData memory assetInformation = Datahub.returnAssetLogs(
             token
@@ -200,7 +199,7 @@ contract DepositVault is Ownable {
                 amount
             );
 
-        require(!UnableToWithdraw && borrowProportion);
+        require(!UnableToWithdraw && borrowProportion, "nope");
 
         if (amount == assets) {
             // remove assets and asset token from their portfolio
@@ -219,9 +218,8 @@ contract DepositVault is Ownable {
 
         // recalculate interest rate because total asset supply is changing
         if (assetLogs.totalBorrowedAmount > 0) {
-            interestContract.chargeMassinterest(token);
+         //   interestContract.chargeMassinterest(token);
         }
-        return true;
     }
 
     /// @notice This alters the datahub
