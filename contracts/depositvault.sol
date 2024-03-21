@@ -193,14 +193,14 @@ contract DepositVault is Ownable {
 
         bool UnableToWithdraw = usersAMMR + AssetPriceCalulation > usersTPV;
         // if the users AMMR + price of the withdraw is bigger than their TPV dont let them withdraw this
-
+/*
         bool borrowProportion = REX_LIBRARY
             .calculateBorrowProportionAfterTrades(
                 Executor.returnAssetLogs(token),
                 amount
             );
-
-        require(!UnableToWithdraw && borrowProportion);
+*/
+        require(!UnableToWithdraw);
 
         if (amount == assets) {
             // remove assets and asset token from their portfolio
