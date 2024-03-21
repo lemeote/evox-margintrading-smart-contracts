@@ -3,17 +3,17 @@ const OracleABI = require("../artifacts/contracts/Oracle.sol/Oracle.json")
 const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.json")
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
-
+const depositABI = require("../artifacts/contracts/depositvault.sol/DepositVault.json")
 async function main() {
 
 
-  const ex = "0x5D441FD5Eb1Be84b28450b658d429f3faE3F95e4"
-  const DH = "0xcb333C6D38Ee39D0C57eFC2e0c1D13663Eb89D4B"
+  const ex = "0x82C19528944441bF4703C0f4bb4356521eC526ff"
+  const DH = "0xb6f53a0D9932281e38056961A7afAecD6846418D"
   // const DV = "0x8D972bba5fF715714c770EA6b8f4Bd3A39298B2D"
   const DV = "0xDC8F6B8704d8f90f61bFc9770c7bDB92809cF8e5"
-  const oracle = "0xB2e7443350e7d2e7bF2DcBc911760009eC84132a"
-  const util = "0x9A28852a3E1Bb56Da4a983B89C44383c6F5cD641"
-  const int = "0x8C4D71E2979DaF7655DC7627E82f73a65ACD4F12"
+  const oracle = "0x2d69e64bC23F8af2172F1c434A15B20a6c31e55E"
+  const util = "0x156d790B12864E071A0b0eE8202C64079D346687"
+  const int = "0xaF8749DA37232f2bbf3375642079841DCeEE0a4A"
 
   const [deployer] = await hre.ethers.getSigners(0);
 
@@ -21,11 +21,18 @@ async function main() {
 
   const DataHub = new hre.ethers.Contract(DH, DataHubAbi.abi, deployer);
 
+  const DepositVault = new hre.ethers.Contract(DV, depositABI.abi, deployer);
+
   const Oracle = new hre.ethers.Contract(oracle, OracleABI.abi, deployer);
 
   const utils = new hre.ethers.Contract(util, utilABI.abi, deployer);
 
   const Exchange = new hre.ethers.Contract(ex, ExecutorAbi.abi, deployer);
+
+
+  const setupDV = await DepositVault.alterdataHub(DH);
+
+  setupDV.wait()
 
   ///////////////////////////////////
   const setup = await DataHub.AlterAdminRoles(DV, ex, oracle, int);
