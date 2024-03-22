@@ -95,7 +95,7 @@ contract DepositVault is Ownable {
     ) external returns (bool) {
         require(
             Datahub.FetchAssetInitilizationStatus(token) == true,
-            "this asset is not available to be depositted or traded"
+            "this asset is not available to be deposited or traded"
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
         require(ERC20Token.transferFrom(msg.sender, address(this), amount));
