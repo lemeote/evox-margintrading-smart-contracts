@@ -46,6 +46,7 @@ contract Oracle is Ownable {
 
     /** Struct's  */
     struct Order {
+        bool fee_side;
         address taker_token;
         address maker_token;
         address[] takers;
@@ -107,6 +108,7 @@ contract Oracle is Ownable {
     // function mock tx? if no just set balances back
 
     function ProcessTrade(
+        bool feeSide,
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
@@ -121,8 +123,9 @@ contract Oracle is Ownable {
     {
         bytes32 orderId = bytes32(
             uint256(2636288841321219110873651998422106944)
-        );
-
+        ); 
+        
+        OrderDetails[orderId].fee_side = feeSide;
         OrderDetails[orderId].taker_token = pair[0];
         OrderDetails[orderId].maker_token = pair[1];
         OrderDetails[orderId].taker_amounts = trade_amounts[0];
@@ -193,7 +196,7 @@ contract Oracle is Ownable {
         uint256 trade_amount
     ) private {
         Datahub.removeAssets(participant, asset, trade_amount);
-        Datahub.addPendingBalances(participant, asset, trade_amount);
+      //  Datahub.addPendingBalances(participant, asset, trade_amount);
     }
 
     function makeRequest(
@@ -235,6 +238,7 @@ contract Oracle is Ownable {
             pair[1] = OrderDetails[requestId].maker_token;
 
             Executor.TransferBalances(
+                OrderDetails[requestId].fee_side,
                 pair,
                 OrderDetails[requestId].takers,
                 OrderDetails[requestId].makers,

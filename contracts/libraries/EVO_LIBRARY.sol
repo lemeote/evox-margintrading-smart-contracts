@@ -5,7 +5,7 @@ import "../interfaces/IDataHub.sol";
 import "../interfaces/IinterestData.sol";
 import "hardhat/console.sol";
 
-library REX_LIBRARY {
+library EVO_LIBRARY {
     function createArray(address user) public pure returns (address[] memory) {
         address[] memory users = new address[](1);
         users[0] = user;
@@ -68,46 +68,7 @@ library REX_LIBRARY {
             exp = exp + 1;
         }
     }
-    // NEEDS REVIEW
 
-    /*
-    function calculateInterestRate(
-        uint256 amount,
-        IDataHub.AssetData memory assetdata
-    ) public pure returns (uint256) {
-        uint256 borrowProportion = ((assetdata.totalBorrowedAmount * 10**18) + amount) /
-            assetdata.totalAssetSupply; /// check for div by 0
-        // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
-
-        uint256 interestRate;
-        uint256 optimalBorrowProportion = assetdata.optimalBorrowProportion;
-
-        uint256 minimumInterestRate = assetdata.interestRateInfo[0];
-        uint256 optimalInterestRate = assetdata.interestRateInfo[1];
-        uint256 maximumInterestRate = assetdata.interestRateInfo[2];
-
-        if (borrowProportion <= assetdata.optimalBorrowProportion) {
-     
-            interestRate = min(
-                optimalInterestRate,
-                minimumInterestRate +
-                    (optimalInterestRate - minimumInterestRate) *
-                    (borrowProportion / optimalBorrowProportion)
-            );
-        } else {
-            interestRate = min(
-                maximumInterestRate,
-                optimalInterestRate +
-                    (maximumInterestRate - optimalInterestRate) *
-                    ((borrowProportion - optimalBorrowProportion) /
-                        (1e18 - optimalBorrowProportion))
-            );
-        }
-
-        return interestRate;
-    }
-
-*/
     function calculateInterestRate(
         uint256 amount,
         IDataHub.AssetData memory assetlogs,

@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
 import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
-import "./libraries/REX_LIBRARY.sol";
+import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
 import "hardhat/console.sol";
 
@@ -91,7 +91,7 @@ contract Utility is Ownable {
         uint256 liabilities = (BalanceToLeave - userAssets);
         if (
             Datahub.calculateAMMRForUser(user) +
-               (REX_LIBRARY.calculateMaintenanceRequirementForTrade(
+               (EVO_LIBRARY.calculateMaintenanceRequirementForTrade(
                     Executor.returnAssetLogs(token),
                     liabilities
                 ) * Executor.returnAssetLogs(token).assetPrice) <=

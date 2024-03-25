@@ -6,6 +6,7 @@ interface IOracle {
     error OracleCallFailed(uint256);
 
     function ProcessTrade(
+        bool feeSide,
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,

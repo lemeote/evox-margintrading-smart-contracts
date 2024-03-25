@@ -30,6 +30,9 @@ contract DataHub is Ownable {
 
     IInterestData public interestContract;
 
+    address public OrderBookProviderWallet;
+    address public DAO;
+
     function AlterAdminRoles(
         address _deposit_vault,
         address _executor,
@@ -41,6 +44,8 @@ contract DataHub is Ownable {
         admins[_oracle] = true;
         admins[_interest] = true;
         interestContract = IInterestData(_interest);
+        OrderBookProviderWallet = msg.sender;
+        DAO = msg.sender;
     }
 
     /// @notice checks to see if the asset has been initilized
@@ -58,6 +63,14 @@ contract DataHub is Ownable {
     /// @notice Keeps track of contract admins
     mapping(address => bool) public admins;
 
+    function fetchOrderBookProvider() public view returns (address) {
+        return OrderBookProviderWallet;
+    }
+
+    function fetchDaoWallet() public view returns (address) {
+        return DAO;
+    }
+
     /// @notice Alters the users interest rate index (or epoch)
     /// @dev This is to change the users rate epoch, it would be changed after they pay interest.
     /// @param user the users address
@@ -70,6 +83,21 @@ contract DataHub is Ownable {
             .fetchCurrentRateIndex(token); // updates to be the current rate index..... 1+
     }
 
+    function alterUsersEarningRateIndex(
+        address user,
+        address token
+    ) external checkRoleAuthority {
+        userdata[user].earningRateIndex[token] = interestContract
+            .fetchCurrentRateIndex(token);
+    }
+
+    function viewUsersEarningRateIndex(
+        address user,
+        address token
+    ) public view returns (uint256) {
+        return userdata[user].earningRateIndex[token];
+    }
+
     /// @notice provides to the caller the users current rate epoch
     /// @dev This is to keep track of the last epoch the user paid at
     /// @param user the users address
@@ -77,7 +105,7 @@ contract DataHub is Ownable {
     function viewUsersInterestRateIndex(
         address user,
         address token
-    ) external view returns (uint256) {
+    ) public view returns (uint256) {
         return userdata[user].interestRateIndex[token];
     }
 
@@ -188,14 +216,6 @@ contract DataHub is Ownable {
         userdata[user].pending_balances[token] -= amount;
     }
 
-    function returnPairMMROfUser(
-        address user,
-        address in_token,
-        address out_token
-    ) public view returns (uint256) {
-        return
-            userdata[user].maintenance_margin_requirement[in_token][out_token];
-    }
 
     function alterMMR(
         address user,
@@ -226,6 +246,56 @@ contract DataHub is Ownable {
         uint256 amount
     ) external checkRoleAuthority {
         userdata[user].maintenance_margin_requirement[in_token][
+            out_token
+        ] -= amount;
+    }
+
+    function returnPairMMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) public view returns (uint256) {
+        return
+            userdata[user].maintenance_margin_requirement[in_token][out_token];
+    }
+
+    function returnPairIMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) public view returns (uint256) {
+        return userdata[user].initial_margin_requirement[in_token][out_token];
+    }
+
+    function alterIMR(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].initial_margin_requirement[in_token][
+            out_token
+        ] *= amount;
+    }
+
+    function addInitialMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].initial_margin_requirement[in_token][
+            out_token
+        ] += amount;
+    }
+
+    function removeInitialMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external checkRoleAuthority {
+        userdata[user].initial_margin_requirement[in_token][
             out_token
         ] -= amount;
     }
@@ -485,6 +555,14 @@ contract DataHub is Ownable {
         returns (uint256, uint256, uint256, bool, address[] memory)
     {
         uint256 assets = userdata[user].asset_info[token]; // tracks their portfolio (margined, and depositted)
+
+        (uint256 interestCharge, , ) = interestContract
+            .calculateCompoundedAssets(
+                token,
+                assets,
+                viewUsersInterestRateIndex(user, token)
+            );
+        assets += interestCharge;
         uint256 liabilities = userdata[user].liability_info[token];
         uint256 pending = userdata[user].pending_balances[token];
         bool margined = userdata[user].margined;
@@ -571,7 +649,7 @@ contract DataHub is Ownable {
         return sumOfAssets - calculateLiabilitiesValue(user);
     }
 
-    /// @notice calculates the total dollar value of the users Aggregate maintenance margin requirement
+    /// @notice calculates the total dollar value of the users Aggregate initial margin requirement
     /// @param user the address of the user we want to query
     /// @return returns their AMMR
     function calculateAIMRForUser(
@@ -582,11 +660,21 @@ contract DataHub is Ownable {
             address token = userdata[user].tokens[i];
             uint256 liabilities = userdata[user].liability_info[token];
             if (liabilities > 0) {
-                AIMR +=
-                    ((assetdata[token].assetPrice *
-                        userdata[user].liability_info[token]) *
-                        assetdata[token].initialMarginRequirement) /
-                    10 ** 18;
+                for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
+                    address token_2 = userdata[user].tokens[j];
+                    if (
+                        userdata[user].initial_margin_requirement[token][
+                            token_2
+                        ] > 0
+                    ) {
+                        AIMR +=
+                            (assetdata[token].assetPrice *
+                                userdata[user].initial_margin_requirement[
+                                    token
+                                ][token_2]) /
+                            10 ** 18;
+                    }
+                }
             }
         }
         return AIMR;

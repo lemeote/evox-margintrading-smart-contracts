@@ -6,20 +6,20 @@ interface IDataHub {
         mapping(address => uint256) asset_info; // tracks their portfolio (margined, and depositted)
         mapping(address => uint256) liability_info; // tracks what they owe per token * price
         mapping(address => mapping(address => uint256)) maintenance_margin_requirement; // tracks the MMR per token the user has in liabilities
+        mapping(address => mapping(address => uint256)) initial_margin_requirement;
         mapping(address => uint256) pending_balances;
         mapping(address => uint256) interestRateIndex;
+        mapping(address => uint256) earningRateIndex;
         bool margined; // if user has open margin positions this is true
         address[] tokens; // these are the tokens that comprise their portfolio ( assets, and liabilites, margined funds)
     }
 
-    //= [P (1 + i)n] – P
-    // (liabilities * ( 1+ average_interest rate in the periods) ^ number of periods) - liabilities.
-    // boom jackpot
+
 
     struct AssetData {
+      //  uint256[2] Tradefees; // first in the array is taker fee, next is maker fee
         uint256 collateralMultiplier;
         uint256 initialMarginFee; // assigned in function Ex
-        // inital margin fee -> add and charge on insuance of libilities -> goes to TINO + CONNER + WAKAKKIIIIII and maybe some to dao
         uint256 assetPrice;
         uint256 liquidationFee;
         uint256 initialMarginRequirement; // not for potantial removal - unnessecary
@@ -43,6 +43,13 @@ interface IDataHub {
 
     function alterUsersInterestRateIndex(address user, address token) external;
 
+    function viewUsersEarningRateIndex(
+        address user,
+        address token
+    ) external view returns (uint256);
+
+    function alterUsersEarningRateIndex(address user, address token) external;
+
     function viewUsersInterestRateIndex(
         address user,
         address token
@@ -64,7 +71,12 @@ interface IDataHub {
         address out_token,
         uint256 amount
     ) external;
-
+    function alterIMR(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
     function addLiabilities(
         address user,
         address token,
@@ -91,6 +103,33 @@ interface IDataHub {
         uint256 amount
     ) external;
 
+    function addInitialMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
+
+    function removeInitialMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
+
+    function returnPairMMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) external view returns (uint256);
+
+        function returnPairIMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) external view returns (uint256);
+
+
     function addPendingBalances(
         address user,
         address token,
@@ -102,6 +141,10 @@ interface IDataHub {
         address token,
         uint256 amount
     ) external;
+
+    function fetchOrderBookProvider() external view returns (address);
+
+    function fetchDaoWallet() external view returns (address);
 
     function SetMarginStatus(address user, bool onOrOff) external;
 
@@ -173,11 +216,6 @@ interface IDataHub {
         address user
     ) external view returns (address[] memory);
 
-    function returnPairMMROfUser(
-        address user,
-        address in_token,
-        address out_token
-    ) external view returns (uint256);
 
     function calculateCollateralValue(
         address user

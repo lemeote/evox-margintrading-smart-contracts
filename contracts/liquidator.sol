@@ -7,7 +7,7 @@ import "./interfaces/IDataHub.sol";
 import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
-import "./libraries/REX_LIBRARY.sol";
+import "./libraries/EVO_LIBRARY.sol";
 import "hardhat/console.sol";
 import "./interfaces/IExecutor.sol";
 
@@ -68,8 +68,8 @@ contract Liquidator is Ownable {
         require(CheckForLiquidation(user), "not liquidatable"); // AMMR liquidatee --> checks AMMR
         require(tokens.length == 2, "have to select a pair");
 
-        address[] memory takers = REX_LIBRARY.createArray(msg.sender);
-        address[] memory makers = REX_LIBRARY.createArray(user); //liquidatee
+        address[] memory takers = EVO_LIBRARY.createArray(msg.sender);
+        address[] memory makers = EVO_LIBRARY.createArray(user); //liquidatee
 
         uint256[] memory taker_amounts = new uint256[](1);
         uint256[] memory maker_amounts = new uint256[](1);
@@ -85,8 +85,8 @@ contract Liquidator is Ownable {
                 tokens,
                 [takers, makers],
                 [
-                    REX_LIBRARY.createNumberArray(0),
-                    REX_LIBRARY.createNumberArray(0) // this makes a 0 array lol
+                    EVO_LIBRARY.createNumberArray(0),
+                    EVO_LIBRARY.createNumberArray(0) // this makes a 0 array lol
                 ]
             ),
             "this liquidation would exceed max borrow proportion please lower the spending cap"
@@ -160,13 +160,14 @@ contract Liquidator is Ownable {
         // at this point the validation checks have gone for them to place a margin trade
         // they will not have a pending balance --> we may need to pass a liquidation flag to skip that part in execute trade
         Executor.TransferBalances(
+            true,
             tokens,
             takers,
             makers,
             taker_amounts,
             maker_amounts,
-            REX_LIBRARY.createNumberArray(0),
-            REX_LIBRARY.createNumberArray(0)
+            EVO_LIBRARY.createNumberArray(0),
+            EVO_LIBRARY.createNumberArray(0)
         );
     }
 

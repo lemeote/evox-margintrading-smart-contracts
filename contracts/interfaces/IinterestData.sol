@@ -18,6 +18,12 @@ interface IInterestData {
         uint256 usersOriginIndex
     ) external view returns (uint256);
 
+   function calculateCompoundedAssets(
+        address token,
+        uint256 usersAssets,
+        uint256 usersOriginIndex
+    ) external view returns (uint256, uint256, uint256) ;
+
     function fetchRateInfo(
         address token,
         uint256 index

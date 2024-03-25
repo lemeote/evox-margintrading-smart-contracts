@@ -27,7 +27,7 @@ async function main() {
   const oracle = initialOwner;
   // Deploy REXE library
 
-  const REX_LIB = await hre.ethers.deployContract("REX_LIBRARY");
+  const REX_LIB = await hre.ethers.deployContract("EVO_LIBRARY");
 
   await REX_LIB.waitForDeployment();
 

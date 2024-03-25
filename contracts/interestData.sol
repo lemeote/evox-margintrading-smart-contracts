@@ -7,7 +7,7 @@ import "./interfaces/IDataHub.sol";
 import "./interfaces/IExecutor.sol";
 import "./interfaces/IinterestData.sol";
 import "hardhat/console.sol";
-import "./libraries/REX_LIBRARY.sol";
+import "./libraries/EVO_LIBRARY.sol";
 
 contract interestData is Ownable {
     modifier checkRoleAuthority() {
@@ -92,19 +92,22 @@ contract interestData is Ownable {
         address token,
         uint256 usersAssets,
         uint256 usersOriginIndex
-    ) public view returns (uint256) {
-        uint256 interestCharge;
+    ) public view returns (uint256, uint256, uint256) {
         uint256 earningHours = fetchCurrentRateIndex(token) - usersOriginIndex;
 
+        uint256 DaoInterestCharge;
+        uint256 OrderBookProviderCharge;
+        uint256 interestCharge;
+
         uint256 averageHourly = 1e18 +
-            calculateAverageCumulativeInterest(
+            calculateAverageCumulativeDepositInterest(
                 usersOriginIndex,
                 fetchCurrentRateIndex(token),
                 token
             ) /
             8736;
 
-        (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY
+        (uint256 averageHourlyBase, int256 averageHourlyExp) = EVO_LIBRARY
             .normalize(averageHourly);
         averageHourlyExp = averageHourlyExp - 18;
 
@@ -112,14 +115,14 @@ contract interestData is Ownable {
         int256 hourlyChargesExp = 0;
         while (earningHours > 0) {
             if (earningHours % 2 == 1) {
-                (uint256 _base, int256 _exp) = REX_LIBRARY.normalize(
+                (uint256 _base, int256 _exp) = EVO_LIBRARY.normalize(
                     (hourlyChargesBase * averageHourlyBase)
                 );
 
                 hourlyChargesBase = _base;
                 hourlyChargesExp = hourlyChargesExp + averageHourlyExp + _exp;
             }
-            (uint256 _bases, int256 _exps) = REX_LIBRARY.normalize(
+            (uint256 _bases, int256 _exps) = EVO_LIBRARY.normalize(
                 (averageHourlyBase * averageHourlyBase)
             );
             averageHourlyBase = _bases;
@@ -142,8 +145,21 @@ contract interestData is Ownable {
             }
 
             interestCharge = compoundedAssets - usersAssets;
-        }
-        return interestCharge;
+
+            if (interestCharge > 0) {
+                if (interestCharge > 100 wei) {
+                    interestCharge = interestCharge / 100;
+
+                    interestCharge *= 80;
+
+                    OrderBookProviderCharge *= 2;
+
+                    DaoInterestCharge *= 18;
+                }
+            }
+        } // 20 / 80
+        return (interestCharge, OrderBookProviderCharge, DaoInterestCharge);
+        // now for this it will always returtn 80% of their actual interest --> to do this splits we scale up to 100% then take the 20%
     }
 
     function calculateCompoundedLiabilities(
@@ -155,15 +171,23 @@ contract interestData is Ownable {
         uint256 amountOfBilledHours = fetchCurrentRateIndex(token) -
             usersOriginIndex;
 
-        uint256 adjustedNewLiabilities = (newLiabilities *
-            (1e18 + (fetchCurrentRate(token) / 8736))) / (10 ** 18);
+        // calculate what the rate would be after their trade and charge that
 
+
+        uint256 adjustedNewLiabilities = (newLiabilities *
+            // (1e18 + (fetchCurrentRate(token) / 8736))) / (10 ** 18);
+            (1e18 +
+                (EVO_LIBRARY.calculateInterestRate(
+                    newLiabilities,
+                    Executor.returnAssetLogs(token),
+                    InterestRateEpochs[0][token][fetchCurrentRateIndex(token)]
+                ) / 8736))) / (10 ** 18);
         uint256 initalMarginFeeAmount;
 
         if (newLiabilities == 0) {
             initalMarginFeeAmount = 0;
         } else {
-            initalMarginFeeAmount = REX_LIBRARY.calculateinitialMarginFeeAmount(
+            initalMarginFeeAmount = EVO_LIBRARY.calculateinitialMarginFeeAmount(
                     Executor.returnAssetLogs(token),
                     newLiabilities
                 );
@@ -184,8 +208,7 @@ contract interestData is Ownable {
                 ) /
                 8736;
 
-
-            (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY
+            (uint256 averageHourlyBase, int256 averageHourlyExp) = EVO_LIBRARY
                 .normalize(averageHourly);
             averageHourlyExp = averageHourlyExp - 18;
 
@@ -194,7 +217,7 @@ contract interestData is Ownable {
 
             while (amountOfBilledHours > 0) {
                 if (amountOfBilledHours % 2 == 1) {
-                    (uint256 _base, int256 _exp) = REX_LIBRARY.normalize(
+                    (uint256 _base, int256 _exp) = EVO_LIBRARY.normalize(
                         (hourlyChargesBase * averageHourlyBase)
                     );
 
@@ -204,7 +227,7 @@ contract interestData is Ownable {
                         averageHourlyExp +
                         _exp;
                 }
-                (uint256 _bases, int256 _exps) = REX_LIBRARY.normalize(
+                (uint256 _bases, int256 _exps) = EVO_LIBRARY.normalize(
                     (averageHourlyBase * averageHourlyBase)
                 );
                 averageHourlyBase = _bases;
@@ -255,46 +278,31 @@ contract interestData is Ownable {
 
         uint32 counter;
 
-        startIndex += 1; /// took on 2 paid to 3 + 1 = 4 
+        startIndex += 1;
 
-        console.log(startIndex, "start index"); /// 3 + 24 true   3/24 = 0
-
-        // what we need to do is if the end index say is 169 and start is 1 the biggest should be 168
-        // if their start index is 3 and the end is 171 it should be 168
-        // endindex 877
-        // 877 - 3 = 874 / 672  = 1 * 672 == biggest start 672 
-        // biggestPossibleStartTimeframe = ((endIndex - startIndex) / timeframes[i]) * timeframes[i];
-        // 168 / 168 * 168 = 168;
-        // (starindex + timeframes[i])/ timeframes[i]
-        //  3 + 168 / 168 = 1            biggestPossibleStartTimeframe = startIndex / timeframes[i]; 
-          // 3/ 168 = 0
         for (uint256 i = 0; i < timeframes.length; i++) {
-            if (startIndex + timeframes[i] <= endIndex) { 
-                biggestPossibleStartTimeframe = ((endIndex - startIndex) / timeframes[i]) * timeframes[i]; 
+            if (startIndex + timeframes[i] <= endIndex) {
+                biggestPossibleStartTimeframe =
+                    ((endIndex - startIndex) / timeframes[i]) *
+                    timeframes[i];
                 runningDownIndex = biggestPossibleStartTimeframe; // 168
                 runningUpIndex = biggestPossibleStartTimeframe; // 168
                 break;
             }
-        } // 168 + <= endindex charge an hour
-        // 
-
+        }
         for (uint256 i = 0; i < timeframes.length; i++) {
             while (runningUpIndex + timeframes[i] <= endIndex) {
                 // this inverses the list order due to interest being stored in the opposite index format 0-4
                 uint256 adjustedIndex = timeframes.length - 1 - i;
-//2   length 5  5 - 1 - 2 = 2
+                //2   length 5  5 - 1 - 2 = 2
                 cumulativeInterestRates +=
                     fetchTimeScaledRateIndex(
                         adjustedIndex,
                         token,
-                        runningUpIndex / timeframes[i]   // 168 / 168 = 1
+                        runningUpIndex / timeframes[i] // 168 / 168 = 1
                     ).interestRate *
                     timeframes[i];
-                console.log( runningUpIndex,       fetchTimeScaledRateIndex(
-                        adjustedIndex,
-                        token,
-                        runningUpIndex / timeframes[i]   // 168 / 168 = 1
-                    ).interestRate, "rate index from loop");
+
                 runningUpIndex += timeframes[i];
                 counter++;
             }
@@ -326,9 +334,101 @@ contract interestData is Ownable {
         ) {
             return 0;
         }
-               console.log(cumulativeInterestRates, "cumulative rate");
+        console.log(cumulativeInterestRates, "cumulative rate");
         // Return the cumulative interest rates
         return cumulativeInterestRates / (endIndex - (startIndex - 1));
+    }
+
+    function calculateAverageCumulativeDepositInterest(
+        uint256 startIndex,
+        uint256 endIndex,
+        address token
+    ) public view returns (uint256) {
+        uint256 cumulativeInterestRates = 0;
+        uint16[5] memory timeframes = [8736, 672, 168, 24, 1];
+
+        uint256 cumulativeBorrowProportion;
+
+        uint256 runningUpIndex = startIndex;
+        uint256 runningDownIndex = endIndex;
+        uint256 biggestPossibleStartTimeframe;
+
+        uint32 counter;
+
+        startIndex += 1;
+
+        for (uint256 i = 0; i < timeframes.length; i++) {
+            if (startIndex + timeframes[i] <= endIndex) {
+                biggestPossibleStartTimeframe =
+                    ((endIndex - startIndex) / timeframes[i]) *
+                    timeframes[i];
+                runningDownIndex = biggestPossibleStartTimeframe; // 168
+                runningUpIndex = biggestPossibleStartTimeframe; // 168
+                break;
+            }
+        }
+        for (uint256 i = 0; i < timeframes.length; i++) {
+            while (runningUpIndex + timeframes[i] <= endIndex) {
+                uint256 adjustedIndex = timeframes.length - 1 - i;
+                cumulativeInterestRates +=
+                    fetchTimeScaledRateIndex(
+                        adjustedIndex,
+                        token,
+                        runningUpIndex / timeframes[i] // 168 / 168 = 1
+                    ).interestRate *
+                    timeframes[i];
+
+                cumulativeBorrowProportion +=
+                    fetchTimeScaledRateIndex(
+                        adjustedIndex,
+                        token,
+                        runningUpIndex / timeframes[i] // 168 / 168 = 1
+                    ).borrowProportionAtIndex *
+                    timeframes[i];
+
+                runningUpIndex += timeframes[i];
+                counter++;
+            }
+
+            // Calculate cumulative interest rates for decreasing indexes
+            while (
+                runningDownIndex >= startIndex &&
+                runningDownIndex >= timeframes[i]
+            ) {
+                //&& available
+                uint256 adjustedIndex = timeframes.length - 1 - i;
+
+                cumulativeInterestRates +=
+                    fetchTimeScaledRateIndex(
+                        adjustedIndex,
+                        token,
+                        runningDownIndex / timeframes[i]
+                    ).interestRate *
+                    timeframes[i];
+
+                cumulativeBorrowProportion +=
+                    fetchTimeScaledRateIndex(
+                        adjustedIndex,
+                        token,
+                        runningUpIndex / timeframes[i] // 168 / 168 = 1
+                    ).borrowProportionAtIndex *
+                    timeframes[i];
+
+                counter++;
+
+                runningDownIndex -= timeframes[i];
+            }
+        }
+
+        if (
+            cumulativeInterestRates == 0 || (endIndex - (startIndex - 1)) == 0
+        ) {
+            return 0;
+        }
+
+        return
+            (cumulativeInterestRates / (endIndex - (startIndex - 1))) *
+            (cumulativeBorrowProportion / (endIndex - (startIndex - 1)));
     }
 
     /// @notice Explain to an end user what this does
@@ -373,7 +473,7 @@ contract interestData is Ownable {
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .borrowProportionAtIndex = REX_LIBRARY.calculateBorrowProportion(
+            .borrowProportionAtIndex = EVO_LIBRARY.calculateBorrowProportion(
             Executor.returnAssetLogs(token)
         );
 
@@ -386,7 +486,7 @@ contract interestData is Ownable {
             // 168
             console.log("SET DAILY RATE");
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .interestRate = REX_LIBRARY.calculateAverage(
+                .interestRate = EVO_LIBRARY.calculateAverage(
                 fetchRatesList(
                     currentInterestIndex[token] - 23, // 1
                     currentInterestIndex[token], //24
@@ -400,8 +500,14 @@ contract interestData is Ownable {
                 token
             );
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .borrowProportionAtIndex = REX_LIBRARY
-                .calculateBorrowProportion(Executor.returnAssetLogs(token));
+                .borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
+                fetchBorrowProportionList(
+                    currentInterestIndex[token] - 23, // 1
+                    currentInterestIndex[token], //24
+                    token
+                )
+            );
+
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .rateInfo = InterestRateEpochs[1][token][
                 uint(currentInterestIndex[token]) - 1
@@ -411,7 +517,7 @@ contract interestData is Ownable {
             console.log("SET WEEKLY RATE");
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
-            ].interestRate = REX_LIBRARY.calculateAverage(
+            ].interestRate = EVO_LIBRARY.calculateAverage(
                 fetchRatesList(
                     currentInterestIndex[token] - 167,
                     currentInterestIndex[token],
@@ -434,8 +540,12 @@ contract interestData is Ownable {
 
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
-            ].borrowProportionAtIndex = REX_LIBRARY.calculateBorrowProportion(
-                Executor.returnAssetLogs(token)
+            ].borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
+                fetchBorrowProportionList(
+                    currentInterestIndex[token] - 167,
+                    currentInterestIndex[token],
+                    token
+                )
             );
 
             InterestRateEpochs[2][token][
@@ -448,7 +558,7 @@ contract interestData is Ownable {
             console.log("SET MONTHLY RATE");
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672) //8736, 672, 168, 24
-            ].interestRate = REX_LIBRARY.calculateAverage(
+            ].interestRate = EVO_LIBRARY.calculateAverage(
                 fetchRatesList(
                     currentInterestIndex[token] - 671,
                     currentInterestIndex[token],
@@ -464,8 +574,12 @@ contract interestData is Ownable {
 
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672)
-            ].borrowProportionAtIndex = REX_LIBRARY.calculateBorrowProportion(
-                Executor.returnAssetLogs(token)
+            ].borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
+                fetchBorrowProportionList(
+                    currentInterestIndex[token] - 671,
+                    currentInterestIndex[token],
+                    token
+                )
             );
 
             InterestRateEpochs[3][token][
@@ -477,7 +591,7 @@ contract interestData is Ownable {
         if (index % 8736 == 0) {
             InterestRateEpochs[4][token][
                 uint(currentInterestIndex[token] / 8736)
-            ].interestRate = REX_LIBRARY.calculateAverage(
+            ].interestRate = EVO_LIBRARY.calculateAverage(
                 fetchRatesList(
                     currentInterestIndex[token] - 8735,
                     currentInterestIndex[token],
@@ -492,10 +606,13 @@ contract interestData is Ownable {
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
             InterestRateEpochs[4][token][
                 uint(currentInterestIndex[token] / 8736)
-            ].borrowProportionAtIndex = REX_LIBRARY.calculateBorrowProportion(
-                Executor.returnAssetLogs(token)
+            ].borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
+                fetchBorrowProportionList(
+                    currentInterestIndex[token] - 8735,
+                    currentInterestIndex[token],
+                    token
+                )
             );
-
             InterestRateEpochs[4][token][
                 uint(currentInterestIndex[token] / 8736)
             ].rateInfo = InterestRateEpochs[4][token][
@@ -520,6 +637,25 @@ contract interestData is Ownable {
             counter += 1;
         }
         return interestRatesForThePeriod;
+    }
+
+    function fetchBorrowProportionList(
+        uint256 startingIndex,
+        uint256 endingIndex,
+        address token
+    ) private view returns (uint256[] memory) {
+        uint256[] memory BorrowProportionsForThePeriod = new uint256[](
+            (endingIndex) - startingIndex
+        );
+        uint counter = 0;
+        for (uint256 i = startingIndex; i < endingIndex; i++) {
+            BorrowProportionsForThePeriod[counter] = InterestRateEpochs[0][
+                token
+            ][i].borrowProportionAtIndex;
+
+            counter += 1;
+        }
+        return BorrowProportionsForThePeriod;
     }
 
     function initInterest(
@@ -589,7 +725,7 @@ contract interestData is Ownable {
             updateInterestIndex(
                 token,
                 fetchCurrentRateIndex(token),
-                REX_LIBRARY.calculateInterestRate(
+                EVO_LIBRARY.calculateInterestRate(
                     chargeStaticLiabilityInterest(
                         token,
                         fetchCurrentRateIndex(token)

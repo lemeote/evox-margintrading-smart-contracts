@@ -7,13 +7,11 @@ import "./interfaces/IDataHub.sol";
 import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
-import "./libraries/REX_LIBRARY.sol";
+import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IinterestData.sol";
 import "hardhat/console.sol";
 
-contract REX_EXCHANGE is Ownable {
-    error OracleCallFailed(uint256);
-
+contract EVO_EXCHANGE is Ownable {
     /** Address's  */
 
     IDataHub public Datahub;
@@ -26,10 +24,20 @@ contract REX_EXCHANGE is Ownable {
 
     IUtilityContract public Utilities;
 
-    address public FeeWallet =
-        address(0x1167E56ABcf9d2dF6354e03610E301B8a2934955);
-
-    address public liquidator;
+    function alterAdminRoles(
+        address _DataHub,
+        address _deposit_vault,
+        address _oracle,
+        address _interest,
+        address _liquidator
+    ) public onlyOwner {
+        admins[_DataHub] = true;
+        admins[_deposit_vault] = true;
+        admins[_oracle] = true;
+        admins[_interest] = true;
+        admins[_liquidator] = true;
+        interestContract = IInterestData(_interest);
+    }
 
     /** Constructor  */
     constructor(
@@ -41,21 +49,27 @@ contract REX_EXCHANGE is Ownable {
         address _interest,
         address _liquidator
     ) Ownable(initialOwner) {
+        alterAdminRoles(
+            _DataHub,
+            _deposit_vault,
+            oracle,
+            _interest,
+            _liquidator
+        );
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_deposit_vault);
         Oracle = IOracle(oracle);
         Utilities = IUtilityContract(_utility);
         interestContract = IInterestData(_interest);
-        liquidator = _liquidator;
     }
 
     modifier checkRoleAuthority() {
-        require(
-            msg.sender == address(Oracle) || msg.sender == liquidator,
-            "Unauthorized"
-        );
+        require(admins[msg.sender] == true, "Unauthorized");
         _;
     }
+
+    /// @notice Keeps track of contract admins
+    mapping(address => bool) public admins;
 
     /// @notice This is the function users need to submit an order to the exchange
     /// @dev Explain to a developer any extra details
@@ -63,10 +77,12 @@ contract REX_EXCHANGE is Ownable {
     /// @param participants of the trade 2 nested arrays
     /// @param trade_amounts the trades amounts for each participant
     function SubmitOrder(
+        bool feeSide,
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts
     ) public {
+        require(DepositVault.viewcircuitBreakerStatus() == false);
         // require(airnode address == airnode address set on deployment )
         (
             uint256[] memory takerLiabilities,
@@ -78,11 +94,18 @@ contract REX_EXCHANGE is Ownable {
             );
 
         // this checks if the asset they are trying to trade isn't pass max borrow
-        maxBorrowCheck(pair, participants, trade_amounts);
+        require(
+            maxBorrowCheck(pair, participants, trade_amounts),
+            "This trade puts the protocol above maximum borrow proportion and cannot be completed"
+        );
 
-        processMargin(pair, participants, trade_amounts);
+        require(
+            processMargin(pair, participants, trade_amounts),
+            "This trade failed the margin checks for one or more users"
+        );
 
         Oracle.ProcessTrade(
+            feeSide,
             pair,
             participants,
             trade_amounts,
@@ -99,17 +122,17 @@ contract REX_EXCHANGE is Ownable {
     ) public view returns (bool) {
         uint256 newLiabilitiesIssued;
         for (uint256 i = 0; i < pair.length; i++) {
-            newLiabilitiesIssued = REX_LIBRARY.calculateTotal(
+            newLiabilitiesIssued = EVO_LIBRARY.calculateTotal(
                 trade_amounts[i]
             ) > Utilities.returnBulkAssets(participants[i], pair[i])
-                ? REX_LIBRARY.calculateTotal(trade_amounts[i]) -
+                ? EVO_LIBRARY.calculateTotal(trade_amounts[i]) -
                     Utilities.returnBulkAssets(participants[i], pair[i])
                 : 0;
 
             if (newLiabilitiesIssued > 0) {
                 return
-                    REX_LIBRARY.calculateBorrowProportionAfterTrades(
-                        returnAssetLogs(pair[i]),
+                    EVO_LIBRARY.calculateBorrowProportionAfterTrades(
+                        Datahub.returnAssetLogs(pair[i]),
                         newLiabilitiesIssued
                     );
             }
@@ -160,12 +183,14 @@ contract REX_EXCHANGE is Ownable {
             );
 
             if (tradeAmounts[i] > assets) {
-                uint256 initalMarginFeeAmount = REX_LIBRARY
+                uint256 initalMarginFeeAmount = EVO_LIBRARY
                     .calculateinitialMarginFeeAmount(
-                        returnAssetLogs(pair),
+                        Datahub.returnAssetLogs(pair),
                         tradeAmounts[i]
                     );
-                initalMarginFeeAmount *= returnAssetLogs(pair).assetPrice;
+                initalMarginFeeAmount *= (Datahub
+                    .returnAssetLogs(pair)
+                    .assetPrice) / 10**18;
 
                 if (
                     Datahub.calculateTotalPortfolioValue(participants[i]) >
@@ -183,6 +208,8 @@ contract REX_EXCHANGE is Ownable {
         return true;
     }
 
+    address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
+
     /// @notice This called the execute trade functions on the particpants and checks if the assets are already in their portfolio
     /// @param pair the pair of assets involved in the trade
     /// @param takers the taker wallet addresses
@@ -192,6 +219,7 @@ contract REX_EXCHANGE is Ownable {
     /// @param TakerliabilityAmounts the new liabilities being issued to the takers
     /// @param MakerliabilityAmounts the new liabilities being issued to the makers
     function TransferBalances(
+        bool feeSide,
         address[2] memory pair,
         address[] memory takers,
         address[] memory makers,
@@ -200,24 +228,48 @@ contract REX_EXCHANGE is Ownable {
         uint256[] memory TakerliabilityAmounts,
         uint256[] memory MakerliabilityAmounts
     ) external checkRoleAuthority {
-        Datahub.checkIfAssetIsPresent(takers, pair[1]);
+        require(DepositVault.viewcircuitBreakerStatus() == false);
+        Datahub.checkIfAssetIsPresent(takers, pair[1]); /// charge the fee rate below on this
         Datahub.checkIfAssetIsPresent(makers, pair[0]);
-        // checks if the asset is in the users portfolio already or not and adds it if it isnt
+        uint256[2] memory pair1Fees;
+        uint256[2] memory pair0Fees;
+
+        if (feeSide == true) {
+            if (pair[1] != USDT) {
+                // taker
+                pair1Fees = Datahub.returnAssetLogs(pair[1]).Tradefees;
+            } else {
+                pair1Fees = Datahub.returnAssetLogs(pair[0]).Tradefees;
+            }
+            // pair1Fees[0]
+        } else {
+            if (pair[1] != USDT) {
+                //maker
+                pair0Fees = Datahub.returnAssetLogs(pair[1]).Tradefees;
+            } else {
+                pair0Fees = Datahub.returnAssetLogs(pair[0]).Tradefees;
+            }
+            // pair1Fees[1]
+        }
+
         executeTrade(
-            makers,
-            taker_amounts,
-            maker_amounts,
-            MakerliabilityAmounts,
-            pair[1],
-            pair[0]
-        );
-        executeTrade(
+            pair1Fees[0],
             takers,
             maker_amounts,
             taker_amounts,
             TakerliabilityAmounts,
             pair[0],
             pair[1]
+        );
+
+        executeTrade(
+            pair0Fees[1],
+            makers,
+            taker_amounts,
+            maker_amounts,
+            MakerliabilityAmounts,
+            pair[1],
+            pair[0]
         );
     }
 
@@ -230,6 +282,7 @@ contract REX_EXCHANGE is Ownable {
     /// @param  out_token the token leaving the users wallet
     /// @param  in_token the token coming into the users wallet
     function executeTrade(
+        uint256 feeRate,
         address[] memory users,
         uint256[] memory amounts_in_token,
         uint256[] memory amounts_out_token,
@@ -251,8 +304,8 @@ contract REX_EXCHANGE is Ownable {
                     users[i],
                     out_token,
                     in_token,
-                    REX_LIBRARY.calculateMaintenanceRequirementForTrade(
-                        returnAssetLogs(in_token),
+                    EVO_LIBRARY.calculateMaintenanceRequirementForTrade(
+                        Datahub.returnAssetLogs(in_token),
                         amountToAddToLiabilities
                     )
                 );
@@ -264,6 +317,7 @@ contract REX_EXCHANGE is Ownable {
                 chargeinterest(users[i], in_token, amounts_in_token[i], true);
 
                 Modifymmr(users[i], in_token, out_token, amounts_in_token[i]);
+                Modifyimr(users[i], in_token, out_token, amounts_in_token[i]);
             } else {
                 uint256 subtractedFromLiabilites = Utilities.returnliabilities(
                     users[i],
@@ -290,8 +344,14 @@ contract REX_EXCHANGE is Ownable {
                         out_token,
                         amounts_in_token[i]
                     );
+                    Modifyimr(
+                        users[i],
+                        in_token,
+                        out_token,
+                        amounts_in_token[i]
+                    );
                 }
-
+                /*
                 amounts_out_token[i] >
                     Utilities.returnPending(users[i], out_token)
                     ? Datahub.removePendingBalances(
@@ -304,12 +364,63 @@ contract REX_EXCHANGE is Ownable {
                         out_token,
                         amounts_out_token[i]
                     );
+*/
+                (uint256 assets, , , , ) = Datahub.ReadUserData(
+                    users[i],
+                    in_token
+                );
 
+                if (assets > 0) {
+                    debitAssetInterest(users[i], in_token);
+                }
+                // mark with the boolean 
+                // if the boolean is true 
+                // then lower the amount in token
+                // return the amount to raise the out token by in the next order
+                // 
+                /*
+
+                if(TakerOrder == true){
+                   input_amount *= feeRate; // discount the amount in 
+                   return the amount you lowered their in token
+                }else{
+                    multiply the  amount you lowered their in token by the price of the out_token to get the out_token equalivelent 
+                    add that to the makers assets () - spread and send to evox dao wallet
+                }
+
+                */
+                input_amount *= feeRate;
+                // we add assets of the in token to maker and taker -->
                 Datahub.addAssets(users[i], in_token, input_amount);
 
                 // Conditions met assets changed, set flag to true
             }
         }
+    }
+
+    function debitAssetInterest(address user, address token) private {
+        (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
+        (
+            uint256 interestCharge,
+            uint256 OrderBookProviderCharge,
+            uint256 DaoInterestCharge
+        ) = interestContract.calculateCompoundedAssets(
+                token,
+                assets,
+                Datahub.viewUsersInterestRateIndex(user, token)
+            );
+        Datahub.alterUsersEarningRateIndex(user, token);
+
+        Datahub.addAssets(user, token, interestCharge);
+        Datahub.addAssets(Datahub.fetchDaoWallet(), token, DaoInterestCharge);
+
+        Datahub.addAssets(
+            Datahub.fetchOrderBookProvider(),
+            token,
+            OrderBookProviderCharge
+        );
+
+        /// need to update earning index IMPORTANT change to earning index its  a must because of the withdraws
     }
 
     /// @notice Explain to an end user what this does
@@ -351,8 +462,6 @@ contract REX_EXCHANGE is Ownable {
             Datahub.setTotalBorrowedAmount(token, liabilitiesAccrued, true);
         }
 
-        ///Datahub.alterUsersInterestRateIndex(user, token);
-
         if (
             interestContract
                 .fetchRateInfo(
@@ -375,9 +484,9 @@ contract REX_EXCHANGE is Ownable {
             interestContract.updateInterestIndex(
                 token,
                 interestContract.fetchCurrentRateIndex(token),
-                REX_LIBRARY.calculateInterestRate(
+                EVO_LIBRARY.calculateInterestRate(
                     liabilitiesAccrued,
-                    returnAssetLogs(token),
+                    Datahub.returnAssetLogs(token),
                     interestContract.fetchRateInfo(
                         token,
                         interestContract.fetchCurrentRateIndex(token)
@@ -387,7 +496,6 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
- 
     /// @notice This modify's a users maintenance margin requirement
     /// @dev Explain to a developer any extra details
     /// @param user the user we are modifying the mmr of
@@ -400,10 +508,12 @@ contract REX_EXCHANGE is Ownable {
         address out_token,
         uint256 amount
     ) private {
-        IDataHub.AssetData memory assetLogsOutToken = returnAssetLogs(
+        IDataHub.AssetData memory assetLogsOutToken = Datahub.returnAssetLogs(
             out_token
         );
-        IDataHub.AssetData memory assetLogsInToken = returnAssetLogs(in_token);
+        IDataHub.AssetData memory assetLogsInToken = Datahub.returnAssetLogs(
+            in_token
+        );
         if (amount <= Utilities.returnliabilities(user, in_token)) {
             uint256 StartingDollarMMR = (amount *
                 assetLogsOutToken.MaintenanceMarginRequirement) / 10 ** 18; // check to make sure this is right
@@ -422,7 +532,7 @@ contract REX_EXCHANGE is Ownable {
                     Datahub.returnPairMMROfUser(user, in_token, out_token)
                 );
 
-                uint256 liabilityMultiplier = REX_LIBRARY
+                uint256 liabilityMultiplier = EVO_LIBRARY
                     .calculatedepositLiabilityRatio(
                         Utilities.returnliabilities(user, in_token),
                         overage
@@ -463,6 +573,78 @@ contract REX_EXCHANGE is Ownable {
         }
     }
 
+    function Modifyimr(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) private {
+        IDataHub.AssetData memory assetLogsOutToken = Datahub.returnAssetLogs(
+            out_token
+        );
+        IDataHub.AssetData memory assetLogsInToken = Datahub.returnAssetLogs(
+            in_token
+        );
+        if (amount <= Utilities.returnliabilities(user, in_token)) {
+            uint256 StartingDollarIMR = (amount *
+                assetLogsOutToken.initialMarginRequirement) / 10 ** 18; // check to make sure this is right
+            if (
+                StartingDollarIMR >
+                Datahub.returnPairIMROfUser(user, in_token, out_token)
+            ) {
+                uint256 overage = (StartingDollarIMR -
+                    Datahub.returnPairIMROfUser(user, in_token, out_token)) /
+                    assetLogsInToken.initialMarginRequirement;
+
+                Datahub.removeInitialMarginRequirement(
+                    user,
+                    in_token,
+                    out_token,
+                    Datahub.returnPairIMROfUser(user, in_token, out_token)
+                );
+
+                uint256 liabilityMultiplier = EVO_LIBRARY
+                    .calculatedepositLiabilityRatio(
+                        Utilities.returnliabilities(user, in_token),
+                        overage
+                    );
+
+                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
+
+                for (uint256 i = 0; i < tokens.length; i++) {
+                    Datahub.alterIMR(
+                        user,
+                        in_token,
+                        tokens[i],
+                        liabilityMultiplier
+                    );
+                }
+            } else {
+                Datahub.removeInitialMarginRequirement(
+                    user,
+                    in_token,
+                    out_token,
+                    StartingDollarIMR
+                );
+            }
+        } else {
+            for (
+                uint256 i = 0;
+                i < Datahub.returnUsersAssetTokens(user).length;
+                i++
+            ) {
+                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
+                Datahub.removeInitialMarginRequirement(
+                    user,
+                    in_token,
+                    tokens[i],
+                    Datahub.returnPairIMROfUser(user, in_token, tokens[i])
+                );
+            }
+        }
+    }
+
+    /*
     function revertTrade(
         address[2] memory pair,
         address[] memory takers,
@@ -480,24 +662,26 @@ contract REX_EXCHANGE is Ownable {
             Datahub.removePendingBalances(makers[i], pair[0], maker_amounts[i]);
         }
     }
+    */
 
     /// @notice This returns all asset data from the asset data struct from IDatahub
     /// @param token the token we are fetching the data for
     /// @return assetLogs the asset logs for the asset
+    /*
     function returnAssetLogs(
         address token
     ) public view returns (IDataHub.AssetData memory assetLogs) {
         IDataHub.AssetData memory assetlogs = Datahub.returnAssetLogs(token);
         return assetlogs;
     }
-
+*/
     /// @notice Alters the Admin roles for the contract
     /// @param _datahub  the new address for the datahub
     /// @param _depositVault the new address for the deposit vault
     /// @param _oracle the new address for oracle
     /// @param _utility the new address for the utility contract
     /// @param  _int the new address for the interest contract
-    function alterAdminRoles(
+    function alterContractStrucutre(
         address _datahub,
         address _depositVault,
         address _oracle,

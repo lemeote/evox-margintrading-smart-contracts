@@ -4,6 +4,7 @@ import "../interfaces/IDataHub.sol";
 
 interface IExecutor {
     function TransferBalances(
+        bool feeSide,
         address[2] memory pair,
         address[] memory takers,
         address[] memory makers,

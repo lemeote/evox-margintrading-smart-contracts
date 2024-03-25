@@ -2,7 +2,7 @@ const hre = require("hardhat");
 const tokenabi = require("../scripts/token_abi.json");
 const depositABI = require("../artifacts/contracts/depositvault.sol/DepositVault.json")
 const OracleABI = require("../artifacts/contracts/Oracle.sol/Oracle.json")
-const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.json")
+const ExecutorAbi = require("../artifacts/contracts/executor.sol/EVO_EXCHANGE.json")
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
@@ -29,16 +29,16 @@ async function main() {
     const oracle = initialOwner;
     // Deploy REXE library
 
-    const REX_LIB = await hre.ethers.deployContract("REX_LIBRARY");
+    const EVO_LIB = await hre.ethers.deployContract("EVO_LIBRARY");
 
-    await REX_LIB.waitForDeployment();
+    await EVO_LIB.waitForDeployment();
 
-    console.log("REX Library deployed to", await REX_LIB.getAddress());
+    console.log("EVO Library deployed to", await EVO_LIB.getAddress());
 
 
     const Interest = await hre.ethers.getContractFactory("interestData", {
         libraries: {
-            REX_LIBRARY: await REX_LIB.getAddress(),
+            EVO_LIBRARY: await EVO_LIB.getAddress(),
         },
     });
 
@@ -59,7 +59,7 @@ async function main() {
 
     const depositVault = await hre.ethers.getContractFactory("DepositVault", {
         libraries: {
-            REX_LIBRARY: await REX_LIB.getAddress(),
+            EVO_LIBRARY: await EVO_LIB.getAddress(),
         },
     });
     const Deploy_depositVault = await depositVault.deploy(initialOwner, await Deploy_dataHub.getAddress(), initialOwner, await Deploy_interest.getAddress());
@@ -78,7 +78,7 @@ async function main() {
 
     const Utility = await hre.ethers.getContractFactory("Utility", {
         libraries: {
-            REX_LIBRARY: await REX_LIB.getAddress(),
+            EVO_LIBRARY: await EVO_LIB.getAddress(),
         },
     });
     const Deploy_Utilities = await Utility.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), initialOwner, await Deploy_interest.getAddress());
@@ -87,16 +87,16 @@ async function main() {
 
     const Liquidator = await hre.ethers.getContractFactory("Liquidator", {
         libraries: {
-          REX_LIBRARY: await REX_LIB.getAddress(),
+            EVO_LIBRARY: await EVO_LIB.getAddress(),
         },
       });
       const Deploy_Liquidator = await Liquidator.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner); // need to alter the ex after 
     
       console.log("Liquidator deployed to", await Deploy_Liquidator.getAddress());
     
-      const Exchange = await hre.ethers.getContractFactory("REX_EXCHANGE", {
+      const Exchange = await hre.ethers.getContractFactory("EVO_EXCHANGE", {
         libraries: {
-          REX_LIBRARY: await REX_LIB.getAddress(),
+            EVO_LIBRARY: await EVO_LIB.getAddress(),
         },
       });
     
@@ -341,7 +341,7 @@ async function main() {
 
        let usersIndex = await DataHub.viewUsersInterestRateIndex(signers[0].address, await USDT.getAddress() )
 
-
+       //let RateIndex = await _Interest.fetchCurrentRateIndex(await USDT.getAddress());
 
 
     
