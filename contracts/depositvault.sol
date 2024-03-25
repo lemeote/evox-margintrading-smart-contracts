@@ -206,69 +206,6 @@ contract DepositVault is Ownable {
         }
     }
 
-        /* DEPOSIT FOR FUNCTION */
-
-    function deposit_token_for(
-    address beneficiary,
-    address token,
-    uint256 amount
-) external returns (bool) {
-    require(
-        Datahub.FetchAssetInitilizationStatus(token) == true,
-        "this asset is not available to be deposited or traded"
-    );
-    IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
-    require(ERC20Token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
-
-    Datahub.settotalAssetSupply(token, amount, true);
-
-    (, uint256 liabilities, , , address[] memory tokens) = Datahub
-        .ReadUserData(beneficiary, token);
-
-    if (tokens.length == 0) {
-        totalHistoricalUsers += 1;
-        // Datahub.alterUsersInterestRateIndex(beneficiary);
-    }
-
-    if (liabilities > 0) {
-        if (amount <= liabilities) {
-            uint256 liabilityMultiplier = REX_LIBRARY
-                .calculatedepositLiabilityRatio(liabilities, amount);
-
-            Datahub.alterLiabilities(
-                beneficiary,
-                token,
-                ((10 ** 18) - liabilityMultiplier)
-            );
-
-            Datahub.setTotalBorrowedAmount(token, amount, false);
-
-            interestContract.chargeMassinterest(token);
-
-            return true;
-        } else {
-            modifyMMROnDeposit(beneficiary, token, amount);
-            uint256 amountAddedtoAssets = amount - liabilities;
-
-            Datahub.addAssets(beneficiary, token, amountAddedtoAssets);
-            Datahub.removeLiabilities(beneficiary, token, liabilities);
-            Datahub.setTotalBorrowedAmount(token, liabilities, false);
-
-            Datahub.changeMarginStatus(beneficiary);
-            interestContract.chargeMassinterest(token);
-
-            return true;
-        }
-    } else {
-        address[] memory users = new address[](1);
-        users[0] = beneficiary;
-
-        Datahub.checkIfAssetIsPresent(users, token);
-        Datahub.addAssets(beneficiary, token, amount);
-
-        return true;
-    }
-}
 
     /* WITHDRAW FUNCTION */
 
@@ -366,7 +303,7 @@ contract DepositVault is Ownable {
             OrderBookProviderCharge
         );
     }
-
+        /* DEPOSIT FOR FUNCTION */
     function deposit_token_for(
         address beneficiary,
         address token,
