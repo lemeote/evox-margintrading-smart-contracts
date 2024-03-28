@@ -159,6 +159,13 @@ contract DepositVault is Ownable {
         }
     }
 
+    mapping(address => uint256) public token_withdraws_hour;
+    uint256 lastWithdrawUpdateTime = block.timestamp;
+
+    event hazard(uint256, uint256);
+
+    error DangerousWithdraw();
+
     /* WITHDRAW FUNCTION */
 
     /// @notice This withdraws tokens from the exchange
@@ -168,6 +175,7 @@ contract DepositVault is Ownable {
     /// @return returns a bool to let the user know if withdraw was successful.
 
     // IMPORTANT MAKE SURE USERS CAN'T WITHDRAW PAST THE LIMIT SET FOR AMOUNT OF FUNDS BORROWED
+
     function withdraw_token(
         address token,
         uint256 amount
@@ -179,6 +187,43 @@ contract DepositVault is Ownable {
 
         require(pending == 0);
         require(amount <= assets);
+
+        if (
+            amount + token_withdraws_hour[token] >
+            (
+                interestContract
+                    .fetchRateInfo(
+                        token,
+                        interestContract.fetchCurrentRateIndex(token)
+                    )
+                    .totalAssetSuplyAtIndex
+            ) *
+                2e17
+        ) {
+            emit hazard(block.timestamp, token_withdraws_hour[token]);
+        }
+
+        if (
+            amount + token_withdraws_hour[token] >
+            (
+                interestContract
+                    .fetchRateInfo(
+                        token,
+                        interestContract.fetchCurrentRateIndex(token)
+                    )
+                    .totalAssetSuplyAtIndex
+            ) *
+                3e17
+        ) {
+            revert DangerousWithdraw();
+        }
+
+        token_withdraws_hour[token] += amount;
+
+        if (lastWithdrawUpdateTime + 3600 >= block.timestamp) {
+            lastWithdrawUpdateTime = block.timestamp;
+            token_withdraws_hour[token] = 0;
+        }
 
         IDataHub.AssetData memory assetInformation = Datahub.returnAssetLogs(
             token
@@ -193,13 +238,15 @@ contract DepositVault is Ownable {
 
         bool UnableToWithdraw = usersAMMR + AssetPriceCalulation > usersTPV;
         // if the users AMMR + price of the withdraw is bigger than their TPV dont let them withdraw this
-/*
-        bool borrowProportion = REX_LIBRARY
-            .calculateBorrowProportionAfterTrades(
+
+        require(
+            REX_LIBRARY.calculateBorrowProportionAfterWithdraw(
                 Executor.returnAssetLogs(token),
                 amount
-            );
-*/
+            ),
+            "You cannot withdraw this amount as it would put the exchange above maximum borrow proportion, please try a smaller amount"
+        );
+
         require(!UnableToWithdraw);
 
         if (amount == assets) {

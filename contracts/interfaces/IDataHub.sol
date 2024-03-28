@@ -17,6 +17,7 @@ interface IDataHub {
     // boom jackpot
 
     struct AssetData {
+        uint256[2] tradeFees;
         uint256 collateralMultiplier;
         uint256 initialMarginFee; // assigned in function Ex
         // inital margin fee -> add and charge on insuance of libilities -> goes to TINO + CONNER + WAKAKKIIIIII and maybe some to dao
@@ -32,6 +33,13 @@ interface IDataHub {
     }
 
     function addAssets(address user, address token, uint256 amount) external;
+   function fetchTotalAssetSupply(
+        address token
+    ) external view returns (uint256);
+      function tradeFee(
+        address token,
+        uint256 feeType
+    ) external view returns (uint256);
 
     function calculateAIMRForUser(
         address user,
@@ -43,10 +51,16 @@ interface IDataHub {
 
     function alterUsersInterestRateIndex(address user, address token) external;
 
+    function _USDT() external view returns (address);
+
     function viewUsersInterestRateIndex(
         address user,
         address token
     ) external view returns (uint256);
+
+    function fetchOrderBookProvider() external view returns (address);
+
+    function fetchDaoWallet() external view returns (address);
 
     function fetchTotalBorrowedAmount(
         address token

@@ -34,15 +34,18 @@ contract DataHub is Ownable {
         address _deposit_vault,
         address _executor,
         address _oracle,
-        address _interest
+        address _interest,
+        address _usdt
     ) public onlyOwner {
         admins[_executor] = true;
         admins[_deposit_vault] = true;
         admins[_oracle] = true;
         admins[_interest] = true;
         interestContract = IInterestData(_interest);
+        USDT = _usdt;
     }
 
+    address public USDT = address(0xaBAD60e4e01547E2975a96426399a5a0578223Cb);
     /// @notice checks to see if the asset has been initilized
     /// @dev once an asset is tradeable this is true
     mapping(address => bool) public assetInitialized;
@@ -79,6 +82,28 @@ contract DataHub is Ownable {
         address token
     ) external view returns (uint256) {
         return userdata[user].interestRateIndex[token];
+    }
+
+    function _USDT() external view returns (address) {
+        return USDT;
+    }
+
+    address public OrderBookProviderWallet;
+    address public DAO;
+
+    function fetchOrderBookProvider() public view returns (address) {
+        return OrderBookProviderWallet;
+    }
+
+    function fetchDaoWallet() public view returns (address) {
+        return DAO;
+    }
+
+    function tradeFee(
+        address token,
+        uint256 feeType
+    ) public view returns (uint256) {
+        return 1e18 - (assetdata[token].tradeFees[feeType]);
     }
 
     /// -----------------------------------------------------------------------
@@ -203,9 +228,9 @@ contract DataHub is Ownable {
         address out_token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].maintenance_margin_requirement[in_token][
-            out_token
-        ] *= amount / (10**18);
+        userdata[user].maintenance_margin_requirement[in_token][out_token] *=
+            amount /
+            (10 ** 18);
     }
 
     function addMaintenanceMarginRequirement(
@@ -394,7 +419,14 @@ contract DataHub is Ownable {
     ) external view returns (uint256) {
         return assetdata[token].totalBorrowedAmount;
     }
-
+    /// @notice Fetches the total amount borrowed of the token
+    /// @param token the token being queried
+    /// @return the total borrowed amount
+    function fetchTotalAssetSupply(
+        address token
+    ) external view returns (uint256) {
+        return assetdata[token].totalAssetSupply;
+    }
     /// -----------------------------------------------------------------------
     /// Asset Data functions  -->
     /// -----------------------------------------------------------------------
@@ -429,6 +461,7 @@ contract DataHub is Ownable {
     function InitTokenMarket(
         address token,
         uint256 assetPrice,
+        uint256[2] memory fees,
         uint256 collateralMultiplier,
         uint256 initialMarginFee,
         uint256 liquidationFee,
@@ -442,6 +475,7 @@ contract DataHub is Ownable {
 
         assetdata[token] = IDataHub.AssetData({
             collateralMultiplier: collateralMultiplier,
+            tradeFees: fees,
             initialMarginFee: initialMarginFee,
             assetPrice: assetPrice,
             liquidationFee: liquidationFee,

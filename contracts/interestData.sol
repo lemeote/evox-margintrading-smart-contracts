@@ -184,8 +184,6 @@ contract interestData is Ownable {
                 ) /
                 8736;
 
-
-
             (uint256 averageHourlyBase, int256 averageHourlyExp) = REX_LIBRARY
                 .normalize(averageHourly);
             averageHourlyExp = averageHourlyExp - 18;
@@ -216,8 +214,6 @@ contract interestData is Ownable {
 
             uint256 compoundedLiabilities = usersLiabilities *
                 hourlyChargesBase;
-
-  
 
             unchecked {
                 if (hourlyChargesExp >= 0) {
@@ -259,7 +255,9 @@ contract interestData is Ownable {
 
         for (uint256 i = 0; i < timeframes.length; i++) {
             if (startIndex + timeframes[i] <= endIndex) {
-                biggestPossibleStartTimeframe = ((endIndex - startIndex) / timeframes[i]) * timeframes[i]; 
+                biggestPossibleStartTimeframe =
+                    ((endIndex - startIndex) / timeframes[i]) *
+                    timeframes[i];
                 runningDownIndex = biggestPossibleStartTimeframe;
                 runningUpIndex = biggestPossibleStartTimeframe;
                 break;
@@ -328,7 +326,7 @@ contract interestData is Ownable {
     function fetchLiabilitiesOfIndex(
         address token,
         uint256 index
-    ) private view returns (uint256) {
+    ) public view returns (uint256) {
         return InterestRateEpochs[0][token][index].totalLiabilitiesAtIndex;
     }
 
@@ -347,12 +345,15 @@ contract interestData is Ownable {
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .interestRate = value;
 
-
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .lastUpdatedTime = block.timestamp;
 
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+
+        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
+            .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .borrowProportionAtIndex = REX_LIBRARY.calculateBorrowProportion(
             Executor.returnAssetLogs(token)
@@ -380,6 +381,10 @@ contract interestData is Ownable {
                 .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(
                 token
             );
+
+            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
+                .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .borrowProportionAtIndex = REX_LIBRARY
                 .calculateBorrowProportion(Executor.returnAssetLogs(token));
@@ -406,6 +411,10 @@ contract interestData is Ownable {
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+
+            InterestRateEpochs[2][token][
+                uint(currentInterestIndex[token] / 168)
+            ].totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
 
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
@@ -439,6 +448,10 @@ contract interestData is Ownable {
 
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672)
+            ].totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+
+            InterestRateEpochs[3][token][
+                uint(currentInterestIndex[token] / 672)
             ].borrowProportionAtIndex = REX_LIBRARY.calculateBorrowProportion(
                 Executor.returnAssetLogs(token)
             );
@@ -465,6 +478,10 @@ contract interestData is Ownable {
             InterestRateEpochs[4][token][
                 uint(currentInterestIndex[token] / 8736)
             ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+            InterestRateEpochs[4][token][
+                uint(currentInterestIndex[token] / 8736)
+            ].totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+
             InterestRateEpochs[4][token][
                 uint(currentInterestIndex[token] / 8736)
             ].borrowProportionAtIndex = REX_LIBRARY.calculateBorrowProportion(

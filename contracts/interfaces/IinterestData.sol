@@ -5,6 +5,7 @@ import "../interfaces/IDataHub.sol";
 interface IInterestData {
     struct interestDetails {
         uint256 lastUpdatedTime; // last updated time
+        uint256 totalAssetSuplyAtIndex;
         uint256 totalLiabilitiesAtIndex;
         uint256 borrowProportionAtIndex;
         uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
@@ -16,6 +17,11 @@ interface IInterestData {
         uint256 newLiabilities,
         uint256 usersLiabilities,
         uint256 usersOriginIndex
+    ) external view returns (uint256);
+
+    function fetchLiabilitiesOfIndex(
+        address token,
+        uint256 index
     ) external view returns (uint256);
 
     function fetchRateInfo(

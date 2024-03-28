@@ -26,10 +26,27 @@ contract REX_EXCHANGE is Ownable {
 
     IUtilityContract public Utilities;
 
-    address public FeeWallet =
-        address(0x1167E56ABcf9d2dF6354e03610E301B8a2934955);
-
     address public liquidator;
+
+    /// @notice Alters the Admin roles for the contract
+    /// @param _datahub  the new address for the datahub
+    /// @param _depositVault the new address for the deposit vault
+    /// @param _oracle the new address for oracle
+    /// @param _utility the new address for the utility contract
+    /// @param  _int the new address for the interest contract
+    function alterAdminRoles(
+        address _datahub,
+        address _depositVault,
+        address _oracle,
+        address _utility,
+        address _int
+    ) public onlyOwner {
+        Datahub = IDataHub(_datahub);
+        DepositVault = IDepositVault(_depositVault);
+        Oracle = IOracle(_oracle);
+        Utilities = IUtilityContract(_utility);
+        interestContract = IInterestData(_int);
+    }
 
     /** Constructor  */
     constructor(
@@ -57,6 +74,76 @@ contract REX_EXCHANGE is Ownable {
         _;
     }
 
+    /*
+    function PayFees(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts,
+        bool[][2] memory bools
+    ) private returns (uint256[][2] memory) {
+        uint256 spreadFeePair0;
+        uint256 spreadFeePair1;
+        uint256 token_fee;
+
+        //  if(pair[0] == USDT) // use pair1
+        // { charge fee from pair[1]}
+        if (pair[0] == Datahub._USDT()) {
+            token_fee = 1;
+        } else {
+            token_fee = 0;
+        }
+        require(token_fee == 0 || token_fee == 1, "USDT not available");
+
+
+       for (uint256 i = 0; i < participants[0].length; i++) {
+            if (bools[0][i] == true) {
+               // basically we always just mess with the amount out token / amount in token of one of the assets
+               /// by lowering amount out of one we lower amount in of another 
+               // lower then collect difference between full and lower
+               // split it and give it to us then send it 
+                spreadFeePair0 += (trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)) - trade_amounts[0][i]);
+                 trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 97%
+            } else {
+
+            }
+        }
+        // in evox out ust
+        // in usdt out evox 
+        // makers pay less  -> get more evox  105%
+        // takers get less -> less evox      97%
+        //                                    3% us
+        // takers buying 100 evox 100 usdt out token usdt
+        // makers selling 100 evox 100 usdt, out token evox 
+
+        // multi out token maker --> pay less  outtoken for pairticpants 0 is pair 0 
+        // mult in token taker --> get less in token for particpants 1 is pair 1 
+        for (uint256 i = 0; i < participants[0].length; i++) {
+            if (bools[0][i] == true) {
+                // charge as a taker and fuck with their trade amount
+                 trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 97%
+            } else {
+                // charge as a maker and fuck with their trade amount
+                 spreadFeePair0 += (trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)) - trade_amounts[0][i]);
+                 trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 103%
+            }
+        }
+        for (uint256 i = 0; i < participants[1].length; i++) {
+            if (bools[1][i] == true) {
+                // charge as a maker and fuck with their trade amount []
+                 trade_amounts[1][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 97%
+            } else {
+                // charge as a maker and fuck with their trade amount
+                 spreadFeePair1 += ((trade_amounts[1][i] *= (Datahub.tradeFee(pair[token_fee], token_fee))) - trade_amounts[1][i]);
+                 trade_amounts[1][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 103%
+            }
+
+        }
+        Datahub.addAssets(Datahub.fetchDaoWallet(), pair[0], spreadFeePair0);
+        Datahub.addAssets(Datahub.fetchDaoWallet(), pair[1], spreadFeePair1);
+
+        return trade_amounts;
+    }
+*/
     /// @notice This is the function users need to submit an order to the exchange
     /// @dev Explain to a developer any extra details
     /// @param pair the pair of tokens being traded
@@ -66,11 +153,18 @@ contract REX_EXCHANGE is Ownable {
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
+        bool[][2] memory trade_side,
         address[3] memory airnode_details,
         bytes32 endpointId,
         bytes calldata parameters
-    ) public {
+    ) public payable {
         // require(airnode address == airnode address set on deployment )
+        (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
+            ""
+        );
+
+        require(success);
+
         (
             uint256[] memory takerLiabilities,
             uint256[] memory makerLiabilities
@@ -81,16 +175,17 @@ contract REX_EXCHANGE is Ownable {
             );
 
         // this checks if the asset they are trying to trade isn't pass max borrow
-        maxBorrowCheck(pair, participants, trade_amounts);
+        require(maxBorrowCheck(pair, participants, trade_amounts));
 
-        processMargin(pair, participants, trade_amounts);
+        require(processMargin(pair, participants, trade_amounts));
 
         Oracle.ProcessTrade(
             pair,
             participants,
             trade_amounts,
+            trade_side,
             takerLiabilities, // this is being given a vlaue
-            makerLiabilities, // or this 
+            makerLiabilities, // or this
             airnode_details,
             endpointId,
             parameters
@@ -171,7 +266,9 @@ contract REX_EXCHANGE is Ownable {
                         returnAssetLogs(pair),
                         tradeAmounts[i]
                     );
-                initalMarginFeeAmount *= returnAssetLogs(pair).assetPrice;
+                initalMarginFeeAmount *=
+                    (returnAssetLogs(pair).assetPrice) /
+                    10 ** 18;
 
                 if (
                     Datahub.calculateTotalPortfolioValue(participants[i]) >
@@ -199,6 +296,7 @@ contract REX_EXCHANGE is Ownable {
     /// @param MakerliabilityAmounts the new liabilities being issued to the makers
     function TransferBalances(
         address[2] memory pair,
+        bool[][2] memory trade_side,
         address[] memory takers,
         address[] memory makers,
         uint256[] memory taker_amounts,
@@ -206,11 +304,12 @@ contract REX_EXCHANGE is Ownable {
         uint256[] memory TakerliabilityAmounts,
         uint256[] memory MakerliabilityAmounts
     ) external checkRoleAuthority {
-        Datahub.checkIfAssetIsPresent(takers, pair[1]); 
-        Datahub.checkIfAssetIsPresent(makers, pair[0]);  
+        Datahub.checkIfAssetIsPresent(takers, pair[1]);
+        Datahub.checkIfAssetIsPresent(makers, pair[0]);
         // checks if the asset is in the users portfolio already or not and adds it if it isnt
         executeTrade(
             makers,
+            trade_side[0],
             taker_amounts,
             maker_amounts,
             MakerliabilityAmounts,
@@ -219,6 +318,7 @@ contract REX_EXCHANGE is Ownable {
         );
         executeTrade(
             takers,
+            trade_side[1],
             maker_amounts,
             taker_amounts,
             TakerliabilityAmounts,
@@ -237,6 +337,7 @@ contract REX_EXCHANGE is Ownable {
     /// @param  in_token the token coming into the users wallet
     function executeTrade(
         address[] memory users,
+        bool[] memory trade_side,
         uint256[] memory amounts_in_token,
         uint256[] memory amounts_out_token,
         uint256[] memory liabilityAmounts,
@@ -245,7 +346,26 @@ contract REX_EXCHANGE is Ownable {
     ) private {
         for (uint256 i = 0; i < users.length; i++) {
             uint256 amountToAddToLiabilities = liabilityAmounts[i];
+
+            if (trade_side[i] == true) {
+                // taker --> don't take anything from amount out token for the makers
+            } else {
+                uint256 spreadFee = Datahub.tradeFee(out_token, 0) -
+                    Datahub.tradeFee(out_token, 1); ///amountToAddToLiabilities - (amountToAddToLiabilities * Datahub.tradeFee(in_token, 0)) /10**18;
+                Datahub.addAssets(
+                    Datahub.fetchDaoWallet(),
+                    out_token,
+                    (amountToAddToLiabilities * spreadFee) / 10 ** 18
+                );
+                amountToAddToLiabilities -
+                    (amountToAddToLiabilities *
+                        Datahub.tradeFee(out_token, 1)) /
+                    10 ** 18;
+            }
+            // out_token amount to asset take the difference add that to libailities
+            // get fee change amount to add to liabilities  // maker fees
             if (amountToAddToLiabilities != 0) {
+                // here we fuck with amount out for the user
                 chargeinterest(
                     users[i],
                     out_token,
@@ -279,10 +399,21 @@ contract REX_EXCHANGE is Ownable {
 
                 uint256 input_amount = amounts_in_token[i];
 
-                if (subtractedFromLiabilites > 0) {
+                if (trade_side[i] == false) {} else {
                     input_amount =
-                        amounts_in_token[i] -
-                        Utilities.returnliabilities(users[i], in_token);
+                        input_amount -
+                        (input_amount * Datahub.tradeFee(in_token, 0)) /
+                        10 ** 18;
+                }
+
+                if (subtractedFromLiabilites > 0) {
+                    // input_amount =
+                    //     amounts_in_token[i] -=
+                    //      Utilities.returnliabilities(users[i], in_token);
+                    input_amount -= Utilities.returnliabilities(
+                        users[i],
+                        in_token
+                    );
 
                     chargeinterest(
                         users[i],
@@ -295,11 +426,12 @@ contract REX_EXCHANGE is Ownable {
                         users[i],
                         in_token,
                         out_token,
-                        amounts_in_token[i]
+                        input_amount
+                        // amounts_in_token[i]
                     );
                 }
-// this
-/*
+                // this
+                /*
                 amounts_out_token[i] >
                     Utilities.returnPending(users[i], out_token)
                     ? Datahub.removePendingBalances(
@@ -508,26 +640,6 @@ contract REX_EXCHANGE is Ownable {
     ) public view returns (IDataHub.AssetData memory assetLogs) {
         IDataHub.AssetData memory assetlogs = Datahub.returnAssetLogs(token);
         return assetlogs;
-    }
-
-    /// @notice Alters the Admin roles for the contract
-    /// @param _datahub  the new address for the datahub
-    /// @param _depositVault the new address for the deposit vault
-    /// @param _oracle the new address for oracle
-    /// @param _utility the new address for the utility contract
-    /// @param  _int the new address for the interest contract
-    function alterAdminRoles(
-        address _datahub,
-        address _depositVault,
-        address _oracle,
-        address _utility,
-        address _int
-    ) public onlyOwner {
-        Datahub = IDataHub(_datahub);
-        DepositVault = IDepositVault(_depositVault);
-        Oracle = IOracle(_oracle);
-        Utilities = IUtilityContract(_utility);
-        interestContract = IInterestData(_int);
     }
 
     receive() external payable {}

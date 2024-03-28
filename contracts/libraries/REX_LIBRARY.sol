@@ -200,6 +200,24 @@ library REX_LIBRARY {
         return newBorrowProportion <= assetdata.maximumBorrowProportion;
     }
 
+    function calculateBorrowProportionAfterWithdraw(
+        IDataHub.AssetData memory assetdata,
+        uint256 amount
+    ) public view returns (bool) {
+        uint256 scaleFactor = 1e18; // Scaling factor, e.g., 10^18 for wei
+
+        // here we add the current borrowed amount and the new liabilities to be issued, and scale it
+        uint256 scaledTotalBorrowed = (assetdata.totalBorrowedAmount
+           ) * scaleFactor;
+
+        // Calculate the new borrow proportion
+        uint256 newBorrowProportion = (scaledTotalBorrowed /
+            (assetdata.totalAssetSupply - amount )); // equal decimal * 10**!8 decimal is max
+
+        // Compare with maximumBorrowProportion
+        return newBorrowProportion <= assetdata.maximumBorrowProportion;
+    }
+
     function calculateFee(
         uint256 _amount,
         uint256 _fee
