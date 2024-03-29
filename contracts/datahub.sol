@@ -34,15 +34,15 @@ contract DataHub is Ownable {
         address _deposit_vault,
         address _executor,
         address _oracle,
-        address _interest,
-        address _usdt
+        address _interest
+       // address _usdt
     ) public onlyOwner {
         admins[_executor] = true;
         admins[_deposit_vault] = true;
         admins[_oracle] = true;
         admins[_interest] = true;
         interestContract = IInterestData(_interest);
-        USDT = _usdt;
+      //  USDT = _usdt;
     }
 
     address public USDT = address(0xaBAD60e4e01547E2975a96426399a5a0578223Cb);

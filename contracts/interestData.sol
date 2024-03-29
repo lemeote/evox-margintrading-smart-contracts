@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
 import "./interfaces/IExecutor.sol";
 import "./interfaces/IinterestData.sol";
-import "hardhat/console.sol";
+import "./interfaces/IDepositVault.sol";
 import "./libraries/REX_LIBRARY.sol";
 
 contract interestData is Ownable {
@@ -14,7 +14,7 @@ contract interestData is Ownable {
         require(
             msg.sender == owner() ||
                 msg.sender == address(Datahub) ||
-                msg.sender == address(Executor),
+                msg.sender == address(Executor) ||  msg.sender == address(DepositVault),
             "Unauthorized"
         );
         _;
@@ -22,14 +22,17 @@ contract interestData is Ownable {
 
     IDataHub public Datahub;
     IExecutor public Executor;
+    IDepositVault public DepositVault;
 
     constructor(
         address initialOwner,
         address _DataHub,
-        address _executor
+        address _executor,
+        address _dv
     ) Ownable(initialOwner) {
         Datahub = IDataHub(_DataHub);
         Executor = IExecutor(_executor);
+        DepositVault = IDepositVault(_dv);
     }
 
     mapping(uint => mapping(address => mapping(uint256 => IInterestData.interestDetails))) InterestRateEpochs;
@@ -39,9 +42,10 @@ contract interestData is Ownable {
     /// @notice This alters the admin roles for the contract
     /// @param _executor the address of the new executor contract
     /// @param _DataHub the adddress of the new datahub
-    function AlterAdmins(address _executor, address _DataHub) public onlyOwner {
+    function AlterAdmins(address _executor, address _DataHub, address _dv) public onlyOwner {
         Executor = IExecutor(_executor);
         Datahub = IDataHub(_DataHub);
+        DepositVault = IDepositVault(_dv);
     }
 
     /// @notice Explain to an end user what this does
@@ -87,7 +91,7 @@ contract interestData is Ownable {
     ) public view returns (uint256) {
         return currentInterestIndex[token];
     }
-
+/*
     function calculateCompoundedAssets(
         address token,
         uint256 usersAssets,
@@ -145,7 +149,7 @@ contract interestData is Ownable {
         }
         return interestCharge;
     }
-
+*/
     function calculateCompoundedLiabilities(
         address token,
         uint256 newLiabilities,
@@ -563,7 +567,7 @@ contract interestData is Ownable {
     /// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param token the token being targetted
-    function chargeMassinterest(address token) public onlyOwner {
+    function chargeMassinterest(address token) public checkRoleAuthority  {
         if (
             fetchRateInfo(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
                 1 hours <=

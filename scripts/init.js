@@ -5,16 +5,18 @@ const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
 const LiquidatorAbi = require("../artifacts/contracts/liquidator.sol/Liquidator.json")
+const depositABI = require("../artifacts/contracts/depositvault.sol/DepositVault.json")
 
 async function main() {
 
     const ex = "0x82C19528944441bF4703C0f4bb4356521eC526ff"
     const DH = "0xb6f53a0D9932281e38056961A7afAecD6846418D"
-    const DV = "0xDC8F6B8704d8f90f61bFc9770c7bDB92809cF8e5"
+    const DV = "0x1407A3e2Cbd3dA47E57f9260580Cf75DEE0A53C0"
     const oracle = "0x2d69e64bC23F8af2172F1c434A15B20a6c31e55E"
     const util = "0x156d790B12864E071A0b0eE8202C64079D346687"
     const liq = "0xFB31DcD03F592D967da1660498A828Dc3e87aCc7"
-    const interest = "0xaF8749DA37232f2bbf3375642079841DCeEE0a4A"
+  //  const interest = "0xaF8749DA37232f2bbf3375642079841DCeEE0a4A"
+    const interest ="0xB1b9998d2374d4FE5A0400F59e8D3eC3e83c8E33"
 
 
     const USDT = "0xaBAD60e4e01547E2975a96426399a5a0578223Cb"
@@ -99,6 +101,8 @@ async function main() {
 
     const Oracle = new hre.ethers.Contract(oracle, OracleABI.abi, deployer);
 
+   // const DepositVault = new hre.ethers.Contract(DV, depositABI.abi, deployer);
+
     const utils = new hre.ethers.Contract(util, utilABI.abi, deployer);
 
     const SETUP = await utils.AlterExchange(ex);
@@ -128,7 +132,7 @@ async function main() {
 
 
 
-    const interestSetup = await _Interest.AlterAdmins(ex, DH);
+    const interestSetup = await _Interest.AlterAdmins(ex, DH, DV);
 
     interestSetup.wait();
 
@@ -148,7 +152,7 @@ async function main() {
 
     InitRatesREXE.wait();
     InitRatesUSDT.wait();
-
+/*
     const USDT_init_transaction = await DataHub.InitTokenMarket(USDT, USDTprice, colval, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
 
@@ -170,5 +174,5 @@ async function main() {
     const wBTC_init_transaction = await DataHub.InitTokenMarket(wBTC, wBTCprice, colval, wBTCinitialMarginFee, wBTCliquidationFee, wBTCinitialMarginRequirement, wBTCMaintenanceMarginRequirement, wBTCoptimalBorrowProportion, wBTCmaximumBorrowProportion);
 
     wBTC_init_transaction.wait();
-
+*/
 } main();

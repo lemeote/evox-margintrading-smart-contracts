@@ -250,7 +250,7 @@ contract DepositVault is Ownable {
 
         require(pending == 0);
         require(amount <= assets);
-
+/*
         if (
             amount + token_withdraws_hour[token] >
             (
@@ -287,7 +287,7 @@ contract DepositVault is Ownable {
             lastWithdrawUpdateTime = block.timestamp;
             token_withdraws_hour[token] = 0;
         }
-
+*/
         IDataHub.AssetData memory assetInformation = Datahub.returnAssetLogs(
             token
         );

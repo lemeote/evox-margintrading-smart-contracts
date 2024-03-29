@@ -265,7 +265,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
 
             Executor.TransferBalances(
                 pair,
-                OrderDetails[requestId].trade_sides,
+              //  OrderDetails[requestId].trade_sides,
                 OrderDetails[requestId].takers,
                 OrderDetails[requestId].makers,
                 OrderDetails[requestId].taker_amounts,
