@@ -9,7 +9,6 @@ import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
 import "./libraries/REX_LIBRARY.sol";
 import "./interfaces/IinterestData.sol";
-import "hardhat/console.sol";
 
 contract REX_EXCHANGE is Ownable {
     error OracleCallFailed(uint256);
@@ -74,76 +73,7 @@ contract REX_EXCHANGE is Ownable {
         _;
     }
 
-    /*
-    function PayFees(
-        address[2] memory pair,
-        address[][2] memory participants,
-        uint256[][2] memory trade_amounts,
-        bool[][2] memory bools
-    ) private returns (uint256[][2] memory) {
-        uint256 spreadFeePair0;
-        uint256 spreadFeePair1;
-        uint256 token_fee;
 
-        //  if(pair[0] == USDT) // use pair1
-        // { charge fee from pair[1]}
-        if (pair[0] == Datahub._USDT()) {
-            token_fee = 1;
-        } else {
-            token_fee = 0;
-        }
-        require(token_fee == 0 || token_fee == 1, "USDT not available");
-
-
-       for (uint256 i = 0; i < participants[0].length; i++) {
-            if (bools[0][i] == true) {
-               // basically we always just mess with the amount out token / amount in token of one of the assets
-               /// by lowering amount out of one we lower amount in of another 
-               // lower then collect difference between full and lower
-               // split it and give it to us then send it 
-                spreadFeePair0 += (trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)) - trade_amounts[0][i]);
-                 trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 97%
-            } else {
-
-            }
-        }
-        // in evox out ust
-        // in usdt out evox 
-        // makers pay less  -> get more evox  105%
-        // takers get less -> less evox      97%
-        //                                    3% us
-        // takers buying 100 evox 100 usdt out token usdt
-        // makers selling 100 evox 100 usdt, out token evox 
-
-        // multi out token maker --> pay less  outtoken for pairticpants 0 is pair 0 
-        // mult in token taker --> get less in token for particpants 1 is pair 1 
-        for (uint256 i = 0; i < participants[0].length; i++) {
-            if (bools[0][i] == true) {
-                // charge as a taker and fuck with their trade amount
-                 trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 97%
-            } else {
-                // charge as a maker and fuck with their trade amount
-                 spreadFeePair0 += (trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)) - trade_amounts[0][i]);
-                 trade_amounts[0][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 103%
-            }
-        }
-        for (uint256 i = 0; i < participants[1].length; i++) {
-            if (bools[1][i] == true) {
-                // charge as a maker and fuck with their trade amount []
-                 trade_amounts[1][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 97%
-            } else {
-                // charge as a maker and fuck with their trade amount
-                 spreadFeePair1 += ((trade_amounts[1][i] *= (Datahub.tradeFee(pair[token_fee], token_fee))) - trade_amounts[1][i]);
-                 trade_amounts[1][i] *= (Datahub.tradeFee(pair[token_fee], token_fee)); // say 103%
-            }
-
-        }
-        Datahub.addAssets(Datahub.fetchDaoWallet(), pair[0], spreadFeePair0);
-        Datahub.addAssets(Datahub.fetchDaoWallet(), pair[1], spreadFeePair1);
-
-        return trade_amounts;
-    }
-*/
     /// @notice This is the function users need to submit an order to the exchange
     /// @dev Explain to a developer any extra details
     /// @param pair the pair of tokens being traded
@@ -153,17 +83,17 @@ contract REX_EXCHANGE is Ownable {
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
-        bool[][2] memory trade_side,
+        //bool[][2] memory trade_side,
         address[3] memory airnode_details,
         bytes32 endpointId,
         bytes calldata parameters
     ) public payable {
         // require(airnode address == airnode address set on deployment )
-        (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
-            ""
-        );
+       // (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
+       //     ""
+      //  );
 
-        require(success);
+      //  require(success);
 
         (
             uint256[] memory takerLiabilities,
@@ -183,7 +113,7 @@ contract REX_EXCHANGE is Ownable {
             pair,
             participants,
             trade_amounts,
-            trade_side,
+           // trade_side,
             takerLiabilities, // this is being given a vlaue
             makerLiabilities, // or this
             airnode_details,
@@ -296,7 +226,7 @@ contract REX_EXCHANGE is Ownable {
     /// @param MakerliabilityAmounts the new liabilities being issued to the makers
     function TransferBalances(
         address[2] memory pair,
-        bool[][2] memory trade_side,
+        //bool[][2] memory trade_side,
         address[] memory takers,
         address[] memory makers,
         uint256[] memory taker_amounts,
@@ -309,7 +239,7 @@ contract REX_EXCHANGE is Ownable {
         // checks if the asset is in the users portfolio already or not and adds it if it isnt
         executeTrade(
             makers,
-            trade_side[0],
+        //    trade_side[0],
             taker_amounts,
             maker_amounts,
             MakerliabilityAmounts,
@@ -318,7 +248,7 @@ contract REX_EXCHANGE is Ownable {
         );
         executeTrade(
             takers,
-            trade_side[1],
+         //   trade_side[1],
             maker_amounts,
             taker_amounts,
             TakerliabilityAmounts,
@@ -337,7 +267,7 @@ contract REX_EXCHANGE is Ownable {
     /// @param  in_token the token coming into the users wallet
     function executeTrade(
         address[] memory users,
-        bool[] memory trade_side,
+      //  bool[] memory trade_side,
         uint256[] memory amounts_in_token,
         uint256[] memory amounts_out_token,
         uint256[] memory liabilityAmounts,
@@ -346,7 +276,7 @@ contract REX_EXCHANGE is Ownable {
     ) private {
         for (uint256 i = 0; i < users.length; i++) {
             uint256 amountToAddToLiabilities = liabilityAmounts[i];
-
+/*
             if (trade_side[i] == true) {
                 // taker --> don't take anything from amount out token for the makers
             } else {
@@ -362,6 +292,7 @@ contract REX_EXCHANGE is Ownable {
                         Datahub.tradeFee(out_token, 1)) /
                     10 ** 18;
             }
+            */
             // out_token amount to asset take the difference add that to libailities
             // get fee change amount to add to liabilities  // maker fees
             if (amountToAddToLiabilities != 0) {
@@ -398,14 +329,14 @@ contract REX_EXCHANGE is Ownable {
                 ); // we know its greater than or equal to its safe to 0
 
                 uint256 input_amount = amounts_in_token[i];
-
+/*
                 if (trade_side[i] == false) {} else {
                     input_amount =
                         input_amount -
                         (input_amount * Datahub.tradeFee(in_token, 0)) /
                         10 ** 18;
                 }
-
+*/
                 if (subtractedFromLiabilites > 0) {
                     // input_amount =
                     //     amounts_in_token[i] -=

@@ -8,7 +8,6 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./libraries/REX_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
-import "hardhat/console.sol";
 
 contract Utility is Ownable {
     
@@ -40,7 +39,7 @@ contract Utility is Ownable {
 
     /// @notice Alters the exchange contract
     /// @param _executor the new executor address
-    function AlterExchange(address _executor) public onlyOwner {
+    function alterExchange(address _executor) public onlyOwner {
         Executor = IExecutor(_executor);
     }
 

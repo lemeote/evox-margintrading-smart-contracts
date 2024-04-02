@@ -17,7 +17,7 @@ interface IDataHub {
     // boom jackpot
 
     struct AssetData {
-        uint256[2] tradeFees;
+      //  uint256[2] tradeFees;
         uint256 collateralMultiplier;
         uint256 initialMarginFee; // assigned in function Ex
         // inital margin fee -> add and charge on insuance of libilities -> goes to TINO + CONNER + WAKAKKIIIIII and maybe some to dao

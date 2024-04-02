@@ -4,7 +4,6 @@ pragma solidity =0.8.20;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
-import "hardhat/console.sol";
 import "./interfaces/IinterestData.sol";
 
 contract DataHub is Ownable {
@@ -29,8 +28,9 @@ contract DataHub is Ownable {
     }
 
     IInterestData public interestContract;
+// const setup = await DataHub.AlterAdminRoles(DV, ex, oracle, interest);
 
-    function AlterAdminRoles(
+    function alterAdminRoles(
         address _deposit_vault,
         address _executor,
         address _oracle,
@@ -98,14 +98,14 @@ contract DataHub is Ownable {
     function fetchDaoWallet() public view returns (address) {
         return DAO;
     }
-
+/*
     function tradeFee(
         address token,
         uint256 feeType
     ) public view returns (uint256) {
         return 1e18 - (assetdata[token].tradeFees[feeType]);
     }
-
+*/
     /// -----------------------------------------------------------------------
     /// Assets
     /// -----------------------------------------------------------------------
@@ -461,7 +461,7 @@ contract DataHub is Ownable {
     function InitTokenMarket(
         address token,
         uint256 assetPrice,
-        uint256[2] memory fees,
+       // uint256[2] memory fees,
         uint256 collateralMultiplier,
         uint256 initialMarginFee,
         uint256 liquidationFee,
@@ -475,7 +475,7 @@ contract DataHub is Ownable {
 
         assetdata[token] = IDataHub.AssetData({
             collateralMultiplier: collateralMultiplier,
-            tradeFees: fees,
+           // tradeFees: fees,
             initialMarginFee: initialMarginFee,
             assetPrice: assetPrice,
             liquidationFee: liquidationFee,

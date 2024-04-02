@@ -60,7 +60,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
         address[] makers;
         uint256[] taker_amounts;
         uint256[] maker_amounts;
-        bool[][2] trade_sides;
+     //   bool[][2] trade_sides;
         uint256[] takerliabilityAmounts;
         uint256[] makerliabilityAmounts;
         string _id;
@@ -95,7 +95,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
         uint256[] maker_amounts
     );
 
-    function AlterAdminRoles(
+    function alterAdminRoles(
         address _deposit_vault,
         address _executor,
         address _DataHub
@@ -121,14 +121,14 @@ contract Oracle is Ownable, RrpRequesterV0 {
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
-        bool[][2] memory trade_side,
+        //bool[][2] memory trade_side,
         uint256[] memory TakerliabilityAmounts,
         uint256[] memory MakerliabilityAmounts,
         address[3] memory airnode_details,
         bytes32 endpointId,
         bytes calldata parameters
     ) external checkRoleAuthority {
-        freezeTempBalance(pair, participants, trade_amounts, trade_side);
+        freezeTempBalance(pair, participants, trade_amounts);//, trade_side
 
         bytes32 orderId = makeRequest(
             airnode_details[0],
@@ -142,7 +142,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
         OrderDetails[orderId].maker_token = pair[1];
         OrderDetails[orderId].taker_amounts = trade_amounts[0];
         OrderDetails[orderId].maker_amounts = trade_amounts[1];
-        OrderDetails[orderId].trade_sides = trade_side;
+        //OrderDetails[orderId].trade_sides = trade_side;
 
         OrderDetails[orderId].takers = participants[0];
         OrderDetails[orderId].makers = participants[1];
@@ -181,12 +181,12 @@ contract Oracle is Ownable, RrpRequesterV0 {
     function freezeTempBalance(
         address[2] memory pair,
         address[][2] memory participants,
-        uint256[][2] memory trade_amounts,
-        bool[][2] memory trade_side
+        uint256[][2] memory trade_amounts
+       // bool[][2] memory trade_side
     ) private {
         //(success, returnValue) = abi.decode(address(this).call(abi.encodeWithSignature("myFunction(uint256)", _newValue)), (bool, uint256));
-        alterPending(participants[0], trade_amounts[0], trade_side[0], pair[0]);
-        alterPending(participants[1], trade_amounts[1], trade_side[1], pair[1]);
+        alterPending(participants[0], trade_amounts[0], pair[0]);// trade_side[0],
+        alterPending(participants[1], trade_amounts[1], pair[1]);// trade_side[1],
     }
 
     /// @notice Processes a trade details
@@ -196,7 +196,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
     function alterPending(
         address[] memory participants,
         uint256[] memory tradeAmounts,
-        bool[] memory tradeside,
+       // bool[] memory tradeside,
         address pair
     ) internal returns (bool) {
         for (uint256 i = 0; i < participants.length; i++) {
@@ -204,6 +204,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
                 participants[i],
                 pair
             );
+            /*
             // this is the amount out token for both fuckers
             if (tradeside[i] == true) {
                 // taker --> don't take anything from amount out token for the makers
@@ -212,6 +213,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
             tradeAmounts[i] = (tradeAmounts[i] * Datahub.tradeFee(pair, 1))/ 10**18 ;
 
             }
+            */
             uint256 balanceToAdd = tradeAmounts[i] > assets
                 ? assets
                 : tradeAmounts[i];
@@ -231,7 +233,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
     ) private {
         // pay fee take less from the maker if they are a maker
         Datahub.removeAssets(participant, asset, trade_amount);
-        Datahub.addPendingBalances(participant, asset, trade_amount);
+       // Datahub.addPendingBalances(participant, asset, trade_amount);
     }
 
     /// The AirnodeRrpV0.sol protocol contract will callback here.
@@ -245,6 +247,8 @@ contract Oracle is Ownable, RrpRequesterV0 {
         int256 decodedData = abi.decode(data, (int256));
         fulfilledData[requestId] = decodedData;
         if (decodedData != 1) {
+
+            /*
             address[2] memory pair;
             pair[0] = OrderDetails[requestId].taker_token;
             pair[1] = OrderDetails[requestId].maker_token;
@@ -256,7 +260,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
                 OrderDetails[requestId].taker_amounts,
                 OrderDetails[requestId].maker_amounts
             );
-
+*/
             emit Error(requestId, block.timestamp, data); //
         } else {
             address[2] memory pair;

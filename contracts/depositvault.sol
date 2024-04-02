@@ -35,6 +35,14 @@ contract DepositVault is Ownable {
     mapping(address => bool) public userInitialized;
     mapping(uint256 => address) public userId;
 
+
+
+    function alterAdmins(address _dh, address _ex, address _int) public onlyOwner{
+        Datahub = IDataHub(_dh);
+        Executor = IExecutor(_ex);
+        interestContract = IInterestData(_int);
+    }
+
     /// @notice fetches and returns a tokens decimals
     /// @param token the token you want the decimals for
     /// @return Token.decimals() the token decimals
@@ -248,8 +256,8 @@ contract DepositVault is Ownable {
             token
         );
 
-        require(pending == 0);
-        require(amount <= assets);
+        require(pending == 0, "your pending balance has to be 0 to withdraw");
+        require(amount <= assets, "you have insufficient assets");
 /*
         if (
             amount + token_withdraws_hour[token] >
@@ -310,7 +318,7 @@ contract DepositVault is Ownable {
             "You cannot withdraw this amount as it would put the exchange above maximum borrow proportion, please try a smaller amount"
         );
 
-        require(!UnableToWithdraw);
+        require(!UnableToWithdraw, "your total portfolio value is not high enough to withdraw");
 
         if (amount == assets) {
             // remove assets and asset token from their portfolio

@@ -8,7 +8,6 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
 import "./libraries/REX_LIBRARY.sol";
-import "hardhat/console.sol";
 import "./interfaces/IExecutor.sol";
 
 contract Liquidator is Ownable {
@@ -18,8 +17,6 @@ contract Liquidator is Ownable {
     IDataHub public Datahub;
 
     IExecutor public Executor;
-
-    uint256 private DISCOUNT = 5; // 5% -> need decimal module for this Discount = (1 - LiquidationFee[ofAsset])
 
     /** Constructor  */
     constructor(

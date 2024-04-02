@@ -19,7 +19,6 @@ contract interestData is Ownable {
         );
         _;
     }
-
     IDataHub public Datahub;
     IExecutor public Executor;
     IDepositVault public DepositVault;
@@ -42,7 +41,7 @@ contract interestData is Ownable {
     /// @notice This alters the admin roles for the contract
     /// @param _executor the address of the new executor contract
     /// @param _DataHub the adddress of the new datahub
-    function AlterAdmins(address _executor, address _DataHub, address _dv) public onlyOwner {
+    function alterAdminRoles(address _executor, address _DataHub, address _dv) public onlyOwner {
         Executor = IExecutor(_executor);
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_dv);
@@ -69,7 +68,6 @@ contract interestData is Ownable {
         address token,
         uint256 index
     ) public view returns (uint256) {
-        // console.log((interestInfo[token][index].interestRate) / 8736);
         return InterestRateEpochs[0][token][index].interestRate;
     }
 
@@ -370,7 +368,6 @@ contract interestData is Ownable {
 
         if (index % 24 == 0) {
             // 168
-            console.log("SET DAILY RATE");
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .interestRate = REX_LIBRARY.calculateAverage(
                 fetchRatesList(
@@ -398,7 +395,6 @@ contract interestData is Ownable {
             ].rateInfo;
         }
         if (index % 168 == 0) {
-            console.log("SET WEEKLY RATE");
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
             ].interestRate = REX_LIBRARY.calculateAverage(
@@ -433,7 +429,7 @@ contract interestData is Ownable {
             ].rateInfo;
         }
         if (index % 672 == 0) {
-            console.log("SET MONTHLY RATE");
+    
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672) //8736, 672, 168, 24
             ].interestRate = REX_LIBRARY.calculateAverage(
@@ -577,8 +573,8 @@ contract interestData is Ownable {
                 token,
                 chargeStaticLiabilityInterest(
                     token,
-                    fetchCurrentRateIndex(token) - 1
-                ), // why is this the case why do i need to -1..... oopsies?
+                    fetchCurrentRateIndex(token)
+                ), 
                 true
             );
 

@@ -13,7 +13,7 @@ async function main() {
 
   const DH = "0xb6f53a0D9932281e38056961A7afAecD6846418D"
   const ex = "0x82C19528944441bF4703C0f4bb4356521eC526ff"
-  const int = "0xaF8749DA37232f2bbf3375642079841DCeEE0a4A"
+  const int = "0xB1b9998d2374d4FE5A0400F59e8D3eC3e83c8E33"
   const initialOwner = deployer.address // insert wallet address 
 
   const depositVault = await hre.ethers.getContractFactory("DepositVault", {
