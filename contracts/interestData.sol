@@ -4,7 +4,6 @@ pragma solidity =0.8.20;
 import "./interfaces/IDataHub.sol";
 import "./interfaces/IExecutor.sol";
 import "./interfaces/IUtilityContract.sol";
-import "hardhat/console.sol";
 import "./libraries/EVO_LIBRARY.sol";
 
 contract interestData {
@@ -180,7 +179,6 @@ contract interestData {
         ) {
             return 0;
         }
-        console.log(cumulativeInterestRates, "cumulative rate");
         // Return the cumulative interest rates
         return cumulativeInterestRates / (endIndex - (startIndex - 1));
     }
@@ -291,13 +289,15 @@ contract interestData {
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .interestRate = value;
 
-        console.log("hourly", value);
-
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .lastUpdatedTime = block.timestamp;
 
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+
+        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
+            .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .borrowProportionAtIndex = EVO_LIBRARY.calculateBorrowProportion(
             Datahub.returnAssetLogs(token)
@@ -310,7 +310,6 @@ contract interestData {
 
         if (index % 24 == 0) {
             // 168
-            console.log("SET DAILY RATE");
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .interestRate = EVO_LIBRARY.calculateAverage(
                 fetchRatesList(
@@ -325,6 +324,10 @@ contract interestData {
                 .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(
                 token
             );
+
+            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
+                .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
                 utils.fetchBorrowProportionList(
@@ -340,7 +343,6 @@ contract interestData {
             ].rateInfo;
         }
         if (index % 168 == 0) {
-            console.log("SET WEEKLY RATE");
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
             ].interestRate = EVO_LIBRARY.calculateAverage(
@@ -349,12 +351,6 @@ contract interestData {
                     currentInterestIndex[token],
                     token
                 )
-            );
-            console.log(
-                InterestRateEpochs[2][token][
-                    uint(currentInterestIndex[token] / 168)
-                ].interestRate,
-                "weekly rate"
             );
 
             InterestRateEpochs[2][token][
@@ -381,7 +377,7 @@ contract interestData {
             ].rateInfo;
         }
         if (index % 672 == 0) {
-            console.log("SET MONTHLY RATE");
+    
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672) //8736, 672, 168, 24
             ].interestRate = EVO_LIBRARY.calculateAverage(
@@ -535,181 +531,3 @@ contract interestData {
 
     receive() external payable {}
 }
-
-/*
-    function calculateCompoundedAssets(
-        address token,
-        uint256 currentIndex,
-        uint256 usersAssets,
-        uint256 usersOriginIndex
-    ) public view returns (uint256, uint256, uint256) {
-        uint256 earningHours = fetchCurrentRateIndex(token) - usersOriginIndex;
-
-        uint256 DaoInterestCharge;
-        uint256 OrderBookProviderCharge;
-        uint256 interestCharge;
-
-        uint256 averageHourly = 1e18 +
-            calculateAverageCumulativeDepositInterest(
-                usersOriginIndex,
-                fetchCurrentRateIndex(token),
-                token
-            ) /
-            8736;
-
-        (uint256 averageHourlyBase, int256 averageHourlyExp) = EVO_LIBRARY
-            .normalize(averageHourly);
-        averageHourlyExp = averageHourlyExp - 18;
-
-        uint256 hourlyChargesBase = 1;
-        int256 hourlyChargesExp = 0;
-        while (earningHours > 0) {
-            if (earningHours % 2 == 1) {
-                (uint256 _base, int256 _exp) = EVO_LIBRARY.normalize(
-                    (hourlyChargesBase * averageHourlyBase)
-                );
-
-                hourlyChargesBase = _base;
-                hourlyChargesExp = hourlyChargesExp + averageHourlyExp + _exp;
-            }
-            (uint256 _bases, int256 _exps) = EVO_LIBRARY.normalize(
-                (averageHourlyBase * averageHourlyBase)
-            );
-            averageHourlyBase = _bases;
-            averageHourlyExp = averageHourlyExp + averageHourlyExp + _exps;
-
-            earningHours /= 2;
-        }
-
-        uint256 compoundedAssets = usersAssets * hourlyChargesBase;
-
-        unchecked {
-            if (hourlyChargesExp >= 0) {
-                compoundedAssets =
-                    compoundedAssets *
-                    (10 ** uint256(hourlyChargesExp));
-            } else {
-                compoundedAssets =
-                    compoundedAssets /
-                    (10 ** uint256(-hourlyChargesExp));
-            }
-
-            interestCharge = compoundedAssets - usersAssets;
-
-            if (interestCharge > 0) {
-                if (interestCharge > 100 wei) {
-                    interestCharge = interestCharge / 100;
-
-                    interestCharge *= 80;
-
-                    OrderBookProviderCharge *= 2;
-
-                    DaoInterestCharge *= 18;
-                }
-            }
-        } // 20 / 80
-        return (interestCharge, OrderBookProviderCharge, DaoInterestCharge);
-        // now for this it will always returtn 80% of their actual interest --> to do this splits we scale up to 100% then take the 20%
-    }
-
-    function calculateCompoundedLiabilities(
-        address token,
-        uint256 newLiabilities,
-        uint256 usersLiabilities,
-        uint256 usersOriginIndex
-    ) public view returns (uint256) {
-        uint256 amountOfBilledHours = fetchCurrentRateIndex(token) -
-            usersOriginIndex;
-
-        // calculate what the rate would be after their trade and charge that
-
-        uint256 adjustedNewLiabilities = (newLiabilities *
-            // (1e18 + (fetchCurrentRate(token) / 8736))) / (10 ** 18);
-            (1e18 +
-                (EVO_LIBRARY.calculateInterestRate(
-                    newLiabilities,
-                    Datahub.returnAssetLogs(token),
-                    InterestRateEpochs[0][token][fetchCurrentRateIndex(token)]
-                ) / 8736))) / (10 ** 18);
-        uint256 initalMarginFeeAmount;
-
-        if (newLiabilities == 0) {
-            initalMarginFeeAmount = 0;
-        } else {
-            initalMarginFeeAmount = EVO_LIBRARY.calculateinitialMarginFeeAmount(
-                    Datahub.returnAssetLogs(token),
-                    newLiabilities
-                );
-        }
-
-        if (newLiabilities != 0) {
-            return
-                (adjustedNewLiabilities + initalMarginFeeAmount) -
-                newLiabilities;
-        } else {
-            uint256 interestCharge;
-
-            uint256 averageHourly = 1e18 +
-                calculateAverageCumulativeInterest(
-                    usersOriginIndex,
-                    fetchCurrentRateIndex(token),
-                    token
-                ) /
-                8736;
-
-            (uint256 averageHourlyBase, int256 averageHourlyExp) = EVO_LIBRARY
-                .normalize(averageHourly);
-            averageHourlyExp = averageHourlyExp - 18;
-
-            uint256 hourlyChargesBase = 1;
-            int256 hourlyChargesExp = 0;
-
-            while (amountOfBilledHours > 0) {
-                if (amountOfBilledHours % 2 == 1) {
-                    (uint256 _base, int256 _exp) = EVO_LIBRARY.normalize(
-                        (hourlyChargesBase * averageHourlyBase)
-                    );
-
-                    hourlyChargesBase = _base;
-                    hourlyChargesExp =
-                        hourlyChargesExp +
-                        averageHourlyExp +
-                        _exp;
-                }
-                (uint256 _bases, int256 _exps) = EVO_LIBRARY.normalize(
-                    (averageHourlyBase * averageHourlyBase)
-                );
-                averageHourlyBase = _bases;
-                averageHourlyExp = averageHourlyExp + averageHourlyExp + _exps;
-
-                amountOfBilledHours /= 2;
-            }
-
-            uint256 compoundedLiabilities = usersLiabilities *
-                hourlyChargesBase;
-
-            // hourlyChargesBase;
-            console.log(compoundedLiabilities, "compoundede libs");
-
-            unchecked {
-                if (hourlyChargesExp >= 0) {
-                    compoundedLiabilities =
-                        compoundedLiabilities *
-                        (10 ** uint256(hourlyChargesExp));
-                } else {
-                    compoundedLiabilities =
-                        compoundedLiabilities /
-                        (10 ** uint256(-hourlyChargesExp));
-                }
-
-                interestCharge =
-                    (compoundedLiabilities +
-                        adjustedNewLiabilities +
-                        initalMarginFeeAmount) -
-                    (usersLiabilities + newLiabilities);
-            }
-            console.log(interestCharge, "interest");
-            return interestCharge;
-        }
-    }
-*/

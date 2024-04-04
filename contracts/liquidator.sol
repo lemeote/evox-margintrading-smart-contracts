@@ -19,8 +19,6 @@ contract Liquidator is Ownable {
 
     IExecutor public Executor;
 
-    uint256 private DISCOUNT = 5; // 5% -> need decimal module for this Discount = (1 - LiquidationFee[ofAsset])
-
     /** Constructor  */
     constructor(
         address initialOwner,

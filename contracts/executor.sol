@@ -9,7 +9,6 @@ import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
 import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IinterestData.sol";
-import "hardhat/console.sol";
 
 contract EVO_EXCHANGE is Ownable {
     /** Address's  */
@@ -39,6 +38,26 @@ contract EVO_EXCHANGE is Ownable {
         admins[_interest] = true;
         interestContract = IInterestData(_interest);
         admins[_liquidator] = true;
+    }
+
+    /// @notice Alters the Admin roles for the contract
+    /// @param _datahub  the new address for the datahub
+    /// @param _depositVault the new address for the deposit vault
+    /// @param _oracle the new address for oracle
+    /// @param _utility the new address for the utility contract
+    /// @param  _int the new address for the interest contract
+    function alterAdminRoles(
+        address _datahub,
+        address _depositVault,
+        address _oracle,
+        address _utility,
+        address _int
+    ) public onlyOwner {
+        Datahub = IDataHub(_datahub);
+        DepositVault = IDepositVault(_depositVault);
+        Oracle = IOracle(_oracle);
+        Utilities = IUtilityContract(_utility);
+        interestContract = IInterestData(_int);
     }
 
     /** Constructor  */
@@ -104,10 +123,19 @@ contract EVO_EXCHANGE is Ownable {
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
-        bool[][2] memory trade_side
+        bool[][2] memory trade_side,
+        address[3] memory airnode_details,
+        bytes32 endpointId,
+        bytes calldata parameters
     ) public {
         require(DepositVault.viewcircuitBreakerStatus() == false);
         // require(airnode address == airnode address set on deployment )
+       // (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
+       //     ""
+      //  );
+
+      //  require(success);
+
         (
             uint256[] memory takerLiabilities,
             uint256[] memory makerLiabilities
@@ -132,9 +160,10 @@ contract EVO_EXCHANGE is Ownable {
             pair,
             participants,
             trade_amounts,
+            trade_side,
             takerLiabilities,
-            makerLiabilities,
-            trade_side
+            makerLiabilities
+            
         );
     }
 
@@ -148,13 +177,13 @@ contract EVO_EXCHANGE is Ownable {
     /// @param MakerliabilityAmounts the new liabilities being issued to the makers
     function TransferBalances(
         address[2] memory pair,
-        bool[][2] memory trade_side,
         address[] memory takers,
         address[] memory makers,
         uint256[] memory taker_amounts,
         uint256[] memory maker_amounts,
         uint256[] memory TakerliabilityAmounts,
-        uint256[] memory MakerliabilityAmounts
+        uint256[] memory MakerliabilityAmounts,
+        bool[][2] memory trade_side
     ) external checkRoleAuthority {
         require(DepositVault.viewcircuitBreakerStatus() == false);
         Datahub.checkIfAssetIsPresent(takers, pair[1]); /// charge the fee rate below on this
@@ -445,25 +474,6 @@ contract EVO_EXCHANGE is Ownable {
         }
     }
 
-    /*
-    function revertTrade(
-        address[2] memory pair,
-        address[] memory takers,
-        address[] memory makers,
-        uint256[] memory taker_amounts,
-        uint256[] memory maker_amounts
-    ) public checkRoleAuthority {
-        for (uint256 i = 0; i < takers.length; i++) {
-            Datahub.addAssets(takers[i], pair[0], taker_amounts[i]);
-            Datahub.removePendingBalances(takers[i], pair[0], taker_amounts[i]);
-        }
-
-        for (uint256 i = 0; i < makers.length; i++) {
-            Datahub.addAssets(makers[i], pair[1], maker_amounts[i]);
-            Datahub.removePendingBalances(makers[i], pair[0], maker_amounts[i]);
-        }
-    }
-*/
     /// @notice Alters the Admin roles for the contract
     /// @param _datahub  the new address for the datahub
     /// @param _depositVault the new address for the deposit vault
@@ -486,163 +496,3 @@ contract EVO_EXCHANGE is Ownable {
 
     receive() external payable {}
 }
-/*
-
-       /*
-            uint256 interestCharge = EVO_LIBRARY
-                .calculateCompoundedLiabilities(
-                    token,
-                    liabilitiesAccrued,
-                    Utilities.returnliabilities(user, token),
-                    Datahub.viewUsersInterestRateIndex(user, token)
-                );
-
-    /// @notice This modify's a users maintenance margin requirement
-    /// @dev Explain to a developer any extra details
-    /// @param user the user we are modifying the mmr of
-    /// @param in_token the token entering the users wallet
-    /// @param out_token the token leaving the users wallet
-    /// @param amount the amount being adjected
-    function Modifymmr(
-        address user,
-        address in_token,
-        address out_token,
-        uint256 amount
-    ) private {
-        IDataHub.AssetData memory assetLogsOutToken = Datahub.returnAssetLogs(
-            out_token
-        );
-        IDataHub.AssetData memory assetLogsInToken = Datahub.returnAssetLogs(
-            in_token
-        );
-        if (amount <= Utilities.returnliabilities(user, in_token)) {
-            uint256 StartingDollarMMR = (amount *
-                assetLogsOutToken.MaintenanceMarginRequirement) / 10 ** 18; // check to make sure this is right
-            if (
-                StartingDollarMMR >
-                Datahub.returnPairMMROfUser(user, in_token, out_token)
-            ) {
-                uint256 overage = (StartingDollarMMR -
-                    Datahub.returnPairMMROfUser(user, in_token, out_token)) /
-                    assetLogsInToken.MaintenanceMarginRequirement;
-
-                Datahub.removeMaintenanceMarginRequirement(
-                    user,
-                    in_token,
-                    out_token,
-                    Datahub.returnPairMMROfUser(user, in_token, out_token)
-                );
-
-                uint256 liabilityMultiplier = EVO_LIBRARY
-                    .calculatedepositLiabilityRatio(
-                        Utilities.returnliabilities(user, in_token),
-                        overage
-                    );
-
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                for (uint256 i = 0; i < tokens.length; i++) {
-                    Datahub.alterMMR(
-                        user,
-                        in_token,
-                        tokens[i],
-                        liabilityMultiplier
-                    );
-                }
-            } else {
-                Datahub.removeMaintenanceMarginRequirement(
-                    user,
-                    in_token,
-                    out_token,
-                    StartingDollarMMR
-                );
-            }
-        } else {
-            for (
-                uint256 i = 0;
-                i < Datahub.returnUsersAssetTokens(user).length;
-                i++
-            ) {
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-                Datahub.removeMaintenanceMarginRequirement(
-                    user,
-                    in_token,
-                    tokens[i],
-                    Datahub.returnPairMMROfUser(user, in_token, tokens[i])
-                );
-            }
-        }
-    }
-
-    function Modifyimr(
-        address user,
-        address in_token,
-        address out_token,
-        uint256 amount
-    ) private {
-        IDataHub.AssetData memory assetLogsOutToken = Datahub.returnAssetLogs(
-            out_token
-        );
-        IDataHub.AssetData memory assetLogsInToken = Datahub.returnAssetLogs(
-            in_token
-        );
-        if (amount <= Utilities.returnliabilities(user, in_token)) {
-            uint256 StartingDollarIMR = (amount *
-                assetLogsOutToken.initialMarginRequirement) / 10 ** 18; // check to make sure this is right
-            if (
-                StartingDollarIMR >
-                Datahub.returnPairIMROfUser(user, in_token, out_token)
-            ) {
-                uint256 overage = (StartingDollarIMR -
-                    Datahub.returnPairIMROfUser(user, in_token, out_token)) /
-                    assetLogsInToken.initialMarginRequirement;
-
-                Datahub.removeInitialMarginRequirement(
-                    user,
-                    in_token,
-                    out_token,
-                    Datahub.returnPairIMROfUser(user, in_token, out_token)
-                );
-
-                uint256 liabilityMultiplier = EVO_LIBRARY
-                    .calculatedepositLiabilityRatio(
-                        Utilities.returnliabilities(user, in_token),
-                        overage
-                    );
-
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-
-                for (uint256 i = 0; i < tokens.length; i++) {
-                    Datahub.alterIMR(
-                        user,
-                        in_token,
-                        tokens[i],
-                        liabilityMultiplier
-                    );
-                }
-            } else {
-                Datahub.removeInitialMarginRequirement(
-                    user,
-                    in_token,
-                    out_token,
-                    StartingDollarIMR
-                );
-            }
-        } else {
-            for (
-                uint256 i = 0;
-                i < Datahub.returnUsersAssetTokens(user).length;
-                i++
-            ) {
-                address[] memory tokens = Datahub.returnUsersAssetTokens(user);
-                Datahub.removeInitialMarginRequirement(
-                    user,
-                    in_token,
-                    tokens[i],
-                    Datahub.returnPairIMROfUser(user, in_token, tokens[i])
-                );
-            }
-        }
-    }
-
-*/

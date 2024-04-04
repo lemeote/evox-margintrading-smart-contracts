@@ -35,6 +35,7 @@ contract DataHub is Ownable {
     }
 
     IInterestData public interestContract;
+// const setup = await DataHub.AlterAdminRoles(DV, ex, oracle, interest);
 
 
 
@@ -102,6 +103,21 @@ contract DataHub is Ownable {
         address token
     ) public view returns (uint256) {
         return userdata[user].interestRateIndex[token];
+    }
+
+    function _USDT() external view returns (address) {
+        return USDT;
+    }
+
+    address public OrderBookProviderWallet;
+    address public DAO;
+
+    function fetchOrderBookProvider() public view returns (address) {
+        return OrderBookProviderWallet;
+    }
+
+    function fetchDaoWallet() public view returns (address) {
+        return DAO;
     }
 
     /// -----------------------------------------------------------------------
@@ -217,9 +233,9 @@ contract DataHub is Ownable {
         address out_token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].maintenance_margin_requirement[in_token][
-            out_token
-        ] *= amount;
+        userdata[user].maintenance_margin_requirement[in_token][out_token] *=
+            amount /
+            (10 ** 18);
     }
 
     function addMaintenanceMarginRequirement(
@@ -449,7 +465,14 @@ contract DataHub is Ownable {
     ) external view returns (uint256) {
         return assetdata[token].totalBorrowedAmount;
     }
-
+    /// @notice Fetches the total amount borrowed of the token
+    /// @param token the token being queried
+    /// @return the total borrowed amount
+    function fetchTotalAssetSupply(
+        address token
+    ) external view returns (uint256) {
+        return assetdata[token].totalAssetSupply;
+    }
     /// -----------------------------------------------------------------------
     /// Asset Data functions  -->
     /// -----------------------------------------------------------------------
@@ -463,16 +486,6 @@ contract DataHub is Ownable {
         return assetdata[token];
     }
 
-    /*
-    /// @notice This returns the asset data of a given asset see Idatahub for more details on what it returns
-    /// @param token the token being targetted
-    /// @return returns the assets data
-    function FetchAssetInitilizationStatus(
-        address token
-    ) external view returns (bool) {
-        return assetInitialized[token];
-    }
-*/
     /// @notice This returns the asset data of a given asset see Idatahub for more details on what it returns
     /// @param token the token being targetted
     /// @param assetPrice the starting asset price of the token
@@ -485,6 +498,7 @@ contract DataHub is Ownable {
     function InitTokenMarket(
         address token,
         uint256 assetPrice,
+       // uint256[2] memory fees,
         uint256 collateralMultiplier,
         uint256[2] memory tradeFees,
         uint256 initialMarginFee,

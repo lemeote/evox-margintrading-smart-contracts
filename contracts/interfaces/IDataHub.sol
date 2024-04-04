@@ -30,12 +30,16 @@ interface IDataHub {
         uint256 totalDepositors;
     }
 
+    function addAssets(address user, address token, uint256 amount) external;
+
+    function fetchTotalAssetSupply(
+        address token
+    ) external view returns (uint256);
+
     function tradeFee(
         address token,
         uint256 feeType
     ) external view returns (uint256);
-
-    function addAssets(address user, address token, uint256 amount) external;
 
     function calculateAIMRForUser(
         address user,
@@ -58,6 +62,10 @@ interface IDataHub {
         address user,
         address token
     ) external view returns (uint256);
+
+    function fetchOrderBookProvider() external view returns (address);
+
+    function fetchDaoWallet() external view returns (address);
 
     function fetchTotalBorrowedAmount(
         address token
@@ -146,7 +154,6 @@ interface IDataHub {
         address token,
         uint256 amount
     ) external;
-
 
     function SetMarginStatus(address user, bool onOrOff) external;
 

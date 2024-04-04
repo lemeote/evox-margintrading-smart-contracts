@@ -9,7 +9,6 @@ import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
 import "./interfaces/IinterestData.sol";
 
-//  userId[totalHistoricalUsers] = msg.sender;
 contract DepositVault is Ownable {
     constructor(
         address initialOwner,
@@ -239,12 +238,83 @@ contract DepositVault is Ownable {
         }
     }
 
+    mapping(address => uint256) public token_withdraws_hour;
+    uint256 lastWithdrawUpdateTime = block.timestamp;
+
+    event hazard(uint256, uint256);
+
+    error DangerousWithdraw();
+    /* DEPOSIT FOR FUNCTION */
+
+    function deposit_token_for(
+    address beneficiary,
+    address token,
+    uint256 amount
+) external returns (bool) {
+    require(
+        Datahub.FetchAssetInitilizationStatus(token) == true,
+        "this asset is not available to be deposited or traded"
+    );
+    IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
+    require(ERC20Token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
+
+    Datahub.settotalAssetSupply(token, amount, true);
+
+    (, uint256 liabilities, , , address[] memory tokens) = Datahub
+        .ReadUserData(beneficiary, token);
+
+    if (tokens.length == 0) {
+        totalHistoricalUsers += 1;
+        // Datahub.alterUsersInterestRateIndex(beneficiary);
+    }
+
+    if (liabilities > 0) {
+        if (amount <= liabilities) {
+            uint256 liabilityMultiplier = REX_LIBRARY
+                .calculatedepositLiabilityRatio(liabilities, amount);
+
+            Datahub.alterLiabilities(
+                beneficiary,
+                token,
+                ((10 ** 18) - liabilityMultiplier)
+            );
+
+            Datahub.setTotalBorrowedAmount(token, amount, false);
+
+            interestContract.chargeMassinterest(token);
+
+            return true;
+        } else {
+            modifyMMROnDeposit(beneficiary, token, amount);
+            uint256 amountAddedtoAssets = amount - liabilities;
+
+            Datahub.addAssets(beneficiary, token, amountAddedtoAssets);
+            Datahub.removeLiabilities(beneficiary, token, liabilities);
+            Datahub.setTotalBorrowedAmount(token, liabilities, false);
+
+            Datahub.changeMarginStatus(beneficiary);
+            interestContract.chargeMassinterest(token);
+
+            return true;
+        }
+    } else {
+        address[] memory users = new address[](1);
+        users[0] = beneficiary;
+
+        Datahub.checkIfAssetIsPresent(users, token);
+        Datahub.addAssets(beneficiary, token, amount);
+
+        return true;
+    }
+}
+
     /* WITHDRAW FUNCTION */
 
     /// @notice This withdraws tokens from the exchange
     /// @dev Explain to a developer any extra details
     /// @param token - the address of the token to be withdrawn
     /// @param amount - the amount of tokens to be withdrawn
+    /// @return returns a bool to let the user know if withdraw was successful.
 
     // IMPORTANT MAKE SURE USERS CAN'T WITHDRAW PAST THE LIMIT SET FOR AMOUNT OF FUNDS BORROWED
     function withdraw_token(address token, uint256 amount) external {
@@ -276,6 +346,28 @@ contract DepositVault is Ownable {
             "You cannot withdraw this amount as it would exceed the maximum borrow proportion"
         );
 
+        if (
+            amount + token_withdraws_hour[token] >
+            (
+                interestContract
+                    .fetchRateInfo(
+                        token,
+                        interestContract.fetchCurrentRateIndex(token)
+                    )
+                    .totalAssetSuplyAtIndex
+            ) *
+                3e17
+        ) {
+            revert DangerousWithdraw();
+        }
+
+        token_withdraws_hour[token] += amount;
+
+        if (lastWithdrawUpdateTime + 3600 >= block.timestamp) {
+            lastWithdrawUpdateTime = block.timestamp;
+            token_withdraws_hour[token] = 0;
+        }
+        
         IDataHub.AssetData memory assetInformation = Datahub.returnAssetLogs(
             token
         );
@@ -311,6 +403,7 @@ contract DepositVault is Ownable {
         if (assetLogs.totalBorrowedAmount > 0) {
             interestContract.chargeMassinterest(token);
         }
+        return true;
     }
 
     function debitAssetInterest(address user, address token) private {

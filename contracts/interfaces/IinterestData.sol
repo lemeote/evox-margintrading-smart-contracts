@@ -5,37 +5,20 @@ import "../interfaces/IDataHub.sol";
 interface IInterestData {
     struct interestDetails {
         uint256 lastUpdatedTime; // last updated time
+        uint256 totalAssetSuplyAtIndex;
         uint256 totalLiabilitiesAtIndex;
         uint256 borrowProportionAtIndex;
         uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
         uint256 interestRate; // current interestRate
     }
-        function getinterest() external view returns(uint256);
-
+    
     function fetchCurrentRate(address token) external view returns (uint256);
 
-    /*
-    function calculateCompoundedLiabilities(
-        address token,
-        uint256 newLiabilities,
-        uint256 usersLiabilities,
-        uint256 usersOriginIndex
-    ) external view returns (uint256);
-
-    */
+ 
     function fetchLiabilitiesOfIndex(
         address token,
         uint256 index
     ) external view returns (uint256);
-
-    /*
-   function calculateCompoundedAssets(
-        address token,
-        uint256 usersAssets,
-        uint256 usersOriginIndex
-    ) external view returns (uint256, uint256, uint256) ;
-
-    */
 
     function calculateAverageCumulativeInterest(
         uint256 startIndex,

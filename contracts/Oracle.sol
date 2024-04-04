@@ -6,33 +6,40 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
 import "./interfaces/IDepositVault.sol";
 import "./interfaces/IExecutor.sol";
+import "@api3/airnode-protocol/contracts/rrp/requesters/RrpRequesterV0.sol";
 
-contract Oracle is Ownable {
+contract Oracle is Ownable, RrpRequesterV0 {
     /** Data Hub + Deposit Vault  */
+
+    /// @notice Keeps track of contract admins
+    mapping(address => bool) public admins;
 
     IDataHub public Datahub;
     IExecutor public Executor;
     IDepositVault public DepositVault;
 
-    bytes32 private lastRequestId;
+    address public USDT = address(0xaBAD60e4e01547E2975a96426399a5a0578223Cb);
 
-    error Error_FufillUnSuccessful(bytes32 requestid, uint256 timeStamp);
+    uint256 public lastOracleFufillTime;
 
-    address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
-    /// @notice Keeps track of contract admins
-    mapping(address => bool) public admins;
+    bytes32 public lastRequestId;
+
+    error Error_FufillUnSuccessful(
+        bytes32 requestid,
+        uint256 timeStamp
+    );
 
     /** Constructor  */
     constructor(
         address initialOwner,
         address _DataHub,
         address _deposit_vault,
+        address airnodeRrpAddress,
         address _executor
-    ) Ownable(initialOwner) {
+    ) Ownable(initialOwner) RrpRequesterV0(airnodeRrpAddress) {
         Datahub = IDataHub(_DataHub);
         DepositVault = IDepositVault(_deposit_vault);
         Executor = IExecutor(_executor);
-        waitPeriod = 10000;
     }
 
     function alterAdminRoles(
@@ -48,7 +55,7 @@ contract Oracle is Ownable {
 
     /** Mapping's  */
     mapping(bytes32 => string) public queryParamMap;
-    mapping(uint256 => bool) public QueryApproval;
+    mapping(bytes32 => bool) public QueryApproval;
     mapping(bytes32 => bool) public incomingFulfillments;
     mapping(bytes32 => int256) public fulfilledData;
 
@@ -72,14 +79,10 @@ contract Oracle is Ownable {
     }
 
     mapping(bytes32 => Order) public OrderDetails;
-    mapping(uint256 => bytes32) public TimeOfRequest;
-
-    uint256 lastOracleRequestTime;
-    uint256 waitPeriod;
 
     /** event's  */
     event ValueUpdated(string result);
-    event QueryCalled(string description);
+    event QueryCalled(string description, uint256 timestamp, bytes32 requestId);
     event TradeExecuted(uint256 blocktimestamp);
     event OutOfGasFunds(uint256 blocktimestamp);
 
@@ -103,19 +106,34 @@ contract Oracle is Ownable {
         uint256[] maker_amounts
     );
 
+
+    /// @notice Checks the Airnodes status, see dev notes for a link to the contract to see its return values
+    /// @dev https://cardona-zkevm.polygonscan.com/address/0x9499a917cf8ca139c0e06f9728e1c6a0f7a1f5f2#code ( Line 1078 )
+    /// @param requestId query lastRequestId on the contract and see if the last order was a success
+    /// @return if the order queried returned success, fail, or null  --> if this returns true trades are open, if this returns false trading is closed.
+    function checkAirnodeStatus(bytes32 requestId) public view returns (bool) {
+        return airnodeRrp.requestIsAwaitingFulfillment(requestId);
+    }
+
     function ProcessTrade(
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
+        bool[][2] memory trade_side,
         uint256[] memory TakerliabilityAmounts,
         uint256[] memory MakerliabilityAmounts,
-        bool[][2] memory trade_side
-    )
-        external
-        checkRoleAuthority
-    {
-        bytes32 orderId = bytes32(
-            uint256(2636288841321219110873651998422106944)
+        address[3] memory airnode_details,
+        bytes32 endpointId,
+        bytes calldata parameters
+    ) external checkRoleAuthority {
+        freezeTempBalance(pair, participants, trade_amounts, trade_side);//, trade_side
+
+        bytes32 orderId = makeRequest(
+            airnode_details[0],
+            endpointId,
+            airnode_details[1],
+            airnode_details[2],
+            parameters
         );
 
         OrderDetails[orderId].taker_token = pair[0];
@@ -129,9 +147,29 @@ contract Oracle is Ownable {
         OrderDetails[orderId].takerliabilityAmounts = TakerliabilityAmounts;
         OrderDetails[orderId].makerliabilityAmounts = MakerliabilityAmounts;
 
-        makeRequest(orderId, pair, participants, trade_amounts, trade_side);
+        emit QueryCalled("Query sent,", block.timestamp, orderId);
+    }
 
-        emit QueryCalled("Query sent, please wait");
+    function makeRequest(
+        address airnode,
+        bytes32 endpointId,
+        address sponsor,
+        address sponsorWallet,
+        bytes calldata parameters
+    ) internal returns (bytes32) {
+        bytes32 requestId = airnodeRrp.makeFullRequest(
+            airnode, // airnode address
+            endpointId, // endpointId
+            sponsor, // sponsor's address
+            sponsorWallet, // sponsorWallet
+            address(this), // fulfillAddress
+            this.fulfill.selector, // fulfillFunctionId
+            parameters // encoded API parameters
+        );
+        incomingFulfillments[requestId] = true;
+        lastRequestId = requestId;
+
+        return requestId;
     }
 
     /// @notice This simulates an airnode call to see if it is a success or fail
@@ -185,62 +223,38 @@ contract Oracle is Ownable {
         address asset,
         uint256 trade_amount
     ) private {
+        // pay fee take less from the maker if they are a maker
         Datahub.removeAssets(participant, asset, trade_amount);
         Datahub.addPendingBalances(participant, asset, trade_amount);
     }
 
-    function makeRequest(
-        bytes32 requestId,
-        address[2] memory pair,
-        address[][2] memory participants,
-        uint256[][2] memory trade_amounts,
-        bool[][2] memory trade_side
-    ) internal returns (uint) {
-        freezeTempBalance(pair, participants, trade_amounts, trade_side);
-
-        requestId = bytes32(uint256(2636288841321219110873651998422106944));
-
-        fulfill(requestId);
-
-        return 1;
-    }
-
     /// The AirnodeRrpV0.sol protocol contract will callback here.
-    function fulfill(bytes32 requestId) internal {
-        if (
-            requestId != bytes32(uint256(2636288841321219110873651998422106944))
-        ) {
-            address[2] memory pair;
-            pair[0] = OrderDetails[requestId].taker_token;
-            pair[1] = OrderDetails[requestId].maker_token;
-/*
-            Executor.revertTrade(
-                pair,
-                OrderDetails[requestId].takers,
-                OrderDetails[requestId].makers,
-                OrderDetails[requestId].taker_amounts,
-                OrderDetails[requestId].maker_amounts
-            );
-            */
+    function fulfill(
+        bytes32 requestId,
+        bytes calldata data
+    ) external onlyAirnodeRrp {
+        require(incomingFulfillments[requestId], "No such request made");
+        delete incomingFulfillments[requestId];
+        lastOracleFufillTime = block.timestamp;
+        int256 decodedData = abi.decode(data, (int256));
+        fulfilledData[requestId] = decodedData;
+        if (decodedData != 1) {
             revert Error_FufillUnSuccessful(requestId, block.timestamp); //
         } else {
             address[2] memory pair;
             pair[0] = OrderDetails[requestId].taker_token;
             pair[1] = OrderDetails[requestId].maker_token;
-
             Executor.TransferBalances(
                 pair,
-                OrderDetails[requestId].trade_sides,
                 OrderDetails[requestId].takers,
                 OrderDetails[requestId].makers,
                 OrderDetails[requestId].taker_amounts,
                 OrderDetails[requestId].maker_amounts,
                 OrderDetails[requestId].takerliabilityAmounts,
-                OrderDetails[requestId].makerliabilityAmounts
+                OrderDetails[requestId].makerliabilityAmounts,
+                OrderDetails[requestId].trade_sides
             );
 
-            // The reason why we update price AFTER we make the call to the executor is because if it fails, the prices wont update
-            // and the update prices wll not be included in the  TX
             if (pair[0] == USDT) {
                 Datahub.toggleAssetPrice(
                     pair[1],

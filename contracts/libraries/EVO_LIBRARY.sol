@@ -3,7 +3,6 @@ pragma solidity =0.8.20;
 
 import "../interfaces/IDataHub.sol";
 import "../interfaces/IinterestData.sol";
-import "hardhat/console.sol";
 
 library EVO_LIBRARY {
     function createArray(address user) public pure returns (address[] memory) {
@@ -319,9 +318,6 @@ library EVO_LIBRARY {
             uint256 compoundedLiabilities = usersLiabilities *
                 hourlyChargesBase;
 
-            // hourlyChargesBase;
-            console.log(compoundedLiabilities, "compoundede libs");
-
             unchecked {
                 if (hourlyChargesExp >= 0) {
                     compoundedLiabilities =
@@ -339,7 +335,6 @@ library EVO_LIBRARY {
                         initalMarginFeeAmount) -
                     (usersLiabilities + newLiabilities);
             }
-            console.log(interestCharge, "interest");
             return interestCharge;
         }
     }
