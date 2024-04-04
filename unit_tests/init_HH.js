@@ -7,34 +7,22 @@ const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
 const LiquidatorAbi = require("../artifacts/contracts/liquidator.sol/Liquidator.json")
-const { mine } = require("@nomicfoundation/hardhat-network-helpers");
-
-const fs = require('fs');
-const path = require('path');
 
 async function main() {
-    /// const [deployer] = await hre.ethers.getSigners(0);
-    //console.log(signers[0].address)
-    //console.log(signers[1].address)
 
     const signers = await hre.ethers.getSigners();
     console.log("Deploying contracts with the account:", signers[0].address);
 
-
-
-    const initialOwner = signers[0].address // insert wallet address 
-    // insert airnode address , address _executor, address _deposit_vault
+    const initialOwner = signers[0].address 
     const executor = initialOwner;
     const depositvault = initialOwner;
     const oracle = initialOwner;
-    // Deploy REXE library
 
     const EVO_LIB = await hre.ethers.deployContract("EVO_LIBRARY");
 
     await EVO_LIB.waitForDeployment();
 
     console.log("EVO Library deployed to", await EVO_LIB.getAddress());
-
 
     const Interest = await hre.ethers.getContractFactory("interestData", {
         libraries: {
@@ -236,80 +224,11 @@ async function main() {
 
     REXE_init_transaction.wait();
 
-
-
-    console.log("init complete")
-
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    //DEPOSIT TOKENS
-
-    const contractABI = tokenabi.abi; // token abi for approvals 
-    // taker deposit amounts 
-    const deposit_amount = "500000000000000000000"
-
-    const TOKENCONTRACT = new hre.ethers.Contract(await USDT.getAddress(), contractABI, signers[0]);
-    // Wait for approval transaction to finish
-    const approvalTx = await TOKENCONTRACT.approve(await Deploy_depositVault.getAddress(), deposit_amount);
-    await approvalTx.wait();  // Wait for the transaction to be mined
-
-    const transfer = await TOKENCONTRACT.transfer(signers[1].address, "20000000000000000000000");
-
-    await transfer.wait();
-
-    const DVault = new hre.ethers.Contract(await Deploy_depositVault.getAddress(), depositABI.abi, signers[0]);
-
-    await DVault.deposit_token(
-        await USDT.getAddress(),
-        deposit_amount
-    )
-
-    const deposit_amount_2 = "1000000000000000000000"
-
-    const TOKENCONTRACT_2 = new hre.ethers.Contract(await REXE.getAddress(), tokenabi.abi, signers[1]);
-    // Wait for approval transaction to finish
-    const approvalTx_2 = await TOKENCONTRACT_2.approve(await Deploy_depositVault.getAddress(), "5000000000000000000000");
-    await approvalTx_2.wait();  // Wait for the transaction to be mined
-
-
-    const DVM = new hre.ethers.Contract(await Deploy_depositVault.getAddress(), depositABI.abi, signers[1]);
-
-    await DVM.deposit_token(
-        await REXE.getAddress(),
-        ("5000000000000000000000")
-    )
-
-
-    const TOKENCONTRACT_3 = new hre.ethers.Contract(await USDT.getAddress(), tokenabi.abi, signers[1]);
-
-    const approvalTx_3 = await TOKENCONTRACT_3.approve(await Deploy_depositVault.getAddress(), deposit_amount_2);
-
-    await approvalTx_3.wait();  // Wait for the transaction to be mined
-
-    await DVM.deposit_token(
-        await USDT.getAddress(),
-        deposit_amount_2)
-    console.log("deposits complete")
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    console.log("deposit successful moving to withdraw")
-
-    await DVM.withdraw_token(await USDT.getAddress(),
-    deposit_amount_2);
-
-    console.log("withdraw success")
-
+    console.log("Contract initialization complete")
 
 }
-//npx hardhat run scripts/deploy.js 
 main().then(() => process.exit(0))
     .catch((error) => {
         console.error(error);
         process.exit(1);
     });
-
-
-
