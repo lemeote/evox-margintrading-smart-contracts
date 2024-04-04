@@ -35,7 +35,7 @@ contract Liquidator is Ownable {
 
     /// @notice This alters the admin roles for the contract
     /// @param _executor the address of the new executor contract
-    function AlterAdmins(address _executor) public onlyOwner {
+    function alterAdminRoles(address _executor) public onlyOwner {
         Executor = IExecutor(_executor);
     }
 
@@ -81,7 +81,7 @@ contract Liquidator is Ownable {
 
         // max borrow proportion check
         require(
-            Executor.maxBorrowCheck(
+            Utilities.maxBorrowCheck(
                 tokens,
                 [takers, makers],
                 [
@@ -159,6 +159,7 @@ contract Liquidator is Ownable {
         }
         // at this point the validation checks have gone for them to place a margin trade
         // they will not have a pending balance --> we may need to pass a liquidation flag to skip that part in execute trade
+        /*
         Executor.TransferBalances(
             true,
             tokens,
@@ -169,6 +170,7 @@ contract Liquidator is Ownable {
             EVO_LIBRARY.createNumberArray(0),
             EVO_LIBRARY.createNumberArray(0)
         );
+        */
     }
 
     function returnMultiplier(
@@ -185,7 +187,7 @@ contract Liquidator is Ownable {
     function fetchLogs(
         address token
     ) private view returns (IDataHub.AssetData memory) {
-        IDataHub.AssetData memory assetLogs = Executor.returnAssetLogs(token);
+        IDataHub.AssetData memory assetLogs = Datahub.returnAssetLogs(token);
 
         return assetLogs;
     }

@@ -14,10 +14,9 @@ interface IDataHub {
         address[] tokens; // these are the tokens that comprise their portfolio ( assets, and liabilites, margined funds)
     }
 
-
-
     struct AssetData {
-      //  uint256[2] Tradefees; // first in the array is taker fee, next is maker fee
+        bool initialized;
+        uint256[2] tradeFees; // first in the array is taker fee, next is maker fee
         uint256 collateralMultiplier;
         uint256 initialMarginFee; // assigned in function Ex
         uint256 assetPrice;
@@ -30,6 +29,11 @@ interface IDataHub {
         uint256 maximumBorrowProportion; // we need an on the fly function for the current maximum borrowable AMOUNT  -- cant borrow the max available supply
         uint256 totalDepositors;
     }
+
+    function tradeFee(
+        address token,
+        uint256 feeType
+    ) external view returns (uint256);
 
     function addAssets(address user, address token, uint256 amount) external;
 
@@ -71,12 +75,14 @@ interface IDataHub {
         address out_token,
         uint256 amount
     ) external;
+
     function alterIMR(
         address user,
         address in_token,
         address out_token,
         uint256 amount
     ) external;
+
     function addLiabilities(
         address user,
         address token,
@@ -123,12 +129,11 @@ interface IDataHub {
         address out_token
     ) external view returns (uint256);
 
-        function returnPairIMROfUser(
+    function returnPairIMROfUser(
         address user,
         address in_token,
         address out_token
     ) external view returns (uint256);
-
 
     function addPendingBalances(
         address user,
@@ -142,9 +147,6 @@ interface IDataHub {
         uint256 amount
     ) external;
 
-    function fetchOrderBookProvider() external view returns (address);
-
-    function fetchDaoWallet() external view returns (address);
 
     function SetMarginStatus(address user, bool onOrOff) external;
 
@@ -215,7 +217,6 @@ interface IDataHub {
     function returnUsersAssetTokens(
         address user
     ) external view returns (address[] memory);
-
 
     function calculateCollateralValue(
         address user

@@ -4,8 +4,8 @@ import "../interfaces/IDataHub.sol";
 
 interface IExecutor {
     function TransferBalances(
-        bool feeSide,
         address[2] memory pair,
+        bool[][2] memory trade_sides,
         address[] memory takers,
         address[] memory makers,
         uint256[] memory taker_amounts,
@@ -22,18 +22,8 @@ interface IExecutor {
         uint256[] memory maker_amounts
     ) external;
 
-    function maxBorrowCheck(
-        address[2] memory pair,
-        address[][2] memory participants,
-        uint256[][2] memory trade_amounts
-    ) external view returns (bool);
+        function fetchOrderBookProvider() external view returns (address);
 
-    function returnAssetLogs(
-        address token
-    ) external view returns (IDataHub.AssetData memory assetLogs);
+    function fetchDaoWallet() external view returns (address);
 
-    function chargeLiabilityDelta(
-        address token,
-        uint256 index
-    ) external view returns (uint256);
 }

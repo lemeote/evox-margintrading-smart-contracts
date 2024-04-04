@@ -10,7 +10,11 @@ interface IInterestData {
         uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
         uint256 interestRate; // current interestRate
     }
+        function getinterest() external view returns(uint256);
 
+    function fetchCurrentRate(address token) external view returns (uint256);
+
+    /*
     function calculateCompoundedLiabilities(
         address token,
         uint256 newLiabilities,
@@ -18,21 +22,37 @@ interface IInterestData {
         uint256 usersOriginIndex
     ) external view returns (uint256);
 
+    */
+    function fetchLiabilitiesOfIndex(
+        address token,
+        uint256 index
+    ) external view returns (uint256);
+
+    /*
    function calculateCompoundedAssets(
         address token,
         uint256 usersAssets,
         uint256 usersOriginIndex
     ) external view returns (uint256, uint256, uint256) ;
 
+    */
+
+    function calculateAverageCumulativeInterest(
+        uint256 startIndex,
+        uint256 endIndex,
+        address token
+    ) external view returns (uint256);
+
+    function calculateAverageCumulativeDepositInterest(
+        uint256 startIndex,
+        uint256 endIndex,
+        address token
+    ) external view returns (uint256);
+
     function fetchRateInfo(
         address token,
         uint256 index
     ) external view returns (interestDetails memory);
-
-    function fetchRate(
-        address token,
-        uint256 index
-    ) external view returns (uint256);
 
     function fetchCurrentRateIndex(
         address token
@@ -40,16 +60,9 @@ interface IInterestData {
 
     function chargeMassinterest(address token) external;
 
-    function fetchCurrentRate(address token) external view returns (uint256);
-
     function updateInterestIndex(
         address token,
         uint256 index,
         uint256 value
     ) external;
-
-    function chargeStaticLiabilityInterest(
-        address token,
-        uint256 index
-    ) external view returns (uint256);
 }

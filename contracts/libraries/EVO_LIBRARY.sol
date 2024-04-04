@@ -30,8 +30,10 @@ library EVO_LIBRARY {
         return total;
     }
 
-    function calculateAverage(uint256[] memory values) public view returns(uint256){
-        if(values.length == 0){
+    function calculateAverage(
+        uint256[] memory values
+    ) public view returns (uint256) {
+        if (values.length == 0) {
             return 0;
         }
         uint256 total;
@@ -39,31 +41,34 @@ library EVO_LIBRARY {
         for (uint256 i = 0; i < values.length; i++) {
             total += values[i];
         }
-       value =  total / values.length;
+        value = total / values.length;
         return value;
-
     }
-    function calculateAverageOfValue(uint256 value, uint divisor) public view returns(uint256){
-        if(value / divisor == 0){
+
+    function calculateAverageOfValue(
+        uint256 value,
+        uint divisor
+    ) public view returns (uint256) {
+        if (value / divisor == 0) {
             return 0;
         }
-        if(divisor == 0){
+        if (divisor == 0) {
             return 0;
         }
-        if(value == 0){
+        if (value == 0) {
             return 0;
         }
-       uint256 total = value / divisor;
+        uint256 total = value / divisor;
         return total;
     }
 
-        function normalize(
+    function normalize(
         uint256 x
     ) public pure returns (uint256 base, int256 exp) {
         exp = 0;
         base = x;
-        
-        while(base > 1e18) {
+
+        while (base > 1e18) {
             base = base / 10;
             exp = exp + 1;
         }
@@ -74,20 +79,22 @@ library EVO_LIBRARY {
         IDataHub.AssetData memory assetlogs,
         IInterestData.interestDetails memory interestRateInfo
     ) public view returns (uint256) {
-        uint256 borrowProportion = ((assetlogs.totalBorrowedAmount +
-            amount) * 10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
+        uint256 borrowProportion = ((assetlogs.totalBorrowedAmount + amount) *
+            10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
 
         uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
 
-        console.log(interestRateInfo.rateInfo[0],interestRateInfo.rateInfo[1],interestRateInfo.rateInfo[2]);
+        console.log(
+            interestRateInfo.rateInfo[0],
+            interestRateInfo.rateInfo[1],
+            interestRateInfo.rateInfo[2]
+        );
 
-   
         uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
         uint256 optimalInterestRate = interestRateInfo.rateInfo[1];
         uint256 maximumInterestRate = interestRateInfo.rateInfo[2];
 
-    
         if (borrowProportion <= optimalBorrowProportion) {
             uint256 rate = optimalInterestRate - minimumInterestRate;
             return
@@ -167,5 +174,173 @@ library EVO_LIBRARY {
     ) public pure returns (uint256) {
         if (_fee == 0) return 0;
         return (_amount * (_fee)) / (10 ** 4);
+    }
+
+    function calculateCompoundedAssets(
+        uint256 currentIndex,
+        uint256 AverageCumulativeDepositInterest,
+        uint256 usersAssets,
+        uint256 usersOriginIndex
+    ) public view returns (uint256, uint256, uint256) {
+        uint256 earningHours = currentIndex - usersOriginIndex;
+
+        uint256 DaoInterestCharge;
+        uint256 OrderBookProviderCharge;
+        uint256 interestCharge;
+
+        uint256 averageHourly = 1e18 + AverageCumulativeDepositInterest / 8736;
+
+        (uint256 averageHourlyBase, int256 averageHourlyExp) = normalize(
+            averageHourly
+        );
+        averageHourlyExp = averageHourlyExp - 18;
+
+        uint256 hourlyChargesBase = 1;
+        int256 hourlyChargesExp = 0;
+        while (earningHours > 0) {
+            if (earningHours % 2 == 1) {
+                (uint256 _base, int256 _exp) = normalize(
+                    (hourlyChargesBase * averageHourlyBase)
+                );
+
+                hourlyChargesBase = _base;
+                hourlyChargesExp = hourlyChargesExp + averageHourlyExp + _exp;
+            }
+            (uint256 _bases, int256 _exps) = normalize(
+                (averageHourlyBase * averageHourlyBase)
+            );
+            averageHourlyBase = _bases;
+            averageHourlyExp = averageHourlyExp + averageHourlyExp + _exps;
+
+            earningHours /= 2;
+        }
+
+        uint256 compoundedAssets = usersAssets * hourlyChargesBase;
+
+        unchecked {
+            if (hourlyChargesExp >= 0) {
+                compoundedAssets =
+                    compoundedAssets *
+                    (10 ** uint256(hourlyChargesExp));
+            } else {
+                compoundedAssets =
+                    compoundedAssets /
+                    (10 ** uint256(-hourlyChargesExp));
+            }
+
+            interestCharge = compoundedAssets - usersAssets;
+
+            if (interestCharge > 0) {
+                if (interestCharge > 100 wei) {
+                    interestCharge = interestCharge / 100;
+
+                    interestCharge *= 80;
+
+                    OrderBookProviderCharge *= 2;
+
+                    DaoInterestCharge *= 18;
+                }
+            }
+        } // 20 / 80
+        return (interestCharge, OrderBookProviderCharge, DaoInterestCharge);
+        // now for this it will always returtn 80% of their actual interest --> to do this splits we scale up to 100% then take the 20%
+    }
+
+    function calculateCompoundedLiabilities(
+        uint256 currentIndex,
+        uint256 AverageCumulativeInterest,
+        IDataHub.AssetData memory assetdata,
+        IInterestData.interestDetails memory interestRateInfo,
+        uint256 newLiabilities,
+        uint256 usersLiabilities,
+        uint256 usersOriginIndex
+    ) public view returns (uint256) {
+        uint256 amountOfBilledHours = currentIndex - usersOriginIndex;
+
+        // calculate what the rate would be after their trade and charge that
+
+        uint256 adjustedNewLiabilities = (newLiabilities *
+            // (1e18 + (fetchCurrentRate(token) / 8736))) / (10 ** 18);
+            (1e18 +
+                (calculateInterestRate(
+                    newLiabilities,
+                    assetdata,
+                    interestRateInfo
+                ) / 8736))) / (10 ** 18);
+        uint256 initalMarginFeeAmount;
+
+        if (newLiabilities == 0) {
+            initalMarginFeeAmount = 0;
+        } else {
+            initalMarginFeeAmount = calculateinitialMarginFeeAmount(
+                assetdata,
+                newLiabilities
+            );
+        }
+
+        if (newLiabilities != 0) {
+            return
+                (adjustedNewLiabilities + initalMarginFeeAmount) -
+                newLiabilities;
+        } else {
+            uint256 interestCharge;
+
+            uint256 averageHourly = 1e18 + AverageCumulativeInterest / 8736;
+
+            (uint256 averageHourlyBase, int256 averageHourlyExp) = normalize(
+                averageHourly
+            );
+            averageHourlyExp = averageHourlyExp - 18;
+
+            uint256 hourlyChargesBase = 1;
+            int256 hourlyChargesExp = 0;
+
+            while (amountOfBilledHours > 0) {
+                if (amountOfBilledHours % 2 == 1) {
+                    (uint256 _base, int256 _exp) = normalize(
+                        (hourlyChargesBase * averageHourlyBase)
+                    );
+
+                    hourlyChargesBase = _base;
+                    hourlyChargesExp =
+                        hourlyChargesExp +
+                        averageHourlyExp +
+                        _exp;
+                }
+                (uint256 _bases, int256 _exps) = normalize(
+                    (averageHourlyBase * averageHourlyBase)
+                );
+                averageHourlyBase = _bases;
+                averageHourlyExp = averageHourlyExp + averageHourlyExp + _exps;
+
+                amountOfBilledHours /= 2;
+            }
+
+            uint256 compoundedLiabilities = usersLiabilities *
+                hourlyChargesBase;
+
+            // hourlyChargesBase;
+            console.log(compoundedLiabilities, "compoundede libs");
+
+            unchecked {
+                if (hourlyChargesExp >= 0) {
+                    compoundedLiabilities =
+                        compoundedLiabilities *
+                        (10 ** uint256(hourlyChargesExp));
+                } else {
+                    compoundedLiabilities =
+                        compoundedLiabilities /
+                        (10 ** uint256(-hourlyChargesExp));
+                }
+
+                interestCharge =
+                    (compoundedLiabilities +
+                        adjustedNewLiabilities +
+                        initalMarginFeeAmount) -
+                    (usersLiabilities + newLiabilities);
+            }
+            console.log(interestCharge, "interest");
+            return interestCharge;
+        }
     }
 }

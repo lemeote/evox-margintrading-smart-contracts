@@ -21,6 +21,24 @@ contract DepositVault is Ownable {
         Executor = IExecutor(executor);
         interestContract = IInterestData(interest);
     }
+        modifier checkRoleAuthority() {
+        require(admins[msg.sender] == true, "Unauthorized");
+        _;
+    }
+    mapping(address => bool) public admins;
+
+     function alterAdminRoles(
+        address dataHub,
+        address executor,
+        address interest
+    ) public onlyOwner {
+        admins[dataHub] = true;
+        admins[executor] = true;
+        admins[interest] = true;
+        interestContract = IInterestData(interest);
+        Datahub = IDataHub(dataHub);
+
+    }
 
     IDataHub public Datahub;
     IExecutor public Executor;
@@ -52,6 +70,14 @@ contract DepositVault is Ownable {
 
     function viewcircuitBreakerStatus() external view returns(bool){
        return circuitBreakerStatus;
+    }
+    address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
+    function _USDT() external view returns (address) {
+        return USDT;
+    }
+
+    function setUSDT(address input) external onlyOwner {
+        USDT = address(input);
     }
 
     /// @notice fetches and returns a tokens decimals
@@ -133,7 +159,7 @@ contract DepositVault is Ownable {
         uint256 amount
     ) external returns (bool) {
         require(
-            Datahub.FetchAssetInitilizationStatus(token) == true,
+            Datahub.returnAssetLogs(token).initialized == true,
             "this asset is not available to be deposited or traded"
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
@@ -275,11 +301,6 @@ contract DepositVault is Ownable {
         }
     }
 
-    /// @notice This alters the datahub
-    /// @param _datahub this is the new address for the datahub
-    function alterdataHub(address _datahub) public onlyOwner {
-        Datahub = IDataHub(_datahub);
-    }
 
     function debitAssetInterest(address user, address token) private {
         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
@@ -287,18 +308,23 @@ contract DepositVault is Ownable {
             uint256 interestCharge,
             uint256 OrderBookProviderCharge,
             uint256 DaoInterestCharge
-        ) = interestContract.calculateCompoundedAssets(
-                token,
+        ) =  EVO_LIBRARY.calculateCompoundedAssets(
+                interestContract.fetchCurrentRateIndex(token),
+                interestContract.calculateAverageCumulativeDepositInterest(
+                    Datahub.viewUsersEarningRateIndex(user, token),
+                    interestContract.fetchCurrentRateIndex(token),
+                    token
+                ),
                 assets,
-                Datahub.viewUsersInterestRateIndex(user, token)
-            ); // 20 /80
+                Datahub.viewUsersEarningRateIndex(user, token)
+            );
         Datahub.alterUsersEarningRateIndex(user, token);
 
         Datahub.addAssets(user, token, interestCharge);
-        Datahub.addAssets(Datahub.fetchDaoWallet(), token, DaoInterestCharge);
+        Datahub.addAssets(Executor.fetchDaoWallet(), token, DaoInterestCharge);
 
         Datahub.addAssets(
-            Datahub.fetchOrderBookProvider(),
+            Executor.fetchOrderBookProvider(),
             token,
             OrderBookProviderCharge
         );

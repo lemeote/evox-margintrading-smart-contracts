@@ -19,6 +19,8 @@ contract Oracle is Ownable {
     error Error_FufillUnSuccessful(bytes32 requestid, uint256 timeStamp);
 
     address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
+    /// @notice Keeps track of contract admins
+    mapping(address => bool) public admins;
 
     /** Constructor  */
     constructor(
@@ -33,6 +35,17 @@ contract Oracle is Ownable {
         waitPeriod = 10000;
     }
 
+    function alterAdminRoles(
+        address _ex,
+        address _DataHub,
+        address _deposit_vault
+    ) public onlyOwner {
+        admins[_ex] = true;
+        Datahub = IDataHub(_DataHub);
+        DepositVault = IDepositVault(_deposit_vault);
+        Executor = IExecutor(_ex);
+    }
+
     /** Mapping's  */
     mapping(bytes32 => string) public queryParamMap;
     mapping(uint256 => bool) public QueryApproval;
@@ -40,23 +53,22 @@ contract Oracle is Ownable {
     mapping(bytes32 => int256) public fulfilledData;
 
     modifier checkRoleAuthority() {
-        require(msg.sender == address(Executor), "Nice Try Buster");
+        require(admins[msg.sender] == true, "Unauthorized");
         _;
     }
 
     /** Struct's  */
     struct Order {
-        bool fee_side;
         address taker_token;
         address maker_token;
         address[] takers;
         address[] makers;
         uint256[] taker_amounts;
         uint256[] maker_amounts;
-        uint256[] makerliabilityAmounts;
+        bool[][2] trade_sides;
         uint256[] takerliabilityAmounts;
+        uint256[] makerliabilityAmounts;
         string _id;
-        // bool margin;
     }
 
     mapping(bytes32 => Order) public OrderDetails;
@@ -91,52 +103,33 @@ contract Oracle is Ownable {
         uint256[] maker_amounts
     );
 
-    function AlterAdminRoles(
-        address _deposit_vault,
-        address _executor,
-        address _DataHub
-    ) public onlyOwner {
-        Datahub = IDataHub(_DataHub);
-        DepositVault = IDepositVault(_deposit_vault);
-        Executor = IExecutor(_executor);
-    }
-
-    function AlterExecutor(address _new_executor) public onlyOwner {
-        Executor = IExecutor(_new_executor);
-    }
-
-    // function mock tx? if no just set balances back
-
     function ProcessTrade(
-        bool feeSide,
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
         uint256[] memory TakerliabilityAmounts,
-        uint256[] memory MakerliabilityAmounts
+        uint256[] memory MakerliabilityAmounts,
+        bool[][2] memory trade_side
     )
         external
-        // address[3] memory airnode_details,
-        // bytes32 endpointId,
-        // bytes calldata parameters
         checkRoleAuthority
     {
         bytes32 orderId = bytes32(
             uint256(2636288841321219110873651998422106944)
-        ); 
-        
-        OrderDetails[orderId].fee_side = feeSide;
+        );
+
         OrderDetails[orderId].taker_token = pair[0];
         OrderDetails[orderId].maker_token = pair[1];
         OrderDetails[orderId].taker_amounts = trade_amounts[0];
         OrderDetails[orderId].maker_amounts = trade_amounts[1];
+        OrderDetails[orderId].trade_sides = trade_side;
 
         OrderDetails[orderId].takers = participants[0];
         OrderDetails[orderId].makers = participants[1];
         OrderDetails[orderId].takerliabilityAmounts = TakerliabilityAmounts;
         OrderDetails[orderId].makerliabilityAmounts = MakerliabilityAmounts;
 
-        makeRequest(orderId, pair, participants, trade_amounts);
+        makeRequest(orderId, pair, participants, trade_amounts, trade_side);
 
         emit QueryCalled("Query sent, please wait");
     }
@@ -148,19 +141,11 @@ contract Oracle is Ownable {
     function freezeTempBalance(
         address[2] memory pair,
         address[][2] memory participants,
-        uint256[][2] memory trade_amounts
+        uint256[][2] memory trade_amounts,
+        bool[][2] memory trade_side
     ) private {
-        //(success, returnValue) = abi.decode(address(this).call(abi.encodeWithSignature("myFunction(uint256)", _newValue)), (bool, uint256));
-       alterPending(
-            participants[0],
-            trade_amounts[0],
-            pair[0]
-        );
-         alterPending(
-            participants[1],
-            trade_amounts[1],
-            pair[1]
-        );
+        alterPending(participants[0], trade_amounts[0], trade_side[0], pair[0]);
+        alterPending(participants[1], trade_amounts[1], trade_side[1], pair[1]);
     }
 
     /// @notice Processes a trade details
@@ -170,6 +155,7 @@ contract Oracle is Ownable {
     function alterPending(
         address[] memory participants,
         uint256[] memory tradeAmounts,
+        bool[] memory tradeside,
         address pair
     ) internal returns (bool) {
         for (uint256 i = 0; i < participants.length; i++) {
@@ -177,11 +163,15 @@ contract Oracle is Ownable {
                 participants[i],
                 pair
             );
-            AlterPendingBalances(
-                participants[i],
-                pair,
-                tradeAmounts[i] > assets ? assets : tradeAmounts[i]
-            );
+            if (tradeside[i] == true) {} else {
+                tradeAmounts[i] =
+                    (tradeAmounts[i] * Datahub.tradeFee(pair, 1)) /
+                    10 ** 18;
+            }
+            uint256 balanceToAdd = tradeAmounts[i] > assets
+                ? assets
+                : tradeAmounts[i];
+            AlterPendingBalances(participants[i], pair, balanceToAdd);
         }
         return true;
     }
@@ -196,18 +186,18 @@ contract Oracle is Ownable {
         uint256 trade_amount
     ) private {
         Datahub.removeAssets(participant, asset, trade_amount);
-      //  Datahub.addPendingBalances(participant, asset, trade_amount);
+        Datahub.addPendingBalances(participant, asset, trade_amount);
     }
 
     function makeRequest(
         bytes32 requestId,
         address[2] memory pair,
         address[][2] memory participants,
-        uint256[][2] memory trade_amounts
+        uint256[][2] memory trade_amounts,
+        bool[][2] memory trade_side
     ) internal returns (uint) {
-      
-        freezeTempBalance(pair, participants, trade_amounts);
-      
+        freezeTempBalance(pair, participants, trade_amounts, trade_side);
+
         requestId = bytes32(uint256(2636288841321219110873651998422106944));
 
         fulfill(requestId);
@@ -223,7 +213,7 @@ contract Oracle is Ownable {
             address[2] memory pair;
             pair[0] = OrderDetails[requestId].taker_token;
             pair[1] = OrderDetails[requestId].maker_token;
-
+/*
             Executor.revertTrade(
                 pair,
                 OrderDetails[requestId].takers,
@@ -231,6 +221,7 @@ contract Oracle is Ownable {
                 OrderDetails[requestId].taker_amounts,
                 OrderDetails[requestId].maker_amounts
             );
+            */
             revert Error_FufillUnSuccessful(requestId, block.timestamp); //
         } else {
             address[2] memory pair;
@@ -238,8 +229,8 @@ contract Oracle is Ownable {
             pair[1] = OrderDetails[requestId].maker_token;
 
             Executor.TransferBalances(
-                OrderDetails[requestId].fee_side,
                 pair,
+                OrderDetails[requestId].trade_sides,
                 OrderDetails[requestId].takers,
                 OrderDetails[requestId].makers,
                 OrderDetails[requestId].taker_amounts,

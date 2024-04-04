@@ -21,8 +21,6 @@ interface IUtilityContract {
         uint256 BalanceToLeave
     ) external view returns (bool);
 
-    function AlterExchange(address _executor) external;
-
     function calculateTradeLiabilityAddtions(
         address[2] memory pair,
         address[][2] memory participants,
@@ -34,7 +32,6 @@ interface IUtilityContract {
         address token
     ) external view returns (uint256);
 
- 
     function calculateAmountToAddToLiabilities(
         address user,
         address token,
@@ -60,4 +57,41 @@ interface IUtilityContract {
         address token,
         uint256 amount
     ) external view returns (uint256);
+
+    function processMargin(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) external returns (bool);
+
+    function fetchBorrowProportionList(
+        uint256 startingIndex,
+        uint256 endingIndex,
+        address token
+    ) external view returns (uint256[] memory);
+
+    function chargeStaticLiabilityInterest(
+        address token,
+        uint256 index
+    ) external view returns (uint256);
+
+    function maxBorrowCheck(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) external view returns (bool);
+
+    function Modifymmr(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
+
+    function Modifyimr(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
 }

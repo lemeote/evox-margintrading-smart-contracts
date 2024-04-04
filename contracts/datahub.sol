@@ -4,8 +4,12 @@ pragma solidity =0.8.20;
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IDataHub.sol";
-import "hardhat/console.sol";
-import "./interfaces/IinterestData.sol";
+
+interface IInterestData {
+    function fetchCurrentRateIndex(
+        address token
+    ) external view returns (uint256);
+}
 
 contract DataHub is Ownable {
     modifier checkRoleAuthority() {
@@ -18,39 +22,37 @@ contract DataHub is Ownable {
         address _executor,
         address _deposit_vault,
         address _oracle,
-        address _interest
+        address _interest,
+        address utils
     ) Ownable(initialOwner) {
         admins[_executor] = true;
         admins[_deposit_vault] = true;
         admins[_oracle] = true;
         admins[_interest] = true;
         admins[initialOwner] = true;
+        admins[utils] = true;
         interestContract = IInterestData(_interest);
     }
 
     IInterestData public interestContract;
 
-    address public OrderBookProviderWallet;
-    address public DAO;
 
-    function AlterAdminRoles(
+
+    function alterAdminRoles(
         address _deposit_vault,
         address _executor,
         address _oracle,
-        address _interest
+        address _interest,
+        address _utils
     ) public onlyOwner {
         admins[_executor] = true;
         admins[_deposit_vault] = true;
         admins[_oracle] = true;
         admins[_interest] = true;
+        admins[_utils] = true;
         interestContract = IInterestData(_interest);
-        OrderBookProviderWallet = msg.sender;
-        DAO = msg.sender;
-    }
 
-    /// @notice checks to see if the asset has been initilized
-    /// @dev once an asset is tradeable this is true
-    mapping(address => bool) public assetInitialized;
+    }
 
     /// @notice Keeps track of a users data
     /// @dev Go to IDatahub for more details
@@ -63,13 +65,6 @@ contract DataHub is Ownable {
     /// @notice Keeps track of contract admins
     mapping(address => bool) public admins;
 
-    function fetchOrderBookProvider() public view returns (address) {
-        return OrderBookProviderWallet;
-    }
-
-    function fetchDaoWallet() public view returns (address) {
-        return DAO;
-    }
 
     /// @notice Alters the users interest rate index (or epoch)
     /// @dev This is to change the users rate epoch, it would be changed after they pay interest.
@@ -215,7 +210,6 @@ contract DataHub is Ownable {
     ) external checkRoleAuthority {
         userdata[user].pending_balances[token] -= amount;
     }
-
 
     function alterMMR(
         address user,
@@ -380,15 +374,6 @@ contract DataHub is Ownable {
         }
     }
 
-    /// @notice This function returns the users tokens array ( the tokens in their portfolio)
-    /// @param user the user being targetted
-    function returnUsersAssetTokens(
-        address user
-    ) external view returns (address[] memory) {
-        IDataHub.UserData storage userData = userdata[user];
-        return userData.tokens;
-    }
-
     /// @notice This function rchecks if a token is present in a users potrfolio
     /// @param users the users being targetted
     /// @param token being targetted
@@ -474,10 +459,11 @@ contract DataHub is Ownable {
     /// @return returns the assets data
     function returnAssetLogs(
         address token
-    ) external view returns (IDataHub.AssetData memory) {
+    ) public view returns (IDataHub.AssetData memory) {
         return assetdata[token];
     }
 
+    /*
     /// @notice This returns the asset data of a given asset see Idatahub for more details on what it returns
     /// @param token the token being targetted
     /// @return returns the assets data
@@ -486,7 +472,7 @@ contract DataHub is Ownable {
     ) external view returns (bool) {
         return assetInitialized[token];
     }
-
+*/
     /// @notice This returns the asset data of a given asset see Idatahub for more details on what it returns
     /// @param token the token being targetted
     /// @param assetPrice the starting asset price of the token
@@ -500,6 +486,7 @@ contract DataHub is Ownable {
         address token,
         uint256 assetPrice,
         uint256 collateralMultiplier,
+        uint256[2] memory tradeFees,
         uint256 initialMarginFee,
         uint256 liquidationFee,
         uint256 initialMarginRequirement,
@@ -507,11 +494,12 @@ contract DataHub is Ownable {
         uint256 optimalBorrowProportion,
         uint256 maximumBorrowProportion
     ) external onlyOwner {
-        require(!assetInitialized[token]);
+        require(!assetdata[token].initialized);
         // require liquidation fee cannot be bigger than MMR setting
 
         assetdata[token] = IDataHub.AssetData({
             collateralMultiplier: collateralMultiplier,
+            tradeFees: tradeFees,
             initialMarginFee: initialMarginFee,
             assetPrice: assetPrice,
             liquidationFee: liquidationFee,
@@ -521,10 +509,16 @@ contract DataHub is Ownable {
             totalBorrowedAmount: 0,
             optimalBorrowProportion: optimalBorrowProportion,
             maximumBorrowProportion: maximumBorrowProportion,
-            totalDepositors: 0
+            totalDepositors: 0,
+            initialized: true
         });
+    }
 
-        assetInitialized[token] = true;
+    function tradeFee(
+        address token,
+        uint256 feeType
+    ) public view returns (uint256) {
+        return 1e18 - (assetdata[token].tradeFees[feeType]);
     }
 
     /// @notice Changes the assets price
@@ -555,14 +549,6 @@ contract DataHub is Ownable {
         returns (uint256, uint256, uint256, bool, address[] memory)
     {
         uint256 assets = userdata[user].asset_info[token]; // tracks their portfolio (margined, and depositted)
-
-        (uint256 interestCharge, , ) = interestContract
-            .calculateCompoundedAssets(
-                token,
-                assets,
-                viewUsersInterestRateIndex(user, token)
-            );
-        assets += interestCharge;
         uint256 liabilities = userdata[user].liability_info[token];
         uint256 pending = userdata[user].pending_balances[token];
         bool margined = userdata[user].margined;
