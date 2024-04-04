@@ -31,7 +31,7 @@ Exchange deployed to 0x87e02373945F4DBD9cb4f640CF59baaf86327A36
         const colval = "1000000000000000000"
 
         const USDTinitialMarginFee = "5000000000000000" // 0.5% //0.05 (5*16)
-        const USDTliquidationFee = "11000000000000000000000000"//( 3**17) was 30
+        const USDTliquidationFee = "100000000000000000"//( 3**17) was 30
         const USDTinitialMarginRequirement = "200000000000000000"//( 2**18) was 200
         const USDTMaintenanceMarginRequirement = "100000000000000000" // .1 ( 10*17)
         const USDToptimalBorrowProportion = "700000000000000000"//( 7**18) was 700
@@ -46,7 +46,7 @@ Exchange deployed to 0x87e02373945F4DBD9cb4f640CF59baaf86327A36
         const REXEprice = "500000000000000000";
 
         const REXEinitialMarginFee = "10000000000000000";
-        const REXEliquidationFee = "11000000000000000000000000";
+        const REXEliquidationFee = "100000000000000000";
         const REXEinitialMarginRequirement = "500000000000000000"
         const REXEMaintenanceMarginRequirement = "250000000000000000"
         const REXEoptimalBorrowProportion = "700000000000000000"
@@ -61,7 +61,7 @@ Exchange deployed to 0x87e02373945F4DBD9cb4f640CF59baaf86327A36
         const ETHprice = "2597000000000000000000";
 
         const ETHinitialMarginFee = "50000000000000000"
-        const ETHliquidationFee = "11000000000000000000000000"
+        const ETHliquidationFee = "100000000000000000"
         const ETHinitialMarginRequirement = "200000000000000000"
         const ETHMaintenanceMarginRequirement = "100000000000000000"
         const ETHoptimalBorrowProportion = "700000000000000000"
@@ -74,7 +74,7 @@ Exchange deployed to 0x87e02373945F4DBD9cb4f640CF59baaf86327A36
         const wBTCprice = "46100000000000000000000";
 
         const wBTCinitialMarginFee = "50000000000000000"
-        const wBTCliquidationFee = "11000000000000000000000000"
+        const wBTCliquidationFee = "100000000000000000"
         const wBTCinitialMarginRequirement = "200000000000000000"
         const wBTCMaintenanceMarginRequirement = "100000000000000000"
         const wBTCoptimalBorrowProportion = "700000000000000000"
@@ -87,7 +87,7 @@ Exchange deployed to 0x87e02373945F4DBD9cb4f640CF59baaf86327A36
         const MATICprice = "910000000000000000";
 
         const MATICinitialMarginFee = "50000000000000000"
-        const MATICliquidationFee = "11000000000000000000000000"
+        const MATICliquidationFee = "100000000000000000"
         const MATICinitialMarginRequirement = "250000000000000000"
         const MATICMaintenanceMarginRequirement = "125000000000000000"
         const MATICoptimalBorrowProportion = "700000000000000000"
@@ -193,10 +193,10 @@ Exchange deployed to 0x87e02373945F4DBD9cb4f640CF59baaf86327A36
 
 
 
-       // const USDT_init_transaction = await DataHub.InitTokenMarket(USDT, USDTprice, colval, tradeFees, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
+        const USDT_init_transaction = await DataHub.InitTokenMarket(USDT, USDTprice, colval, tradeFees, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
 
-      //  USDT_init_transaction.wait();
+        USDT_init_transaction.wait();
 
 
         const REXE_init_transaction = await DataHub.InitTokenMarket(REXE, REXEprice, colval, tradeFees, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);

@@ -10,18 +10,40 @@ import "./interfaces/IUtilityContract.sol";
 import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IinterestData.sol";
 
+/// @title This is the EVO Exchange contract
+/// @author EVO X Labs.
+/// @notice This contract is responsible for sending trade requests to the Oracle 
+/// contract to be validated by the API3 Airnodes and executing the trades once confirmed
+
 contract EVO_EXCHANGE is Ownable {
+
     /** Address's  */
 
+    /// @notice Datahub contract 
     IDataHub public Datahub;
 
+    /// @notice Oracle contract 
     IOracle public Oracle;
 
+    /// @notice Deposit vaultcontract 
     IDepositVault public DepositVault;
 
+    /// @notice Interest contract 
     IInterestData public interestContract;
 
+    /// @notice The Utilities contract
     IUtilityContract public Utilities;
+    /// @notice The Order book provider wallet address
+    address public OrderBookProviderWallet;
+    /// @notice The Liquidator contract address
+    address public Liquidator;
+    /// @notice The DAO wallet address
+    address public DAO;
+
+     /// @notice The current Airnode address
+    address private airnodeAddress =
+        address(0xbb9094538DfBB7949493D3E1E93832F36c3fBE8a);
+
 
 
     /// @notice Alters the Admin roles for the contract
@@ -46,13 +68,12 @@ contract EVO_EXCHANGE is Ownable {
         admins[_oracle] = true;
         Oracle = IOracle(_oracle);
         admins[_util] = true;
-         Utilities = IUtilityContract(_util);
+        Utilities = IUtilityContract(_util);
         admins[_int] = true;
         interestContract = IInterestData(_int);
         admins[_liquidator] = true;
+        Liquidator = _liquidator;
     }
-
-
 
     /** Constructor  */
     constructor(
@@ -79,43 +100,46 @@ contract EVO_EXCHANGE is Ownable {
         interestContract = IInterestData(_interest);
         OrderBookProviderWallet = msg.sender;
         DAO = msg.sender;
+        Liquidator = _liquidator;
     }
-
+/// @notice checks the role authority of the caller to see if they can change the state
     modifier checkRoleAuthority() {
         require(admins[msg.sender] == true, "Unauthorized");
         _;
     }
 
-    address public OrderBookProviderWallet;
-    address public DAO;
-    address private airnodeAddress = address(0xbb9094538DfBB7949493D3E1E93832F36c3fBE8a);
 
-    function fetchOrderBookProvider() public view returns (address) {
-        return OrderBookProviderWallet;
-    }
-
-
-    function fetchDaoWallet() public view returns (address) {
-        return DAO;
-    }
-
-    function setAirnodeAddress(address airnode) public onlyOwner {
-        airnodeAddress = airnode;
-    }
-
-    function setOrderBookProvider(address _newwallet) public onlyOwner {
-        OrderBookProviderWallet = _newwallet;
-    }
-
-    function setDaoWallet(address _dao) public onlyOwner {
-        DAO = _dao;
-    }
 
     /// @notice Keeps track of contract admins
     mapping(address => bool) public admins;
 
+
+    /// @notice Fetches the current orderbook provider wallet
+    function fetchOrderBookProvider() public view returns (address) {
+        return OrderBookProviderWallet;
+    }
+    /// @notice Fetches the current DAO wallet
+    function fetchDaoWallet() public view returns (address) {
+        return DAO;
+    }
+    /// @notice Sets a new Airnode Address
+    function setAirnodeAddress(address airnode) public onlyOwner {
+        airnodeAddress = airnode;
+    }
+    /// @notice Sets a new orderbook provider wallet
+    function setOrderBookProvider(address _newwallet) public onlyOwner {
+        OrderBookProviderWallet = _newwallet;
+    }
+    /// @notice Sets a new DAO wallet
+    function setDaoWallet(address _dao) public onlyOwner {
+        DAO = _dao;
+    }
+
     /// @notice This is the function users need to submit an order to the exchange
-    /// @dev Explain to a developer any extra details
+    /// @dev It first goes through some validation by checking if the circuit breaker is on, or if the airnode address is the right one
+    /// @dev It calculates the amount to add to their liabilities by fetching their current assets and seeing the difference between the trade amount and assets
+    /// @dev it then checks that the trade will not exceed the max borrow proportion, and that the user can indeed take more margin 
+     /// @dev it then calls the oracle 
     /// @param pair the pair of tokens being traded
     /// @param participants of the trade 2 nested arrays
     /// @param trade_amounts the trades amounts for each participant
@@ -129,13 +153,16 @@ contract EVO_EXCHANGE is Ownable {
         bytes calldata parameters
     ) public {
         require(DepositVault.viewcircuitBreakerStatus() == false);
-        require(airnode_details[0] == airnodeAddress, "Must insert the airnode address to conduct a trade");
+        require(
+            airnode_details[0] == airnodeAddress,
+            "Must insert the airnode address to conduct a trade"
+        );
         // require(airnode address == airnode address set on deployment )
-       // (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
-       //     ""
-      //  );
+        // (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
+        //     ""
+        //  );
 
-      //  require(success);
+        //  require(success);
 
         (
             uint256[] memory takerLiabilities,
@@ -189,7 +216,7 @@ contract EVO_EXCHANGE is Ownable {
         bool[][2] memory trade_side
     ) external checkRoleAuthority {
         require(DepositVault.viewcircuitBreakerStatus() == false);
-        Datahub.checkIfAssetIsPresent(takers, pair[1]); /// charge the fee rate below on this
+        Datahub.checkIfAssetIsPresent(takers, pair[1]); 
         Datahub.checkIfAssetIsPresent(makers, pair[0]);
 
         executeTrade(
@@ -213,8 +240,8 @@ contract EVO_EXCHANGE is Ownable {
         );
     }
 
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
+    /// @notice This is called to execute the trade 
+    /// @dev Read the code comments to follow along on the logic 
     /// @param users the users involved in the trade
     /// @param amounts_in_token the amounts coming into the users wallets
     /// @param amounts_out_token the amounts coming out of the users wallets
@@ -235,21 +262,22 @@ contract EVO_EXCHANGE is Ownable {
             // this is calcualte above in submit order
             uint256 amountToAddToLiabilities = liabilityAmounts[i];
 
-            if (trade_side[i] == true) {} else {
-                // This is where we take trade fees
-                Datahub.addAssets(
-                    fetchDaoWallet(),
-                    out_token,
-                    (amountToAddToLiabilities *
-                        (Datahub.tradeFee(out_token, 0) -
-                            Datahub.tradeFee(out_token, 1))) / 10 ** 18
-                );
-                amountToAddToLiabilities -
-                    (amountToAddToLiabilities *
-                        Datahub.tradeFee(out_token, 1)) /
-                    10 ** 18;
+            if (msg.sender != address(Liquidator)) {
+                if (trade_side[i] == true) {} else {
+                    // This is where we take trade fees it is not called if the msg.sender is the liquidator 
+                    Datahub.addAssets(
+                        fetchDaoWallet(),
+                        out_token,
+                        (amountToAddToLiabilities *
+                            (Datahub.tradeFee(out_token, 0) -
+                                Datahub.tradeFee(out_token, 1))) / 10 ** 18
+                    );
+                    amountToAddToLiabilities -
+                        (amountToAddToLiabilities *
+                            Datahub.tradeFee(out_token, 1)) /
+                        10 ** 18;
+                }
             }
-
             if (amountToAddToLiabilities != 0) {
                 // in this function we charge interest to the user and add to their liabilities
                 chargeinterest(
@@ -290,17 +318,19 @@ contract EVO_EXCHANGE is Ownable {
                     users[i],
                     in_token
                 );
+                // This will check to see if they are technically still margined and turn them off of margin status if they are eligable 
+                Datahub.changeMarginStatus(msg.sender);
 
                 uint256 input_amount = amounts_in_token[i];
-
-                // below we charge trade fees
-                if (trade_side[i] == false) {} else {
-                    input_amount =
-                        input_amount -
-                        (input_amount * Datahub.tradeFee(in_token, 0)) /
-                        10 ** 18;
+                if (msg.sender != address(Liquidator)) {
+                    // below we charge trade fees it is not called if the msg.sender is the liquidator 
+                    if (trade_side[i] == false) {} else {
+                        input_amount =
+                            input_amount -
+                            (input_amount * Datahub.tradeFee(in_token, 0)) /
+                            10 ** 18;
+                    }
                 }
-
                 if (subtractedFromLiabilites > 0) {
                     input_amount -= Utilities.returnliabilities(
                         users[i],
@@ -330,7 +360,12 @@ contract EVO_EXCHANGE is Ownable {
             }
         }
     }
-
+/// @notice This sets the users Initial Margin Requirement, and Maintenance Margin Requirements
+/// @dev This calls the Utilities contract
+/// @param user the user we are modifying 
+/// @param in_token the token that has come into their account
+/// @param out_token the token that is leaving hteir account
+/// @param amount the amount to be adjusted
     function modifyMarginValues(
         address user,
         address in_token,
@@ -340,7 +375,11 @@ contract EVO_EXCHANGE is Ownable {
         Utilities.Modifymmr(user, in_token, out_token, amount);
         Utilities.Modifyimr(user, in_token, out_token, amount);
     }
-
+/// @notice This unfreezes the users out_token balance, we do this so a user can't take out more trades as their trade is being processed
+/// @dev Explain to a developer any extra details
+/// @param user the user who we are unfreezing the balance of 
+/// @param token the token that was involved in their trade
+/// @param amount the amount to be removed from pending
     function unFreezeBalance(
         address user,
         address token,
@@ -354,18 +393,19 @@ contract EVO_EXCHANGE is Ownable {
             )
             : Datahub.removePendingBalances(user, token, amount);
     }
-
+/// @notice This pays out the user for depositted assets 
+/// @param user the user to be debitted
+/// @param token the token they have accred deposit interest on 
     function debitAssetInterest(address user, address token) private {
         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
-    
-        uint256 cumulativeinterest = 
-         interestContract
+
+        uint256 cumulativeinterest = interestContract
             .calculateAverageCumulativeDepositInterest(
                 Datahub.viewUsersEarningRateIndex(user, token),
                 interestContract.fetchCurrentRateIndex(token),
                 token
             );
-            
+
         (
             uint256 interestCharge,
             uint256 OrderBookProviderCharge,
@@ -387,12 +427,9 @@ contract EVO_EXCHANGE is Ownable {
             token,
             OrderBookProviderCharge
         );
-
-        /// need to update earning index IMPORTANT change to earning index its  a must because of the withdraws
     }
 
-    /// @notice Explain to an end user what this does
-    /// @dev Explain to a developer any extra details
+    /// @notice This will charge interest to a user if they are accuring new liabilities 
     /// @param user the address of the user beign confirmed
     /// @param token the token being targetted
     /// @param liabilitiesAccrued the new liabilities being issued
@@ -404,7 +441,6 @@ contract EVO_EXCHANGE is Ownable {
         bool minus
     ) private {
         if (minus == false) {
-            
             (, uint256 liabilities, , , ) = Datahub.ReadUserData(user, token);
 
             uint256 interestCharge = EVO_LIBRARY.calculateCompoundedLiabilities(
@@ -437,12 +473,11 @@ contract EVO_EXCHANGE is Ownable {
                 (liabilitiesAccrued + interestCharge),
                 true
             );
-        
         } else {
             Datahub.removeLiabilities(user, token, liabilitiesAccrued);
             Datahub.setTotalBorrowedAmount(token, liabilitiesAccrued, true);
         }
-        
+
         if (
             interestContract
                 .fetchRateInfo(
@@ -476,7 +511,6 @@ contract EVO_EXCHANGE is Ownable {
             );
         }
     }
-
 
     receive() external payable {}
 }

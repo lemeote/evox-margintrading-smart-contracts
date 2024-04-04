@@ -65,47 +65,21 @@ contract Liquidator is Ownable {
         require(CheckForLiquidation(user), "not liquidatable"); // AMMR liquidatee --> checks AMMR
         require(tokens.length == 2, "have to select a pair");
 
-        address[] memory takers = EVO_LIBRARY.createArray(msg.sender);
-        address[] memory makers = EVO_LIBRARY.createArray(user); //liquidatee
-
-        uint256[] memory taker_amounts = new uint256[](1);
-        uint256[] memory maker_amounts = new uint256[](1);
-
         require(
             spendingCap <= fetchliabilities(user, tokens[0]),
             "cannot liquidate that amount of the users assets"
         );
-
-        // max borrow proportion check
-        require(
-            Utilities.maxBorrowCheck(
-                tokens,
-                [takers, makers],
-                [
-                    EVO_LIBRARY.createNumberArray(0),
-                    EVO_LIBRARY.createNumberArray(0) // this makes a 0 array lol
-                ]
-            ),
-            "this liquidation would exceed max borrow proportion please lower the spending cap"
-        );
-
         require(
             spendingCap <= fetchAssets(msg.sender, tokens[0]),
             "you do not have the assets required for this size of liquidation, please lower your spending cap"
         );
 
-        require(
-            Datahub.calculateCollateralValue(user) +
-                Datahub.calculatePendingCollateralValue(user) <
-                Datahub.calculateAMMRForUser(user)
-        );
+        uint256[] memory taker_amounts = new uint256[](1);
+        uint256[] memory maker_amounts = new uint256[](1);
+        
         uint256 amountToLiquidate = (spendingCap * 10 ** 18) /
             ((fetchLogs(tokens[1]).assetPrice * fetchAssets(user, tokens[1]))) /
             10 ** 18;
-
-        /// careful look here could equal 0
-        //  uint256 toLiquidator = (((amountToLiquidate * discountMultiplier) /
-        //      10 ** 18) / 100) * 80;
 
         FeesCollected[tokens[1]] +=
             (((amountToLiquidate * returnMultiplier(false, tokens[1])) /
@@ -113,7 +87,6 @@ contract Liquidator is Ownable {
             20;
 
         if (long) {
-            // takes the asset price of the asset, multiplies it by the users assets of that token, then applied the discount multiplier
             uint256 discountedAmount = (((fetchLogs(tokens[1]).assetPrice *
                 fetchAssets(user, tokens[1])) / 10 ** 18) *
                 (returnMultiplier(false, tokens[1]))) / 10 ** 18;
@@ -154,20 +127,14 @@ contract Liquidator is Ownable {
                 ? spendingCap * fetchLogs(tokens[0]).assetPrice
                 : premiumAmount;
         }
-        // at this point the validation checks have gone for them to place a margin trade
-        // they will not have a pending balance --> we may need to pass a liquidation flag to skip that part in execute trade
-        /*
-        Executor.TransferBalances(
-            true,
+
+        conductLiquidation(
+            user,
+            msg.sender,
             tokens,
-            takers,
-            makers,
-            taker_amounts,
             maker_amounts,
-            EVO_LIBRARY.createNumberArray(0),
-            EVO_LIBRARY.createNumberArray(0)
+            taker_amounts
         );
-        */
     }
 
     function returnMultiplier(
@@ -179,6 +146,116 @@ contract Liquidator is Ownable {
         } else {
             return 10 ** 18 + fetchLogs(token).liquidationFee;
         }
+    }
+
+    function conductLiquidation(
+        address user,
+        address liquidator,
+        address[2] memory tokens, // liability tokens first, tokens to liquidate after
+        uint256[] memory maker_amounts,
+        uint256[] memory taker_amounts
+    ) private {
+        address[] memory takers = EVO_LIBRARY.createArray(liquidator);
+        address[] memory makers = EVO_LIBRARY.createArray(user); //liquidatee
+
+        // max borrow proportion check
+        require(
+            Utilities.maxBorrowCheck(
+                tokens,
+                [takers, makers],
+                [
+                    EVO_LIBRARY.createNumberArray(0),
+                    EVO_LIBRARY.createNumberArray(0) // this makes a 0 array lol
+                ]
+            ),
+            "this liquidation would exceed max borrow proportion please lower the spending cap"
+        );
+
+        require(
+            Datahub.calculateCollateralValue(user) +
+                Datahub.calculatePendingCollateralValue(user) <
+                Datahub.calculateAMMRForUser(user)
+        );
+
+        bool[] memory fee_side = new bool[](1);
+        bool[] memory fee_side_2 = new bool[](1);
+
+        fee_side[0] = true;
+        fee_side_2[0] = true;
+
+        freezeTempBalance(
+            tokens,
+            [takers, makers],
+            [taker_amounts, maker_amounts],
+            [fee_side, fee_side_2]
+        );
+
+        Executor.TransferBalances(
+            tokens,
+            takers,
+            makers,
+            taker_amounts,
+            maker_amounts,
+            EVO_LIBRARY.createNumberArray(0),
+            EVO_LIBRARY.createNumberArray(0),
+            [fee_side, fee_side_2]
+        );
+    }
+
+    /// @notice This simulates an airnode call to see if it is a success or fail
+    /// @param pair the pair of tokens being traded
+    /// @param participants of the trade 2 nested arrays
+    /// @param trade_amounts the trades amounts for each participant
+    function freezeTempBalance(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts,
+        bool[][2] memory trade_side
+    ) private {
+        alterPending(participants[0], trade_amounts[0], trade_side[0], pair[0]);
+        alterPending(participants[1], trade_amounts[1], trade_side[1], pair[1]);
+    }
+
+    /// @notice Processes a trade details
+    /// @param  participants the participants on the trade
+    /// @param  tradeAmounts the trade amounts in the trade
+    /// @param  pair the token involved in the trade
+    function alterPending(
+        address[] memory participants,
+        uint256[] memory tradeAmounts,
+        bool[] memory tradeside,
+        address pair
+    ) internal returns (bool) {
+        for (uint256 i = 0; i < participants.length; i++) {
+            (uint256 assets, , , , ) = Datahub.ReadUserData(
+                participants[i],
+                pair
+            );
+            if (tradeside[i] == true) {} else {
+                tradeAmounts[i] =
+                    (tradeAmounts[i] * Datahub.tradeFee(pair, 1)) /
+                    10 ** 18;
+            }
+            uint256 balanceToAdd = tradeAmounts[i] > assets
+                ? assets
+                : tradeAmounts[i];
+            AlterPendingBalances(participants[i], pair, balanceToAdd);
+        }
+        return true;
+    }
+
+    /// @notice Alters a users pending balance
+    /// @param participant the participant being adjusted
+    /// @param asset the asset being traded
+    /// @param trade_amount the amount being adjusted
+    function AlterPendingBalances(
+        address participant,
+        address asset,
+        uint256 trade_amount
+    ) private {
+        // pay fee take less from the maker if they are a maker
+        Datahub.removeAssets(participant, asset, trade_amount);
+        Datahub.addPendingBalances(participant, asset, trade_amount);
     }
 
     function fetchLogs(
