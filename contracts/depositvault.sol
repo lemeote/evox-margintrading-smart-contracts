@@ -21,23 +21,24 @@ contract DepositVault is Ownable {
         Executor = IExecutor(executor);
         interestContract = IInterestData(interest);
     }
-        modifier checkRoleAuthority() {
+
+    modifier checkRoleAuthority() {
         require(admins[msg.sender] == true, "Unauthorized");
         _;
     }
     mapping(address => bool) public admins;
 
-     function alterAdminRoles(
+    function alterAdminRoles(
         address dataHub,
         address executor,
         address interest
     ) public onlyOwner {
         admins[dataHub] = true;
+        Datahub = IDataHub(dataHub);
         admins[executor] = true;
+        Executor = IExecutor(executor);
         admins[interest] = true;
         interestContract = IInterestData(interest);
-        Datahub = IDataHub(dataHub);
-
     }
 
     IDataHub public Datahub;
@@ -53,25 +54,25 @@ contract DepositVault is Ownable {
     mapping(address => bool) public userInitialized;
     mapping(uint256 => address) public userId;
 
-
     bool circuitBreakerStatus = false;
 
     uint256 public lastUpdateTime;
-    
+
     mapping(uint256 => uint256) withdrawdata;
 
     mapping(address => uint256) withdrawTracking;
     mapping(address => uint256) usersLastWithdraw;
 
-
     function toggleCircuitBreaker(bool onOff) public onlyOwner {
         circuitBreakerStatus = onOff;
     }
 
-    function viewcircuitBreakerStatus() external view returns(bool){
-       return circuitBreakerStatus;
+    function viewcircuitBreakerStatus() external view returns (bool) {
+        return circuitBreakerStatus;
     }
+
     address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
+
     function _USDT() external view returns (address) {
         return USDT;
     }
@@ -128,7 +129,7 @@ contract DepositVault is Ownable {
         }
     }
 
-   /// @notice This function modifies the mmr of the user on deposit
+    /// @notice This function modifies the mmr of the user on deposit
     /// @param user the user being targetted
     /// @param in_token the token coming into their wallet
     /// @param amount the amount being transfered into their wallet
@@ -148,6 +149,7 @@ contract DepositVault is Ownable {
             Datahub.alterIMR(user, in_token, tokens[i], liabilityMultiplier);
         }
     }
+
     /* DEPOSIT FUNCTION */
     /// @notice This deposits tokens and inits the user struct, and asset struct if new assets.
     /// @dev Explain to a developer any extra details
@@ -168,17 +170,22 @@ contract DepositVault is Ownable {
 
         Datahub.settotalAssetSupply(token, amount, true);
 
-        (uint256 assets, uint256 liabilities, , , address[] memory tokens) = Datahub
-            .ReadUserData(msg.sender, token);
+        (
+            uint256 assets,
+            uint256 liabilities,
+            ,
+            ,
+            address[] memory tokens
+        ) = Datahub.ReadUserData(msg.sender, token);
 
         if (tokens.length == 0) {
             totalHistoricalUsers += 1;
         }
 
-        if(assets == 0){
+        if (assets == 0) {
             Datahub.alterUsersEarningRateIndex(msg.sender, token);
-        }else{
-            debitAssetInterest(msg.sender,token);
+        } else {
+            debitAssetInterest(msg.sender, token);
         }
 
         ///
@@ -232,7 +239,6 @@ contract DepositVault is Ownable {
         }
     }
 
-
     /* WITHDRAW FUNCTION */
 
     /// @notice This withdraws tokens from the exchange
@@ -243,26 +249,32 @@ contract DepositVault is Ownable {
     // IMPORTANT MAKE SURE USERS CAN'T WITHDRAW PAST THE LIMIT SET FOR AMOUNT OF FUNDS BORROWED
     function withdraw_token(address token, uint256 amount) external {
         require(!circuitBreakerStatus);
+        require(
+            Datahub.returnAssetLogs(token).initialized == true,
+            "this asset is not available to be deposited or traded"
+        );
 
         debitAssetInterest(msg.sender, token);
-
-/*
-        if(usersLastWithdraw[msg.sender] < block.timestamp  + 3600){
-            if(withdrawTracking[msg.sender]  + amount > Datahub.returnAssetLogs(token).totalAssetSupply * (25%)){
-                // emit user is taking a lot of shit off the exchange 
-                revert; // fuck off 
-            }
-
-        }
-        */
 
         (uint256 assets, , uint256 pending, , ) = Datahub.ReadUserData(
             msg.sender,
             token
         );
 
-        require(pending == 0, "You must have a 0 pending trade balance to withdraw, please wait for your trade to settle before attempting to withdraw");
-        require(amount <= assets, "You cannot withdraw more than your asset balance");
+        require(
+            pending == 0,
+            "You must have a 0 pending trade balance to withdraw, please wait for your trade to settle before attempting to withdraw"
+        );
+        require(
+            amount <= assets,
+            "You cannot withdraw more than your asset balance"
+        );
+
+        require(
+            amount + Datahub.returnAssetLogs(token).totalBorrowedAmount >
+                Datahub.returnAssetLogs(token).totalAssetSupply,
+            "You cannot withdraw this amount as it would exceed the maximum borrow proportion"
+        );
 
         IDataHub.AssetData memory assetInformation = Datahub.returnAssetLogs(
             token
@@ -297,10 +309,9 @@ contract DepositVault is Ownable {
 
         // recalculate interest rate because total asset supply is changing
         if (assetLogs.totalBorrowedAmount > 0) {
-          interestContract.chargeMassinterest(token);
+            interestContract.chargeMassinterest(token);
         }
     }
-
 
     function debitAssetInterest(address user, address token) private {
         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
@@ -308,7 +319,7 @@ contract DepositVault is Ownable {
             uint256 interestCharge,
             uint256 OrderBookProviderCharge,
             uint256 DaoInterestCharge
-        ) =  EVO_LIBRARY.calculateCompoundedAssets(
+        ) = EVO_LIBRARY.calculateCompoundedAssets(
                 interestContract.fetchCurrentRateIndex(token),
                 interestContract.calculateAverageCumulativeDepositInterest(
                     Datahub.viewUsersEarningRateIndex(user, token),
@@ -329,14 +340,15 @@ contract DepositVault is Ownable {
             OrderBookProviderCharge
         );
     }
-        /* DEPOSIT FOR FUNCTION */
+
+    /* DEPOSIT FOR FUNCTION */
     function deposit_token_for(
         address beneficiary,
         address token,
         uint256 amount
     ) external returns (bool) {
         require(
-            Datahub.FetchAssetInitilizationStatus(token) == true,
+            Datahub.returnAssetLogs(token).initialized == true,
             "this asset is not available to be deposited or traded"
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
