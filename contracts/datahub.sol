@@ -507,8 +507,8 @@ contract DataHub is Ownable {
         uint256 optimalBorrowProportion,
         uint256 maximumBorrowProportion
     ) external onlyOwner {
-        require(!assetdata[token].initialized, "token has to be not already initilized");
-        require(liquidationFee > MaintenanceMarginRequirement, "liq must be bigger than mmr");
+        require(!assetdata[token].initialized, "token has to be not already initialized");
+        require(liquidationFee < MaintenanceMarginRequirement, "liq must be smaller than mmr");
         require(tradeFees[0] >= tradeFees[1], "taker fee must be bigger than maker fee");
   
         assetdata[token] = AssetData({
