@@ -42,7 +42,7 @@ module.exports = {
       accounts: [MAKERPK,TAKERPK],
      // gas: 6000000000,
      // gasPrice: 6000000000,
-      gasLimit: 6000000000000000,
+      gasLimit: 6000000000000,
       blockGasLimit: "10000000000042972000000" // whatever you want here,
 
     },

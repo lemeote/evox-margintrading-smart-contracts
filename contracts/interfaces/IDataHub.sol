@@ -63,10 +63,6 @@ interface IDataHub {
         address token
     ) external view returns (uint256);
 
-    function fetchOrderBookProvider() external view returns (address);
-
-    function fetchDaoWallet() external view returns (address);
-
     function fetchTotalBorrowedAmount(
         address token
     ) external view returns (uint256);

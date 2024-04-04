@@ -15,6 +15,6 @@ interface IDepositVault {
     ) external returns (bool);
 
     function fetchDecimals(address token) external view returns (uint256);
-    function viewcircuitBreakerStatus() external view returns(bool);
+    function viewcircuitBreakerStatus() external view returns (bool);
     function fetchstatus(address user) external view returns (bool);
 }

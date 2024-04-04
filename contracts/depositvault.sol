@@ -244,69 +244,7 @@ contract DepositVault is Ownable {
     event hazard(uint256, uint256);
 
     error DangerousWithdraw();
-    /* DEPOSIT FOR FUNCTION */
-
-    function deposit_token_for(
-    address beneficiary,
-    address token,
-    uint256 amount
-) external returns (bool) {
-    require(
-        Datahub.FetchAssetInitilizationStatus(token) == true,
-        "this asset is not available to be deposited or traded"
-    );
-    IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
-    require(ERC20Token.transferFrom(msg.sender, address(this), amount), "Transfer failed");
-
-    Datahub.settotalAssetSupply(token, amount, true);
-
-    (, uint256 liabilities, , , address[] memory tokens) = Datahub
-        .ReadUserData(beneficiary, token);
-
-    if (tokens.length == 0) {
-        totalHistoricalUsers += 1;
-        // Datahub.alterUsersInterestRateIndex(beneficiary);
-    }
-
-    if (liabilities > 0) {
-        if (amount <= liabilities) {
-            uint256 liabilityMultiplier = REX_LIBRARY
-                .calculatedepositLiabilityRatio(liabilities, amount);
-
-            Datahub.alterLiabilities(
-                beneficiary,
-                token,
-                ((10 ** 18) - liabilityMultiplier)
-            );
-
-            Datahub.setTotalBorrowedAmount(token, amount, false);
-
-            interestContract.chargeMassinterest(token);
-
-            return true;
-        } else {
-            modifyMMROnDeposit(beneficiary, token, amount);
-            uint256 amountAddedtoAssets = amount - liabilities;
-
-            Datahub.addAssets(beneficiary, token, amountAddedtoAssets);
-            Datahub.removeLiabilities(beneficiary, token, liabilities);
-            Datahub.setTotalBorrowedAmount(token, liabilities, false);
-
-            Datahub.changeMarginStatus(beneficiary);
-            interestContract.chargeMassinterest(token);
-
-            return true;
-        }
-    } else {
-        address[] memory users = new address[](1);
-        users[0] = beneficiary;
-
-        Datahub.checkIfAssetIsPresent(users, token);
-        Datahub.addAssets(beneficiary, token, amount);
-
-        return true;
-    }
-}
+ 
 
     /* WITHDRAW FUNCTION */
 
@@ -314,7 +252,6 @@ contract DepositVault is Ownable {
     /// @dev Explain to a developer any extra details
     /// @param token - the address of the token to be withdrawn
     /// @param amount - the amount of tokens to be withdrawn
-    /// @return returns a bool to let the user know if withdraw was successful.
 
     // IMPORTANT MAKE SURE USERS CAN'T WITHDRAW PAST THE LIMIT SET FOR AMOUNT OF FUNDS BORROWED
     function withdraw_token(address token, uint256 amount) external {
@@ -341,7 +278,7 @@ contract DepositVault is Ownable {
         );
 
         require(
-            amount + Datahub.returnAssetLogs(token).totalBorrowedAmount >
+            amount + Datahub.returnAssetLogs(token).totalBorrowedAmount <
                 Datahub.returnAssetLogs(token).totalAssetSupply,
             "You cannot withdraw this amount as it would exceed the maximum borrow proportion"
         );
@@ -403,7 +340,6 @@ contract DepositVault is Ownable {
         if (assetLogs.totalBorrowedAmount > 0) {
             interestContract.chargeMassinterest(token);
         }
-        return true;
     }
 
     function debitAssetInterest(address user, address token) private {
@@ -452,12 +388,16 @@ contract DepositVault is Ownable {
 
         Datahub.settotalAssetSupply(token, amount, true);
 
-        (, uint256 liabilities, , , address[] memory tokens) = Datahub
+        (uint256 assets, uint256 liabilities, , , address[] memory tokens) = Datahub
             .ReadUserData(beneficiary, token);
 
         if (tokens.length == 0) {
             totalHistoricalUsers += 1;
-            Datahub.alterUsersEarningRateIndex(beneficiary, token);
+        }
+        if (assets == 0) {
+            Datahub.alterUsersEarningRateIndex(msg.sender, token);
+        } else {
+            debitAssetInterest(msg.sender, token);
         }
 
         if (liabilities > 0) {

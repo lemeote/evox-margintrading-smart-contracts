@@ -10,7 +10,6 @@ import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
 
 contract Utility is Ownable {
-    
     function alterAdminRoles(
         address _DataHub,
         address _deposit_vault,
@@ -20,12 +19,15 @@ contract Utility is Ownable {
         address _ex
     ) public onlyOwner {
         admins[_DataHub] = true;
+        Datahub = IDataHub(_DataHub);
         admins[_deposit_vault] = true;
+        DepositVault = IDepositVault(_deposit_vault);
         admins[_oracle] = true;
+        Oracle = IOracle(_oracle);
         admins[_interest] = true;
+        interestContract = IInterestData(_interest);
         admins[_liquidator] = true;
         admins[_ex] = true;
-        interestContract = IInterestData(_interest);
     }
 
     /// @notice Alters the Admin roles for the contract
@@ -153,7 +155,7 @@ contract Utility is Ownable {
             return false;
         }
     }
-/// @notice Takes a single users address and returns the amount of liabilities that are going to be issued to that user
+    /// @notice Takes a single users address and returns the amount of liabilities that are going to be issued to that user
     function calculateAmountToAddToLiabilities(
         address user,
         address token,
@@ -162,7 +164,7 @@ contract Utility is Ownable {
         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
         return amount > assets ? amount - assets : 0;
     }
-/// @notice Cycles through two lists of users and checks how many liabilities are going to be issued to each user
+    /// @notice Cycles through two lists of users and checks how many liabilities are going to be issued to each user
     function calculateTradeLiabilityAddtions(
         address[2] memory pair,
         address[][2] memory participants,
@@ -197,7 +199,7 @@ contract Utility is Ownable {
 
         return (TakerliabilityAmounts, MakerliabilityAmounts);
     }
-/// @notice Cycles through a list of users and returns the bulk assets sum
+    /// @notice Cycles through a list of users and returns the bulk assets sum
     function returnBulkAssets(
         address[] memory users,
         address token
@@ -548,6 +550,23 @@ contract Utility is Ownable {
         return BorrowProportionsForThePeriod;
     }
 
-    receive() external payable {}
 
+        /// @notice Fetches the total amount borrowed of the token
+    /// @param token the token being queried
+    /// @return the total borrowed amount
+    function fetchTotalBorrowedAmount(
+        address token
+    ) external view returns (uint256) {
+        return Datahub.returnAssetLogs(token).totalBorrowedAmount;
+    }
+    /// @notice Fetches the total amount borrowed of the token
+    /// @param token the token being queried
+    /// @return the total borrowed amount
+    function fetchTotalAssetSupply(
+        address token
+    ) external view returns (uint256) {
+        return  Datahub.returnAssetLogs(token).totalAssetSupply;
+    }
+
+    receive() external payable {}
 }

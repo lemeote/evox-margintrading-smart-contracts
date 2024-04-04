@@ -84,7 +84,7 @@ contract interestData {
     ) public view returns (uint256) {
         return currentInterestIndex[token];
     }
-/// @notice Fetches the current interest rate
+    /// @notice Fetches the current interest rate
     function fetchCurrentRate(address token) public view returns (uint256) {
         uint256 rate = InterestRateEpochs[0][token][currentInterestIndex[token]]
             .interestRate;
@@ -102,7 +102,7 @@ contract interestData {
     ) public view returns (IInterestData.interestDetails memory) {
         return InterestRateEpochs[targetEpoch][token][epochStartingIndex];
     }
-/// @notice Fetches the libailities at a certain index
+    /// @notice Fetches the libailities at a certain index
     function fetchLiabilitiesOfIndex(
         address token,
         uint256 index
@@ -377,7 +377,6 @@ contract interestData {
             ].rateInfo;
         }
         if (index % 672 == 0) {
-    
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672) //8736, 672, 168, 24
             ].interestRate = EVO_LIBRARY.calculateAverage(
@@ -442,7 +441,7 @@ contract interestData {
             ].rateInfo;
         }
     }
-/// @notice returns a list of interest rates for a set amount of indexs or hours
+    /// @notice returns a list of interest rates for a set amount of indexs or hours
     function fetchRatesList(
         uint256 startingIndex,
         uint256 endingIndex,
@@ -460,7 +459,7 @@ contract interestData {
         }
         return interestRatesForThePeriod;
     }
-/// @notice initilizes the interest data for a token
+    /// @notice initilizes the interest data for a token
     function initInterest(
         address token,
         uint256 index,

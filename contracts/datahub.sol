@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./interfaces/IDataHub.sol";
+
 
 interface IInterestData {
     function fetchCurrentRateIndex(
@@ -12,6 +12,36 @@ interface IInterestData {
 }
 
 contract DataHub is Ownable {
+
+    struct UserData {
+        mapping(address => uint256) asset_info; // tracks their portfolio (margined, and depositted)
+        mapping(address => uint256) liability_info; // tracks what they owe per token * price
+        mapping(address => mapping(address => uint256)) maintenance_margin_requirement; // tracks the MMR per token the user has in liabilities
+        mapping(address => mapping(address => uint256)) initial_margin_requirement;
+        mapping(address => uint256) pending_balances;
+        mapping(address => uint256) interestRateIndex;
+        mapping(address => uint256) earningRateIndex;
+        bool margined; // if user has open margin positions this is true
+        address[] tokens; // these are the tokens that comprise their portfolio ( assets, and liabilites, margined funds)
+    }
+
+    struct AssetData {
+        bool initialized;
+        uint256[2] tradeFees; // first in the array is taker fee, next is maker fee
+        uint256 collateralMultiplier;
+        uint256 initialMarginFee; // assigned in function Ex
+        uint256 assetPrice;
+        uint256 liquidationFee;
+        uint256 initialMarginRequirement; // not for potantial removal - unnessecary
+        uint256 MaintenanceMarginRequirement;
+        uint256 totalAssetSupply;
+        uint256 totalBorrowedAmount;
+        uint256 optimalBorrowProportion; // need to brainsotrm on how to set this information
+        uint256 maximumBorrowProportion; // we need an on the fly function for the current maximum borrowable AMOUNT  -- cant borrow the max available supply
+        uint256 totalDepositors;
+    }
+
+    
     modifier checkRoleAuthority() {
         require(admins[msg.sender] == true, "Unauthorized");
         _;
@@ -35,8 +65,6 @@ contract DataHub is Ownable {
     }
 
     IInterestData public interestContract;
-// const setup = await DataHub.AlterAdminRoles(DV, ex, oracle, interest);
-
 
 
     function alterAdminRoles(
@@ -57,11 +85,11 @@ contract DataHub is Ownable {
 
     /// @notice Keeps track of a users data
     /// @dev Go to IDatahub for more details
-    mapping(address => IDataHub.UserData) public userdata;
+    mapping(address => UserData) public userdata;
 
     /// @notice Keeps track of an assets data
     /// @dev Go to IDatahub for more details
-    mapping(address => IDataHub.AssetData) public assetdata;
+    mapping(address => AssetData) public assetdata;
 
     /// @notice Keeps track of contract admins
     mapping(address => bool) public admins;
@@ -105,20 +133,7 @@ contract DataHub is Ownable {
         return userdata[user].interestRateIndex[token];
     }
 
-    function _USDT() external view returns (address) {
-        return USDT;
-    }
 
-    address public OrderBookProviderWallet;
-    address public DAO;
-
-    function fetchOrderBookProvider() public view returns (address) {
-        return OrderBookProviderWallet;
-    }
-
-    function fetchDaoWallet() public view returns (address) {
-        return DAO;
-    }
 
     /// -----------------------------------------------------------------------
     /// Assets
@@ -376,7 +391,7 @@ contract DataHub is Ownable {
         address user,
         address tokenToRemove
     ) external checkRoleAuthority {
-        IDataHub.UserData storage userData = userdata[user];
+        UserData storage userData = userdata[user];
 
         for (uint256 i = 0; i < userData.tokens.length; i++) {
             address token = userData.tokens[i];
@@ -457,22 +472,7 @@ contract DataHub is Ownable {
         }
     }
 
-    /// @notice Fetches the total amount borrowed of the token
-    /// @param token the token being queried
-    /// @return the total borrowed amount
-    function fetchTotalBorrowedAmount(
-        address token
-    ) external view returns (uint256) {
-        return assetdata[token].totalBorrowedAmount;
-    }
-    /// @notice Fetches the total amount borrowed of the token
-    /// @param token the token being queried
-    /// @return the total borrowed amount
-    function fetchTotalAssetSupply(
-        address token
-    ) external view returns (uint256) {
-        return assetdata[token].totalAssetSupply;
-    }
+
     /// -----------------------------------------------------------------------
     /// Asset Data functions  -->
     /// -----------------------------------------------------------------------
@@ -482,7 +482,7 @@ contract DataHub is Ownable {
     /// @return returns the assets data
     function returnAssetLogs(
         address token
-    ) public view returns (IDataHub.AssetData memory) {
+    ) public view returns (AssetData memory) {
         return assetdata[token];
     }
 
@@ -498,7 +498,6 @@ contract DataHub is Ownable {
     function InitTokenMarket(
         address token,
         uint256 assetPrice,
-       // uint256[2] memory fees,
         uint256 collateralMultiplier,
         uint256[2] memory tradeFees,
         uint256 initialMarginFee,
@@ -508,10 +507,11 @@ contract DataHub is Ownable {
         uint256 optimalBorrowProportion,
         uint256 maximumBorrowProportion
     ) external onlyOwner {
-        require(!assetdata[token].initialized);
-        // require liquidation fee cannot be bigger than MMR setting
-
-        assetdata[token] = IDataHub.AssetData({
+        require(!assetdata[token].initialized, "token has to be not already initilized");
+        require(liquidationFee > MaintenanceMarginRequirement, "liq must be bigger than mmr");
+        require(tradeFees[0] >= tradeFees[1], "taker fee must be bigger than maker fee");
+  
+        assetdata[token] = AssetData({
             collateralMultiplier: collateralMultiplier,
             tradeFees: tradeFees,
             initialMarginFee: initialMarginFee,

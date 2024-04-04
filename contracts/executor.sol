@@ -23,42 +23,36 @@ contract EVO_EXCHANGE is Ownable {
 
     IUtilityContract public Utilities;
 
-    function alterAdminRoles(
-        address _DataHub,
-        address _deposit_vault,
-        address _oracle,
-        address _util,
-        address _interest,
-        address _liquidator
-    ) public onlyOwner {
-        admins[_DataHub] = true;
-        admins[_deposit_vault] = true;
-        admins[_oracle] = true;
-        admins[_util] = true;
-        admins[_interest] = true;
-        interestContract = IInterestData(_interest);
-        admins[_liquidator] = true;
-    }
 
     /// @notice Alters the Admin roles for the contract
     /// @param _datahub  the new address for the datahub
-    /// @param _depositVault the new address for the deposit vault
+    /// @param _deposit_vault the new address for the deposit vault
     /// @param _oracle the new address for oracle
-    /// @param _utility the new address for the utility contract
+    /// @param _util the new address for the utility contract
     /// @param  _int the new address for the interest contract
+    /// @param _liquidator the liquidator addresss
     function alterAdminRoles(
         address _datahub,
-        address _depositVault,
+        address _deposit_vault,
         address _oracle,
-        address _utility,
-        address _int
+        address _util,
+        address _int,
+        address _liquidator
     ) public onlyOwner {
+        admins[_datahub] = true;
         Datahub = IDataHub(_datahub);
-        DepositVault = IDepositVault(_depositVault);
+        admins[_deposit_vault] = true;
+        DepositVault = IDepositVault(_deposit_vault);
+        admins[_oracle] = true;
         Oracle = IOracle(_oracle);
-        Utilities = IUtilityContract(_utility);
+        admins[_util] = true;
+         Utilities = IUtilityContract(_util);
+        admins[_int] = true;
         interestContract = IInterestData(_int);
+        admins[_liquidator] = true;
     }
+
+
 
     /** Constructor  */
     constructor(
@@ -94,13 +88,19 @@ contract EVO_EXCHANGE is Ownable {
 
     address public OrderBookProviderWallet;
     address public DAO;
+    address private airnodeAddress = address(0xbb9094538DfBB7949493D3E1E93832F36c3fBE8a);
 
     function fetchOrderBookProvider() public view returns (address) {
         return OrderBookProviderWallet;
     }
 
+
     function fetchDaoWallet() public view returns (address) {
         return DAO;
+    }
+
+    function setAirnodeAddress(address airnode) public onlyOwner {
+        airnodeAddress = airnode;
     }
 
     function setOrderBookProvider(address _newwallet) public onlyOwner {
@@ -129,6 +129,7 @@ contract EVO_EXCHANGE is Ownable {
         bytes calldata parameters
     ) public {
         require(DepositVault.viewcircuitBreakerStatus() == false);
+        require(airnode_details[0] == airnodeAddress, "Must insert the airnode address to conduct a trade");
         // require(airnode address == airnode address set on deployment )
        // (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
        //     ""
@@ -162,8 +163,10 @@ contract EVO_EXCHANGE is Ownable {
             trade_amounts,
             trade_side,
             takerLiabilities,
-            makerLiabilities
-            
+            makerLiabilities,
+            airnode_details,
+            endpointId,
+            parameters
         );
     }
 
@@ -474,25 +477,6 @@ contract EVO_EXCHANGE is Ownable {
         }
     }
 
-    /// @notice Alters the Admin roles for the contract
-    /// @param _datahub  the new address for the datahub
-    /// @param _depositVault the new address for the deposit vault
-    /// @param _oracle the new address for oracle
-    /// @param _utility the new address for the utility contract
-    /// @param  _int the new address for the interest contract
-    function alterContractStrucutre(
-        address _datahub,
-        address _depositVault,
-        address _oracle,
-        address _utility,
-        address _int
-    ) public onlyOwner {
-        Datahub = IDataHub(_datahub);
-        DepositVault = IDepositVault(_depositVault);
-        Oracle = IOracle(_oracle);
-        Utilities = IUtilityContract(_utility);
-        interestContract = IInterestData(_int);
-    }
 
     receive() external payable {}
 }

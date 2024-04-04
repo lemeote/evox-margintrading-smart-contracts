@@ -8,7 +8,6 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./interfaces/IUtilityContract.sol";
 import "./libraries/EVO_LIBRARY.sol";
-import "hardhat/console.sol";
 import "./interfaces/IExecutor.sol";
 
 contract Liquidator is Ownable {

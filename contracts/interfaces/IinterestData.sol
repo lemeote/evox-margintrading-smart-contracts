@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.20;
-import "../interfaces/IDataHub.sol";
+//import "../interfaces/IDataHub.sol";
 
 interface IInterestData {
     struct interestDetails {
@@ -11,10 +11,9 @@ interface IInterestData {
         uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
         uint256 interestRate; // current interestRate
     }
-    
+
     function fetchCurrentRate(address token) external view returns (uint256);
 
- 
     function fetchLiabilitiesOfIndex(
         address token,
         uint256 index

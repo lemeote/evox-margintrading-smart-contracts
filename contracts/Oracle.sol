@@ -9,7 +9,6 @@ import "./interfaces/IExecutor.sol";
 import "@api3/airnode-protocol/contracts/rrp/requesters/RrpRequesterV0.sol";
 
 contract Oracle is Ownable, RrpRequesterV0 {
-    /** Data Hub + Deposit Vault  */
 
     /// @notice Keeps track of contract admins
     mapping(address => bool) public admins;

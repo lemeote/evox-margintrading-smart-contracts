@@ -2,8 +2,6 @@
 pragma solidity =0.8.20;
 
 interface IOracle {
-
-
     function ProcessTrade(
         address[2] memory pair,
         address[][2] memory participants,
@@ -14,6 +12,5 @@ interface IOracle {
         address[3] memory airnode_details,
         bytes32 endpointId,
         bytes calldata parameters
-        
     ) external;
 }
