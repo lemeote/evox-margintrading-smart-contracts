@@ -46,21 +46,21 @@ contract DepositVault is Ownable {
 
     using EVO_LIBRARY for uint256;
 
-    uint256 public totalHistoricalUsers;
-
-    uint256 public totalDepositors;
+    uint256 public WithdrawThresholdValue = 1000000 * 10 ** 18;
 
     mapping(address => bool) public userInitialized;
     mapping(uint256 => address) public userId;
 
+    mapping(address => uint256) public token_withdraws_hour;
+    uint256 lastWithdrawUpdateTime = block.timestamp;
+
+    event hazard(uint256, uint256);
+
+    error DangerousWithdraw();
+
     bool circuitBreakerStatus = false;
 
     uint256 public lastUpdateTime;
-
-    mapping(uint256 => uint256) withdrawdata;
-
-    mapping(address => uint256) withdrawTracking;
-    mapping(address => uint256) usersLastWithdraw;
 
     function toggleCircuitBreaker(bool onOff) public onlyOwner {
         circuitBreakerStatus = onOff;
@@ -70,7 +70,7 @@ contract DepositVault is Ownable {
         return circuitBreakerStatus;
     }
 
-    address public USDT = address(0xdfc6a3f2d7daff1626Ba6c32B79bEE1e1d6259F0);
+    address public USDT = address(0xaBAD60e4e01547E2975a96426399a5a0578223Cb);
 
     function _USDT() external view returns (address) {
         return USDT;
@@ -89,12 +89,6 @@ contract DepositVault is Ownable {
         return Token.decimals();
     }
 
-    /// @notice This reutrns the number of histrocial users
-    /// @return totalHistoricalUsers the total historical users of the exchange
-    function fetchtotalHistoricalUsers() external view returns (uint256) {
-        return totalHistoricalUsers;
-    }
-
     /// @notice This function checks if this user has been initilized
     /// @dev Explain to a developer any extra details
     /// @param user the user you want to fetch their status for
@@ -105,6 +99,21 @@ contract DepositVault is Ownable {
         } else {
             return false;
         }
+    }
+
+    function alterWithdrawThresholdValue(
+        uint256 _updatedThreshold
+    ) public onlyOwner {
+        WithdrawThresholdValue = _updatedThreshold;
+    }
+
+    function getTotalAssetSupplyValue(
+        address token
+    ) public view returns (uint256) {
+        uint256 totalValue = (Datahub.returnAssetLogs(token).assetPrice *
+            Datahub.returnAssetLogs(token).totalAssetSupply) / 10 ** 18;
+
+        return totalValue;
     }
 
     /// @notice This function modifies the mmr of the user on deposit
@@ -169,17 +178,10 @@ contract DepositVault is Ownable {
 
         Datahub.settotalAssetSupply(token, amount, true);
 
-        (
-            uint256 assets,
-            uint256 liabilities,
-            ,
-            ,
-            address[] memory tokens
-        ) = Datahub.ReadUserData(msg.sender, token);
-
-        if (tokens.length == 0) {
-            totalHistoricalUsers += 1;
-        }
+        (uint256 assets, uint256 liabilities, , , ) = Datahub.ReadUserData(
+            msg.sender,
+            token
+        );
 
         if (assets == 0) {
             Datahub.alterUsersEarningRateIndex(msg.sender, token);
@@ -238,14 +240,6 @@ contract DepositVault is Ownable {
         }
     }
 
-    mapping(address => uint256) public token_withdraws_hour;
-    uint256 lastWithdrawUpdateTime = block.timestamp;
-
-    event hazard(uint256, uint256);
-
-    error DangerousWithdraw();
- 
-
     /* WITHDRAW FUNCTION */
 
     /// @notice This withdraws tokens from the exchange
@@ -283,19 +277,21 @@ contract DepositVault is Ownable {
             "You cannot withdraw this amount as it would exceed the maximum borrow proportion"
         );
 
-        if (
-            amount + token_withdraws_hour[token] >
-            (
-                interestContract
-                    .fetchRateInfo(
-                        token,
-                        interestContract.fetchCurrentRateIndex(token)
-                    )
-                    .totalAssetSuplyAtIndex
-            ) *
-                3e17
-        ) {
-            revert DangerousWithdraw();
+        if (getTotalAssetSupplyValue(token) > WithdrawThresholdValue) {
+            if (
+                amount + token_withdraws_hour[token] >
+                (
+                    interestContract
+                        .fetchRateInfo(
+                            token,
+                            interestContract.fetchCurrentRateIndex(token)
+                        )
+                        .totalAssetSuplyAtIndex
+                ) *
+                    3e17
+            ) {
+                revert DangerousWithdraw();
+            }
         }
 
         token_withdraws_hour[token] += amount;
@@ -304,7 +300,7 @@ contract DepositVault is Ownable {
             lastWithdrawUpdateTime = block.timestamp;
             token_withdraws_hour[token] = 0;
         }
-        
+
         IDataHub.AssetData memory assetInformation = Datahub.returnAssetLogs(
             token
         );
@@ -388,12 +384,14 @@ contract DepositVault is Ownable {
 
         Datahub.settotalAssetSupply(token, amount, true);
 
-        (uint256 assets, uint256 liabilities, , , address[] memory tokens) = Datahub
-            .ReadUserData(beneficiary, token);
+        (
+            uint256 assets,
+            uint256 liabilities,
+            ,
+            ,
+            
+        ) = Datahub.ReadUserData(beneficiary, token);
 
-        if (tokens.length == 0) {
-            totalHistoricalUsers += 1;
-        }
         if (assets == 0) {
             Datahub.alterUsersEarningRateIndex(msg.sender, token);
         } else {

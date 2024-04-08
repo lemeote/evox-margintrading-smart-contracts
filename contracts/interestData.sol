@@ -293,7 +293,7 @@ contract interestData {
             .lastUpdatedTime = block.timestamp;
 
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+            .totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
 
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
@@ -321,9 +321,7 @@ contract interestData {
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .lastUpdatedTime = block.timestamp;
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(
-                token
-            );
+                .totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
 
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
@@ -358,7 +356,7 @@ contract interestData {
             ].lastUpdatedTime = block.timestamp;
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
-            ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+            ].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
 
             InterestRateEpochs[2][token][
                 uint(currentInterestIndex[token] / 168)
@@ -391,7 +389,7 @@ contract interestData {
             ].lastUpdatedTime = block.timestamp;
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672)
-            ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+            ].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
 
             InterestRateEpochs[3][token][
                 uint(currentInterestIndex[token] / 672)
@@ -424,7 +422,7 @@ contract interestData {
             ].lastUpdatedTime = block.timestamp;
             InterestRateEpochs[4][token][
                 uint(currentInterestIndex[token] / 8736)
-            ].totalLiabilitiesAtIndex = Datahub.fetchTotalBorrowedAmount(token);
+            ].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
             InterestRateEpochs[4][token][
                 uint(currentInterestIndex[token] / 8736)
             ].borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(

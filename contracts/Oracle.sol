@@ -9,7 +9,6 @@ import "./interfaces/IExecutor.sol";
 import "@api3/airnode-protocol/contracts/rrp/requesters/RrpRequesterV0.sol";
 
 contract Oracle is Ownable, RrpRequesterV0 {
-
     /// @notice Keeps track of contract admins
     mapping(address => bool) public admins;
 
@@ -23,10 +22,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
 
     bytes32 public lastRequestId;
 
-    error Error_FufillUnSuccessful(
-        bytes32 requestid,
-        uint256 timeStamp
-    );
+    error Error_FufillUnSuccessful(bytes32 requestid, uint256 timeStamp);
 
     /** Constructor  */
     constructor(
@@ -53,8 +49,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
     }
 
     /** Mapping's  */
-    mapping(bytes32 => string) public queryParamMap;
-    mapping(bytes32 => bool) public QueryApproval;
+    mapping(bytes32 => uint256) requestTime;
     mapping(bytes32 => bool) public incomingFulfillments;
     mapping(bytes32 => int256) public fulfilledData;
 
@@ -80,22 +75,10 @@ contract Oracle is Ownable, RrpRequesterV0 {
     mapping(bytes32 => Order) public OrderDetails;
 
     /** event's  */
-    event ValueUpdated(string result);
     event QueryCalled(string description, uint256 timestamp, bytes32 requestId);
     event TradeExecuted(uint256 blocktimestamp);
-    event OutOfGasFunds(uint256 blocktimestamp);
 
     event TradeReverted(
-        bytes32 requestId,
-        address taker_token,
-        address maker_token,
-        address[] takers,
-        address[] makers,
-        uint256[] taker_amounts,
-        uint256[] maker_amounts
-    );
-
-    event RequestCalled(
         bytes32 requestId,
         address taker_token,
         address maker_token,
@@ -125,7 +108,7 @@ contract Oracle is Ownable, RrpRequesterV0 {
         bytes32 endpointId,
         bytes calldata parameters
     ) external checkRoleAuthority {
-        freezeTempBalance(pair, participants, trade_amounts, trade_side);//, trade_side
+        freezeTempBalance(pair, participants, trade_amounts, trade_side); //, trade_side
 
         bytes32 orderId = makeRequest(
             airnode_details[0],
@@ -166,9 +149,42 @@ contract Oracle is Ownable, RrpRequesterV0 {
             parameters // encoded API parameters
         );
         incomingFulfillments[requestId] = true;
+        requestTime[requestId] = block.timestamp;
         lastRequestId = requestId;
 
         return requestId;
+    }
+
+    function revertTrade(bytes32 requestId) public {
+        if (
+            incomingFulfillments[requestId] =
+                true &&
+                requestTime[requestId] + 1 hours > block.timestamp
+        ) {
+            delete incomingFulfillments[requestId];
+
+            address[2] memory pair;
+            pair[0] = OrderDetails[requestId].taker_token;
+            pair[1] = OrderDetails[requestId].maker_token;
+
+            revertTrade(
+                pair,
+                OrderDetails[requestId].takers,
+                OrderDetails[requestId].makers,
+                OrderDetails[requestId].taker_amounts,
+                OrderDetails[requestId].maker_amounts
+            );
+
+            emit TradeReverted(
+                requestId,
+                pair[0],
+                pair[1],
+                OrderDetails[requestId].takers,
+                OrderDetails[requestId].makers,
+                OrderDetails[requestId].taker_amounts,
+                OrderDetails[requestId].maker_amounts
+            );
+        }
     }
 
     /// @notice This simulates an airnode call to see if it is a success or fail
@@ -222,7 +238,6 @@ contract Oracle is Ownable, RrpRequesterV0 {
         address asset,
         uint256 trade_amount
     ) private {
-        // pay fee take less from the maker if they are a maker
         Datahub.removeAssets(participant, asset, trade_amount);
         Datahub.addPendingBalances(participant, asset, trade_amount);
     }
@@ -275,6 +290,38 @@ contract Oracle is Ownable, RrpRequesterV0 {
                         ])
                 );
             }
+        }
+    }
+
+    function revertTrade(
+        address[2] memory pair,
+        address[] memory takers,
+        address[] memory makers,
+        uint256[] memory taker_amounts,
+        uint256[] memory maker_amounts
+    ) private {
+        for (uint256 i = 0; i < takers.length; i++) {
+            (uint256 assets, , , , ) = Datahub.ReadUserData(takers[i], pair[0]);
+            uint256 balanceToAdd = taker_amounts[i] > assets
+                ? assets
+                : taker_amounts[i];
+
+            Datahub.addAssets(takers[i], pair[0], balanceToAdd);
+            Datahub.removePendingBalances(takers[i], pair[0], balanceToAdd);
+        }
+
+        for (uint256 i = 0; i < makers.length; i++) {
+            (uint256 assets, , , , ) = Datahub.ReadUserData(makers[i], pair[1]);
+            uint256 MakerbalanceToAdd = maker_amounts[i] > assets
+                ? assets
+                : maker_amounts[i];
+
+            Datahub.addAssets(makers[i], pair[1], MakerbalanceToAdd);
+            Datahub.removePendingBalances(
+                makers[i],
+                pair[0],
+                MakerbalanceToAdd
+            );
         }
     }
 

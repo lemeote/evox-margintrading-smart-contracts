@@ -507,21 +507,21 @@ contract Utility is Ownable {
         address token,
         uint256 index
     ) public view returns (uint256) {
-        uint256 LiabilityToCharge = Datahub.fetchTotalBorrowedAmount(token);
+        uint256 LiabilityToCharge =Datahub.returnAssetLogs(token).totalBorrowedAmount;
         uint256 LiabilityDelta;
 
         if (
-            Datahub.fetchTotalBorrowedAmount(token) >
+            Datahub.returnAssetLogs(token).totalBorrowedAmount >
             interestContract.fetchLiabilitiesOfIndex(token, index)
         ) {
             LiabilityDelta =
-                Datahub.fetchTotalBorrowedAmount(token) -
+                Datahub.returnAssetLogs(token).totalBorrowedAmount -
                 interestContract.fetchLiabilitiesOfIndex(token, index);
             LiabilityToCharge += LiabilityDelta;
         } else {
             LiabilityDelta =
                 interestContract.fetchLiabilitiesOfIndex(token, index) -
-                Datahub.fetchTotalBorrowedAmount(token);
+                Datahub.returnAssetLogs(token).totalBorrowedAmount;
 
             LiabilityToCharge -= LiabilityDelta;
         }
@@ -551,14 +551,7 @@ contract Utility is Ownable {
     }
 
 
-        /// @notice Fetches the total amount borrowed of the token
-    /// @param token the token being queried
-    /// @return the total borrowed amount
-    function fetchTotalBorrowedAmount(
-        address token
-    ) external view returns (uint256) {
-        return Datahub.returnAssetLogs(token).totalBorrowedAmount;
-    }
+
     /// @notice Fetches the total amount borrowed of the token
     /// @param token the token being queried
     /// @return the total borrowed amount

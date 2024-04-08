@@ -2,7 +2,6 @@
 pragma solidity =0.8.20;
 
 interface IDepositVault {
-    function fetchtotalHistoricalUsers() external view returns (uint256);
 
     function deposit_token(
         address token,
