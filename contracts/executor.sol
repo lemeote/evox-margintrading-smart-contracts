@@ -482,7 +482,12 @@ contract EVO_EXCHANGE is Ownable {
             Datahub.setTotalBorrowedAmount(token, liabilitiesAccrued, true);
         }
         interestContract.chargeMassinterest(token);
-        /*
+ 
+    }
+
+    receive() external payable {}
+}
+       /*
         if (
             interestContract
                 .fetchRateInfo(
@@ -516,7 +521,3 @@ contract EVO_EXCHANGE is Ownable {
             );
         }
         */
-    }
-
-    receive() external payable {}
-}

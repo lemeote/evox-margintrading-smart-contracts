@@ -507,7 +507,7 @@ contract Utility is Ownable {
         address token,
         uint256 index
     ) public view returns (uint256) {
-        uint256 LiabilityToCharge =Datahub.returnAssetLogs(token).totalBorrowedAmount;
+        uint256 LiabilityToCharge = Datahub.returnAssetLogs(token).totalBorrowedAmount;
         uint256 LiabilityDelta;
 
         if (
