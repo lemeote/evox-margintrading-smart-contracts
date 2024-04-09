@@ -296,7 +296,7 @@ contract interestData {
             .totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
 
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+            .totalAssetSuplyAtIndex = Datahub.returnAssetLogs(token).totalAssetSupply;
 
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
             .borrowProportionAtIndex = EVO_LIBRARY.calculateBorrowProportion(
@@ -324,7 +324,7 @@ contract interestData {
                 .totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
 
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .totalAssetSuplyAtIndex = Datahub.fetchTotalAssetSupply(token);
+                .totalAssetSuplyAtIndex =  Datahub.returnAssetLogs(token).totalAssetSupply;
 
             InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
                 .borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(

@@ -146,16 +146,9 @@ contract EVO_EXCHANGE is Ownable {
         address[2] memory pair,
         address[][2] memory participants,
         uint256[][2] memory trade_amounts,
-        bool[][2] memory trade_side,
-        address[3] memory airnode_details,
-        bytes32 endpointId,
-        bytes calldata parameters
+        bool[][2] memory trade_side
     ) public {
         require(DepositVault.viewcircuitBreakerStatus() == false);
-        require(
-            airnode_details[0] == airnodeAddress,
-            "Must insert the airnode address to conduct a trade"
-        );
         // require(airnode address == airnode address set on deployment )
         // (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
         //     ""
@@ -187,12 +180,9 @@ contract EVO_EXCHANGE is Ownable {
             pair,
             participants,
             trade_amounts,
-            trade_side,
             takerLiabilities,
             makerLiabilities,
-            airnode_details,
-            endpointId,
-            parameters
+            trade_side
         );
     }
 
@@ -416,20 +406,20 @@ contract EVO_EXCHANGE is Ownable {
             uint256 DaoInterestCharge
         ) = EVO_LIBRARY.calculateCompoundedAssets(
                 interestContract.fetchCurrentRateIndex(token),
-                cumulativeinterest,
+                (cumulativeinterest / 10**18),
                 assets,
                 Datahub.viewUsersEarningRateIndex(user, token)
             );
 
         Datahub.alterUsersEarningRateIndex(user, token);
 
-        Datahub.addAssets(user, token, interestCharge);
-        Datahub.addAssets(fetchDaoWallet(), token, DaoInterestCharge);
+        Datahub.addAssets(user, token, (interestCharge / 10**18));
+        Datahub.addAssets(fetchDaoWallet(), token, (DaoInterestCharge / 10**18));
 
         Datahub.addAssets(
             fetchOrderBookProvider(),
             token,
-            OrderBookProviderCharge
+            (OrderBookProviderCharge / 10**18)
         );
     }
 

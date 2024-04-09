@@ -65,8 +65,8 @@ async function main() {
 
 
     const DeployOracle = await hre.ethers.deployContract("Oracle", [initialOwner,
-        Deploy_dataHub.getAddress(),
-        Deploy_depositVault.getAddress(),
+        initialOwner,
+        initialOwner,
         initialOwner])
 
     console.log("Oracle deployed to", await DeployOracle.getAddress());
@@ -295,8 +295,8 @@ async function main() {
         "maker_out_token": await REXE.getAddress(), //0xa513E6E4b8f2a923D98304ec87F64353C4D5C853
         "takers": signers[0].address, //0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266
         "makers": signers[1].address, //0x70997970c51812dc3a010c7d01b50e0d17dc79c8
-        "taker_out_token_amount": "125000000000000000000", // 12000000000000000000 // 1250
-        "maker_out_token_amount": "250000000000000000000", // 12000000000000000000  // 2500
+        "taker_out_token_amount": "1250000000000000000000", // 12000000000000000000 // 1250
+        "maker_out_token_amount": "2500000000000000000000", // 12000000000000000000  // 2500
     }
     /// 
     const trade_sides = [[true], [false]];
@@ -317,7 +317,7 @@ async function main() {
 
     let allData = [];
 
-    for (let i = 0; i <= 173; i++) {
+    for (let i = 0; i <= 20; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
 
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
@@ -328,7 +328,7 @@ async function main() {
         await masscharges.wait(); // Wait for the transaction to be mined
 
 
-        if (i % 2) {
+        if (i == 2) {
             await EX.SubmitOrder(pair, participants, trade_amounts, trade_sides)
 
             console.log(await DataHub.ReadUserData(signers[0].address, USDT), "signer0, usdt") // taker has 10 usdt 
@@ -341,13 +341,11 @@ async function main() {
 
         }
 
-        // Fetch total borrowed amount of USDT
-        let borrowed = await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress());
+        let borrowed = await _Interest.fetchRateInfo(await USDT.getAddress(), await _Interest.fetchCurrentRateIndex(await USDT.getAddress()))
 
-
+        borrowed = borrowed.totalLiabilitiesAtIndex
         // Fetch current interest RATE USDT
         let Rate = await _Interest.fetchCurrentRate(await USDT.getAddress());
-
 
         // Fetch user data including liabilities
         let userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress());
@@ -367,6 +365,7 @@ async function main() {
 
         // Calculate hourly rate
         let hourly_rate = Number(Rate.toString()) / 8736;
+
 
         // Create a data object for the current iteration
         const newData = {
