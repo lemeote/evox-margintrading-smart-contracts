@@ -352,6 +352,7 @@ async function main() {
         let userData = await DataHub.ReadUserData(signers[1].address, await USDT.getAddress());
         let assetsvalue = userData[0];
 
+
         let depositinterest = await EX.fetchUsersDepositInterest(signers[1].address, await USDT.getAddress())
 
 
@@ -365,6 +366,13 @@ async function main() {
 
 
         // Create a data object for the current iteration
+
+
+
+        https://docs.google.com/spreadsheets/u/5/d/1IS3WFMcbda7v_rshOefMGGS70yabp6qJ2PmDcBs8J1w/edit?usp=sharing&pli=1
+        // Go above and refer to line 975 for the excel sheet to check numbers against what we have 
+
+        
         const newData = {
             "index": Number(interestIndex.toString()),
             "loop #": i,
