@@ -427,14 +427,94 @@ contract EVO_EXCHANGE is Ownable {
         );
     }
 
-    /*
+    /// @notice This fetches a users accrued deposit interest
+    /// @dev when a user deposits to the exchange they earn interest on their deposit paid for by margined users who have liabilities
+    /// @param user the user we are wishing to see the deposit interest for
+    /// @param token the token the user is earning deposit interest on
+    /// @return interestCharge the amount of deposit interest the user has accrued
+    function fetchUsersDepositInterest(
+        address user,
+        address token
+    ) public view returns (uint256) {
+        (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
+        uint256 cumulativeinterest = interestContract
+            .calculateAverageCumulativeDepositInterest(
+                Datahub.viewUsersEarningRateIndex(user, token),
+                interestContract.fetchCurrentRateIndex(token),
+                token
+            );
+
+        (uint256 interestCharge, , ) = EVO_LIBRARY.calculateCompoundedAssets(
+            interestContract.fetchCurrentRateIndex(token),
+            (cumulativeinterest / 10 ** 18),
+            assets,
+            Datahub.viewUsersEarningRateIndex(user, token)
+        );
+        return interestCharge;
+    }
+
     /// @notice This will charge interest to a user if they are accuring new liabilities
     /// @param user the address of the user beign confirmed
     /// @param token the token being targetted
     /// @param liabilitiesAccrued the new liabilities being issued
     /// @param minus determines if we are adding to the liability pool or subtracting
 
- 
+    function chargeinterest(
+        address user,
+        address token,
+        uint256 liabilitiesAccrued,
+        bool minus
+    ) private {
+        //Step 1) charge mass interest on outstanding liabilities
+        interestContract.chargeMassinterest(token);
+
+        if (minus == false) {
+            //Step 2) calculate the trade's liabilities + interest
+            uint256 interestCharge = interestContract.returnInterestCharge(
+                user,
+                token,
+                liabilitiesAccrued
+            );
+
+            Datahub.addLiabilities(
+                user,
+                token,
+                liabilitiesAccrued + interestCharge
+            );
+
+            Datahub.setTotalBorrowedAmount(
+                token,
+                (liabilitiesAccrued + interestCharge),
+                true
+            );
+
+            Datahub.alterUsersInterestRateIndex(user, token);
+        } else {
+            uint256 interestCharge = interestContract.returnInterestCharge(
+                user,
+                token,
+                0
+            );
+
+            Datahub.addLiabilities(user, token, interestCharge);
+
+            Datahub.removeLiabilities(user, token, liabilitiesAccrued);
+
+            Datahub.setTotalBorrowedAmount(
+                token,
+                (liabilitiesAccrued - interestCharge),
+                false
+            );
+
+            Datahub.alterUsersInterestRateIndex(user, token);
+        }
+    }
+
+    receive() external payable {}
+}
+
+/*
+
     function chargeinterest(
         address user,
         address token,
@@ -539,105 +619,6 @@ contract EVO_EXCHANGE is Ownable {
     }
 */
 
-    //Step 1) update index, set new interest rate
-    //Step 2) charge mass interest on outstanding liabilities
-
-
-    function chargeinterest(
-        address user,
-        address token,
-        uint256 liabilitiesAccrued,
-        bool minus
-    ) private {
-         //Step 0) check if we need to update
-       // if (checkIfInterestIndexUpdateIsRequired(token)) {
-             //Step 1) update index, set new interest rate
-           // updateInterestIndex(token, 0);
-
-            //Step 2) charge mass interest on outstanding liabilities
-           // uint256 currentInterestRateHourly = (interestContract.fetchRateInfo(token, interestContract.fetchCurrentRateIndex(token)).interestRate)/ 8736;
-             // total borroed amount * current interest rate -> up total borrowed amount by this fucking value
-          //  Datahub.setTotalBorrowedAmount(token, (((Datahub.returnAssetLogs(token).totalBorrowedAmount) * (1e18 + currentInterestRateHourly))/ 10**18), true);
-
-          interestContract.chargeMassinterest(token);
-
-         if (minus == false) {
-            //Step 3) calculate the trade's liabilities + interest
-            uint256 interestCharge = interestContract.returnInterestCharge(
-                user,
-                token,
-                liabilitiesAccrued
-            );
-            
-            Datahub.addLiabilities(
-                user,
-                token,
-                liabilitiesAccrued + interestCharge
-            );
-
-            Datahub.setTotalBorrowedAmount(token, (liabilitiesAccrued + interestCharge), true);
-
-            Datahub.alterUsersInterestRateIndex(user, token);
-
-         }else{
-            uint256 interestCharge = interestContract.returnInterestCharge(
-                user,
-                token,
-                0
-            );
-            
-            Datahub.addLiabilities(user, token, interestCharge);
-
-            Datahub.removeLiabilities(user, token, liabilitiesAccrued);
-
-            Datahub.setTotalBorrowedAmount(token, (liabilitiesAccrued - interestCharge), false);
-
-            Datahub.alterUsersInterestRateIndex(user, token);
-
-         }
-
-      //  }
-    }
-
-    function updateInterestIndex(
-        address token,
-        uint256 liabilitiesAccrued
-    ) private {
-        interestContract.updateInterestIndex(
-            token,
-            interestContract.fetchCurrentRateIndex(token),
-            EVO_LIBRARY.calculateInterestRate(
-                liabilitiesAccrued,
-                Datahub.returnAssetLogs(token),
-                interestContract.fetchRateInfo(
-                    token,
-                    interestContract.fetchCurrentRateIndex(token)
-                )
-            )
-        );
-    }
-
-    function checkIfInterestIndexUpdateIsRequired(
-        address token
-    ) private view returns (bool) {
-        if (
-            interestContract
-                .fetchRateInfo(
-                    token,
-                    interestContract.fetchCurrentRateIndex(token)
-                )
-                .lastUpdatedTime +
-                1 hours <
-            block.timestamp
-        ) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    receive() external payable {}
-}
 /*
         if (
             interestContract
