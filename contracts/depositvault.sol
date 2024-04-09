@@ -276,6 +276,8 @@ contract DepositVault is Ownable {
                 Datahub.returnAssetLogs(token).totalAssetSupply,
             "You cannot withdraw this amount as it would exceed the maximum borrow proportion"
         );
+/*
+This piece of code is having problems its supposed to be basically a piece of code to protect against dangerous withdraws 
 
         if (getTotalAssetSupplyValue(token) > WithdrawThresholdValue) {
             if (
@@ -300,7 +302,7 @@ contract DepositVault is Ownable {
             lastWithdrawUpdateTime = block.timestamp;
             token_withdraws_hour[token] = 0;
         }
-
+*/
         IDataHub.AssetData memory assetInformation = Datahub.returnAssetLogs(
             token
         );
