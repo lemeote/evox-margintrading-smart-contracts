@@ -198,7 +198,7 @@ async function main() {
 
     setup.wait();
 
- 
+
 
     const oraclesetup = await Oracle.alterAdminRoles(await Deploy_Exchange.getAddress(), await Deploy_dataHub.getAddress(), await Deploy_depositVault.getAddress());
 
@@ -317,12 +317,11 @@ async function main() {
 
     let allData = [];
 
-    for (let i = 0; i <= 20; i++) {
+    for (let i = 0; i <= 173; i++) {
         const scaledTimestamp = originTimestamp + i * 3600;
 
         await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
         console.log(`Loop ${i}: Set timestamp to ${scaledTimestamp}`);
-
 
         const masscharges = await _Interest.chargeMassinterest(await USDT.getAddress());
         await masscharges.wait(); // Wait for the transaction to be mined
@@ -341,6 +340,8 @@ async function main() {
 
         }
 
+
+
         let borrowed = await _Interest.fetchRateInfo(await USDT.getAddress(), await _Interest.fetchCurrentRateIndex(await USDT.getAddress()))
 
         borrowed = borrowed.totalLiabilitiesAtIndex
@@ -354,10 +355,10 @@ async function main() {
 
 
 
-        let interestadjustedLiabilities = await _Interest.returnCompoundedLiabilitiesOfUser(
+        let interestadjustedLiabilities = await _Interest.returnInterestCharge(
             signers[0].address,
             await USDT.getAddress(),
-
+            0
         )
 
         let interestIndex = await _Interest.fetchCurrentRateIndex(await USDT.getAddress());
@@ -374,7 +375,7 @@ async function main() {
             "total-borrowed": Number(borrowed.toString()) / 10 ** 18,
             "rate": Number(Rate.toString()) / 10 ** 18,
             "hourly-rate": hourly_rate / 10 ** 18,
-            "liabilities": Number((liabilitiesValue + interestadjustedLiabilities).toString()) / 10 ** 18,
+            "liabilities": Number((liabilitiesValue + interestadjustedLiabilities)) / 10 ** 18,
             "timestamp": Number(scaledTimestamp.toString()),
         };
 

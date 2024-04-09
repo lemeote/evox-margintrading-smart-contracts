@@ -42,6 +42,12 @@ interface IInterestData {
 
     function chargeMassinterest(address token) external;
 
+        function returnInterestCharge(
+        address user,
+        address token,
+        uint256 liabilitiesAccrued
+    ) external view returns (uint256);
+
     function updateInterestIndex(
         address token,
         uint256 index,

@@ -497,7 +497,7 @@ contract Utility is Ownable {
             }
         }
     }
-
+/*
     /// @notice Explain to an end user what this does
     /// @dev Explain to a developer any extra details
     /// @param token the token being targetted
@@ -530,7 +530,7 @@ contract Utility is Ownable {
             ((interestContract.fetchCurrentRate(token)) / 8736)) / 10 ** 18;
         return MassCharge;
     }
-
+*/
     function fetchBorrowProportionList(
         uint256 startingIndex,
         uint256 endingIndex,
