@@ -367,7 +367,9 @@ async function main() {
         // Calculate hourly rate
         let hourly_rate = Number(Rate.toString()) / 8736;
 
-        https://docs.google.com/spreadsheets/u/5/d/1IS3WFMcbda7v_rshOefMGGS70yabp6qJ2PmDcBs8J1w/edit?usp=sharing&pli=1
+
+
+        //    https://docs.google.com/spreadsheets/u/5/d/1IS3WFMcbda7v_rshOefMGGS70yabp6qJ2PmDcBs8J1w/edit?usp=sharing&pli=1
         // Go above and refer to line 1-5 for the excel sheet to check numbers against what we have 
 
         // Create a data object for the current iteration
