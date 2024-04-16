@@ -361,49 +361,53 @@ async function main() {
          console.log(await DataHub.ReadUserData(signers[0].address, REXE), "signer0 REXE") // taker has 0 rexe 
          console.log(await DataHub.ReadUserData(signers[1].address, USDT), "signer1, usdt") // maker has 20 usdt 
          console.log(await DataHub.ReadUserData(signers[1].address, REXE), "signer1 REXE") // maker has 20 rexe 
-     
-        // Fetch total borrowed amount of USDT
-        let borrowed = await DataHub.fetchTotalBorrowedAmount(await USDT.getAddress());
 
 
-        // Fetch current interest RATE USDT
-        let Rate = await _Interest.fetchCurrentRate(await USDT.getAddress());
+         let borrowed = await _Interest.fetchRateInfo(await USDT.getAddress(), await _Interest.fetchCurrentRateIndex(await USDT.getAddress()))
 
-
-        // Fetch user data including liabilities
-        let userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress());
-        let liabilitiesValue = userData[1];
-
-
-
-
-        let interestadjustedLiabilities = await _Interest.returnCompoundedLiabilitiesOfUser(
-            signers[0].address,
-            await USDT.getAddress(),
-
-        )
-
-        let interestIndex = await _Interest.fetchCurrentRateIndex(await USDT.getAddress());
-
-
-        // Calculate hourly rate
-        let hourly_rate = Number(Rate.toString()) / 8736;
-
-        // Create a data object for the current iteration
-        const newData = {
-            "index": Number(interestIndex.toString()),
-            "loop #": i,
-            "total-borrowed": Number(borrowed.toString()) / 10 ** 18,
-            "rate": Number(Rate.toString()) / 10 ** 18,
-            "hourly-rate": hourly_rate / 10 ** 18,
-            "liabilities": Number((liabilitiesValue + interestadjustedLiabilities).toString()) / 10 ** 18,
-            "timestamp": Number(scaledTimestamp.toString()),
-        };
-
-        // Add the data object to the array
-        allData.push(newData);
-
-        console.log('Data recorded for index', i);
+         borrowed = borrowed.totalLiabilitiesAtIndex
+         // Fetch current interest RATE USDT
+         let Rate = await _Interest.fetchCurrentRate(await USDT.getAddress());
+ 
+         // Fetch user data including liabilities
+         let userData = await DataHub.ReadUserData(signers[0].address, await USDT.getAddress());
+         let liabilitiesValue = userData[1];
+ 
+ 
+ 
+ 
+         let interestadjustedLiabilities = await _Interest.returnInterestCharge(
+             signers[0].address,
+             await USDT.getAddress(),
+             0
+         )
+ 
+         let interestIndex = await _Interest.fetchCurrentRateIndex(await USDT.getAddress());
+ 
+ 
+         // Calculate hourly rate
+         let hourly_rate = Number(Rate.toString()) / 8736;
+ 
+ 
+ 
+         //    https://docs.google.com/spreadsheets/u/5/d/1IS3WFMcbda7v_rshOefMGGS70yabp6qJ2PmDcBs8J1w/edit?usp=sharing&pli=1
+         // Go above and refer to line 1-5 for the excel sheet to check numbers against what we have 
+ 
+         // Create a data object for the current iteration
+         const newData = {
+             "index": Number(interestIndex.toString()),
+             "loop #": i,
+             "total-borrowed": Number(borrowed.toString()) / 10 ** 18,
+             "rate": Number(Rate.toString()) / 10 ** 18,
+             "hourly-rate": hourly_rate / 10 ** 18,
+             "liabilities": Number((liabilitiesValue + interestadjustedLiabilities)) / 10 ** 18,
+             "timestamp": Number(scaledTimestamp.toString()),
+         };
+ 
+         // Add the data object to the array
+         allData.push(newData);
+ 
+         console.log('Data recorded for index', i);
     }
 
     // File path for the JSON file
