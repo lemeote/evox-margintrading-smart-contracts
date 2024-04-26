@@ -21,7 +21,7 @@ library EVO_LIBRARY {
 
     function calculateTotal(
         uint256[] memory amounts
-    ) external view returns (uint256) {
+    ) external pure returns (uint256) {
         uint256 total;
         for (uint256 i = 0; i < amounts.length; i++) {
             total += amounts[i];
@@ -31,7 +31,7 @@ library EVO_LIBRARY {
 
     function calculateAverage(
         uint256[] memory values
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         if (values.length == 0) {
             return 0;
         }
@@ -47,7 +47,7 @@ library EVO_LIBRARY {
     function calculateAverageOfValue(
         uint256 value,
         uint divisor
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         if (value / divisor == 0) {
             return 0;
         }
@@ -77,7 +77,7 @@ library EVO_LIBRARY {
         uint256 amount,
         IDataHub.AssetData memory assetlogs,
         IInterestData.interestDetails memory interestRateInfo
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 borrowProportion = ((assetlogs.totalBorrowedAmount + amount) *
             10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
@@ -123,21 +123,21 @@ library EVO_LIBRARY {
     function calculateinitialMarginFeeAmount(
         IDataHub.AssetData memory assetdata,
         uint256 liabilities
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         return (assetdata.initialMarginFee * liabilities) / 10 ** 18;
     }
 
     function calculateMaintenanceRequirementForTrade(
         IDataHub.AssetData memory assetdata,
         uint256 amount
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 maintenance = assetdata.MaintenanceMarginRequirement; // 10 * 18 -> this function will output a 10*18 number
         return (maintenance * (amount)) / 10 ** 18;
     } // 13 deimcals to big
 
     function calculateBorrowProportion(
         IDataHub.AssetData memory assetdata
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         return
             (assetdata.totalBorrowedAmount * 10 ** 18) /
             assetdata.totalAssetSupply; // 10 ** 18 output
@@ -146,7 +146,7 @@ library EVO_LIBRARY {
     function calculateBorrowProportionAfterTrades(
         IDataHub.AssetData memory assetdata,
         uint256 new_liabilities
-    ) public view returns (bool) {
+    ) public pure returns (bool) {
         uint256 scaleFactor = 1e18; // Scaling factor, e.g., 10^18 for wei
 
         // here we add the current borrowed amount and the new liabilities to be issued, and scale it
@@ -174,7 +174,7 @@ library EVO_LIBRARY {
         uint256 AverageCumulativeDepositInterest,
         uint256 usersAssets,
         uint256 usersOriginIndex
-    ) public view returns (uint256, uint256, uint256) {
+    ) public pure returns (uint256, uint256, uint256) {
         uint256 earningHours = currentIndex - usersOriginIndex;
 
         uint256 DaoInterestCharge;
@@ -248,7 +248,7 @@ library EVO_LIBRARY {
         uint256 newLiabilities,
         uint256 usersLiabilities,
         uint256 usersOriginIndex
-    ) public view returns (uint256) {
+    ) public pure returns (uint256) {
         uint256 amountOfBilledHours = currentIndex - usersOriginIndex;
 
         // calculate what the rate would be after their trade and charge that
