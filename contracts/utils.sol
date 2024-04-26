@@ -376,7 +376,7 @@ contract Utility is Ownable {
                 Datahub.returnPairMMROfUser(user, in_token, out_token)
             ) {
                 uint256 overage = (StartingDollarMMR -
-                    Datahub.returnPairMMROfUser(user, in_token, out_token)) /
+                    Datahub.returnPairMMROfUser(user, in_token, out_token)) * (10 ** 18) /
                     assetLogsInToken.MaintenanceMarginRequirement;
 
                 Datahub.removeMaintenanceMarginRequirement(
@@ -447,7 +447,7 @@ contract Utility is Ownable {
                 Datahub.returnPairIMROfUser(user, in_token, out_token)
             ) {
                 uint256 overage = (StartingDollarIMR -
-                    Datahub.returnPairIMROfUser(user, in_token, out_token)) /
+                    Datahub.returnPairIMROfUser(user, in_token, out_token)) * (10 ** 18) /
                     assetLogsInToken.initialMarginRequirement;
 
                 Datahub.removeInitialMarginRequirement(

@@ -300,7 +300,7 @@ contract DataHub is Ownable {
     ) external checkRoleAuthority {
         userdata[user].initial_margin_requirement[in_token][
             out_token
-        ] *= amount;
+        ] *= amount / (10 ** 18);
     }
 
     function addInitialMarginRequirement(
@@ -403,6 +403,14 @@ contract DataHub is Ownable {
                 break; // Exit the loop once the token is found and removed
             }
         }
+    }
+
+    /// @notice This function returns the users tokens array ( the tokens in their portfolio)
+    /// @param user the user being targetted
+    function returnUsersAssetTokens(
+        address user
+    ) external view returns (address[] memory) {
+        return userdata[user].tokens;
     }
 
     /// @notice This function rchecks if a token is present in a users potrfolio

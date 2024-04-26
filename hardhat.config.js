@@ -9,7 +9,15 @@ require("@solarity/hardhat-markup")
 
 
 module.exports = {
-  solidity: "0.8.20",
+  solidity: {
+    version: "0.8.20",
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 1000,
+      },
+    },
+  },
   defaultNetwork: "hardhat",
 
   paths: {
@@ -38,4 +46,5 @@ module.exports = {
       ],
     },
   },
+  allowUnlimitedContractSize: true,
 };
