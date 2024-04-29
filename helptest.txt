@@ -1,0 +1,22 @@
+// Function which allows to convert any address to the signer which can sign transactions in a test
+const impersonateAddress = async (address) => {
+  const hre = require('hardhat');
+  await hre.network.provider.request({
+    method: 'hardhat_impersonateAccount',
+    params: [address],
+  });
+  const signer = await ethers.provider.getSigner(address);
+  signer.address = signer._address;
+  return signer;
+};
+// Function to increase time in mainnet fork
+async function increaseTime(value) {
+  if (!ethers.BigNumber.isBigNumber(value)) {
+    value = ethers.BigNumber.from(value);
+  }
+  await ethers.provider.send('evm_increaseTime', [value.toNumber()]);
+  await ethers.provider.send('evm_mine');
+}
+// Construction to get any contract as an object by its interface and address in blockchain
+// It is necessary to note that you must add an interface to your project
+const WETH = await ethers.getContractAt('IWETH', wethAddress);
