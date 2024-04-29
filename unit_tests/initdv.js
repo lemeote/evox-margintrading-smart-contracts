@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const OracleABI = require("../artifacts/contracts/Oracle.sol/Oracle.json")
-const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.json")
+const ExecutorAbi = require("../artifacts/contracts/executor.sol/EVO_EXCHANGE.json")
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const depositABI = require("../artifacts/contracts/depositvault.sol/DepositVault.json")

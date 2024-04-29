@@ -183,7 +183,9 @@ contract DataHub is Ownable {
         address token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].liability_info[token] *= amount / (10 ** 18);
+        userdata[user].liability_info[token] =
+            (userdata[user].liability_info[token] * amount) /
+            (10 ** 18);
     }
 
     /// @notice Adds to a users liabilities
@@ -246,8 +248,10 @@ contract DataHub is Ownable {
         address out_token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].maintenance_margin_requirement[in_token][out_token] *=
-            amount /
+        userdata[user].maintenance_margin_requirement[in_token][out_token] =
+            (userdata[user].maintenance_margin_requirement[in_token][
+                out_token
+            ] * amount) /
             (10 ** 18);
     }
 
@@ -296,8 +300,9 @@ contract DataHub is Ownable {
         address out_token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].initial_margin_requirement[in_token][out_token] *=
-            amount /
+        userdata[user].initial_margin_requirement[in_token][out_token] =
+            (userdata[user].initial_margin_requirement[in_token][out_token] *
+                amount) /
             (10 ** 18);
     }
 
