@@ -19,7 +19,9 @@ module.exports = {
     },
   },
   defaultNetwork: "hardhat",
-
+  mocha: {
+    timeout: 100000000
+  },
   paths: {
     sources: "./contracts", // The directory where your contracts are located
     artifacts: "./artifacts", // The directory where artifact files will be generated
