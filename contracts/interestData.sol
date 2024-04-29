@@ -49,7 +49,6 @@ contract interestData {
         address _utils,
         address _dv
     ) {
-        console.log("Init function test");
         owner = initialOwner;
         admins[initialOwner] = true;
         admins[_executor] = true;

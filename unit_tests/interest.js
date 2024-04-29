@@ -19,7 +19,7 @@ const fs = require('fs');
 describe("Interest Test", function () {
     async function deployandInitContracts() {
         const signers = await hre.ethers.getSigners();
-        console.log("Deploying contracts with the account:", signers[0].address);
+        // console.log("Deploying contracts with the account:", signers[0].address);
 
         const initialOwner = signers[0].address // insert wallet address 
         // insert airnode address , address _executor, address _deposit_vault
@@ -27,13 +27,13 @@ describe("Interest Test", function () {
         const depositvault = initialOwner;
         const oracle = initialOwner;
 
-        console.log("==========================Deploy contracts===========================");
+        // console.log("==========================Deploy contracts===========================");
         /////////////////////////////////Deploy EVO_LIB//////////////////////////////////////
         const EVO_LIB = await hre.ethers.deployContract("EVO_LIBRARY");
 
         await EVO_LIB.waitForDeployment();
 
-        console.log("EVO Library deployed to", await EVO_LIB.getAddress());
+        // console.log("EVO Library deployed to", await EVO_LIB.getAddress());
 
 
         /////////////////////////////////Deploy Interest//////////////////////////////////////
@@ -47,7 +47,7 @@ describe("Interest Test", function () {
 
         await Deploy_interest.waitForDeployment();
 
-        console.log("Interest deployed to", await Deploy_interest.getAddress());
+        // console.log("Interest deployed to", await Deploy_interest.getAddress());
 
 
         /////////////////////////////////Deploy dataHub////////////////////////////////////////
@@ -55,7 +55,7 @@ describe("Interest Test", function () {
 
         await Deploy_dataHub.waitForDeployment();
 
-        console.log("Datahub deployed to", await Deploy_dataHub.getAddress());
+        // console.log("Datahub deployed to", await Deploy_dataHub.getAddress());
 
         /////////////////////////////////Deploy depositVault////////////////////////////////////
         const depositVault = await hre.ethers.getContractFactory("DepositVault", {
@@ -67,7 +67,7 @@ describe("Interest Test", function () {
 
         await Deploy_depositVault.waitForDeployment();
 
-        console.log("Deposit Vault deployed to", await Deploy_depositVault.getAddress());
+        // console.log("Deposit Vault deployed to", await Deploy_depositVault.getAddress());
 
         /////////////////////////////////Deploy Oracle///////////////////////////////////////////
         const DeployOracle = await hre.ethers.deployContract("Oracle", [initialOwner,
@@ -75,7 +75,7 @@ describe("Interest Test", function () {
             initialOwner,
             initialOwner])
 
-        console.log("Oracle deployed to", await DeployOracle.getAddress());
+        // console.log("Oracle deployed to", await DeployOracle.getAddress());
         
         /////////////////////////////////Deploy Utility///////////////////////////////////////////
         const Utility = await hre.ethers.getContractFactory("Utility", {
@@ -85,7 +85,7 @@ describe("Interest Test", function () {
         });
         const Deploy_Utilities = await Utility.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), initialOwner, await Deploy_interest.getAddress());
 
-        console.log("Utils deployed to", await Deploy_Utilities.getAddress());
+        // console.log("Utils deployed to", await Deploy_Utilities.getAddress());
 
         /////////////////////////////////Deploy liquidator/////////////////////////////////////////
         const Liquidator = await hre.ethers.getContractFactory("Liquidator", {
@@ -95,7 +95,7 @@ describe("Interest Test", function () {
         });
         const Deploy_Liquidator = await Liquidator.deploy(initialOwner, Deploy_dataHub.getAddress(), initialOwner); // need to alter the ex after 
 
-        console.log("Liquidator deployed to", await Deploy_Liquidator.getAddress());
+        // console.log("Liquidator deployed to", await Deploy_Liquidator.getAddress());
 
         Deploy_Utilities
         const Exchange = await hre.ethers.getContractFactory("EVO_EXCHANGE", {
@@ -106,7 +106,7 @@ describe("Interest Test", function () {
 
         const Deploy_Exchange = await Exchange.deploy(initialOwner, Deploy_dataHub.getAddress(), Deploy_depositVault.getAddress(), DeployOracle.getAddress(), Deploy_Utilities.getAddress(), await Deploy_interest.getAddress(), Deploy_Liquidator.getAddress());
 
-        console.log("Deploy_Utilities deployed to", await Deploy_Utilities.getAddress());
+        // console.log("Deploy_Utilities deployed to", await Deploy_Utilities.getAddress());
 
         /////////////////////////////////Deploy REXE with singer[1]/////////////////////////////////////////
         const selectedSigner = signers[1];
@@ -114,21 +114,21 @@ describe("Interest Test", function () {
         const connectedREXE = REXE.connect(selectedSigner);
         await REXE.waitForDeployment();
 
-        console.log("REXE deployed to", await connectedREXE.getAddress());
-        console.log("REXE Balance = ", await REXE.balanceOf(signers[1].address))
+        // console.log("REXE deployed to", await connectedREXE.getAddress());
+        // console.log("REXE Balance = ", await REXE.balanceOf(signers[1].address))
 
         /////////////////////////////////Deploy USDT with singer[1]/////////////////////////////////////////
         const USDT = await hre.ethers.deployContract("USDT", [signers[0].address]);
         await USDT.waitForDeployment();
-        console.log("USDT deployed to", await USDT.getAddress());
-        console.log("USDB balance = ", await USDT.balanceOf(signers[0].address))
+        // console.log("USDT deployed to", await USDT.getAddress());
+        // console.log("USDB balance = ", await USDT.balanceOf(signers[0].address))
 
-        console.log("==========================Deploy Contracts Finished===========================");
+        // console.log("==========================Deploy Contracts Finished===========================");
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
         
         ///////////////////////////////////////////////////////////////////////////////////////////////////////
         // INIT CONTRACTS
-        console.log("==========================Init contracts===========================");
+        // console.log("==========================Init contracts===========================");
 
         const tradeFees = [0, 0];
         /////////////////////// USDT /////////////////////////
@@ -163,61 +163,61 @@ describe("Interest Test", function () {
         const Utils = new hre.ethers.Contract(await Deploy_Utilities.getAddress(), utilABI.abi, signers[0]);
         const SETUP = await Utils.alterAdminRoles(await Deploy_dataHub.getAddress(), await Deploy_depositVault.getAddress(), await DeployOracle.getAddress(), await Deploy_interest.getAddress(), await Deploy_Liquidator.getAddress(), await Deploy_Exchange.getAddress());
         SETUP.wait()
-        console.log("util init done")
+        // console.log("util init done")
 
         //////////////////// Init Exchange //////////////////////
         const CurrentExchange = new hre.ethers.Contract(await Deploy_Exchange.getAddress(), ExecutorAbi.abi, signers[0]);
         const SETUPEX = await CurrentExchange.alterAdminRoles(await Deploy_dataHub.getAddress(), await Deploy_depositVault.getAddress(), await DeployOracle.getAddress(), await Deploy_Utilities.getAddress(), await Deploy_interest.getAddress(), await Deploy_Liquidator.getAddress());
         SETUPEX.wait()
-        console.log("exchange init done")
+        // console.log("exchange init done")
 
 
         //////////////////// Init deposit vault //////////////////////
         const deposit_vault = new hre.ethers.Contract(await Deploy_depositVault.getAddress(), depositABI.abi, signers[0])
         const setupDV = await deposit_vault.alterAdminRoles(await Deploy_dataHub.getAddress(), await Deploy_Exchange.getAddress(), await Deploy_interest.getAddress())
         setupDV.wait();
-        console.log("deposit vault init done")
+        // console.log("deposit vault init done")
 
         //////////////////// Init liquidator //////////////////////
         const CurrentLiquidator = new hre.ethers.Contract(await Deploy_Liquidator.getAddress(), LiquidatorAbi.abi, signers[0]);
         const liqSetup = await CurrentLiquidator.alterAdminRoles(await Deploy_Exchange.getAddress());
         liqSetup.wait();
-        console.log("liquidator init done")
+        // console.log("liquidator init done")
 
         //////////////////// Init Datahub //////////////////////
         const DataHub = new hre.ethers.Contract(await Deploy_dataHub.getAddress(), DataHubAbi.abi, signers[0]);
         const setup = await DataHub.alterAdminRoles(await Deploy_depositVault.getAddress(), await Deploy_Exchange.getAddress(), await DeployOracle.getAddress(), await Deploy_interest.getAddress(), await Deploy_Utilities.getAddress());
         setup.wait();
-        console.log("datahub init done")
+        // console.log("datahub init done")
 
         //////////////////// Init Oracle //////////////////////
         const Oracle = new hre.ethers.Contract(await DeployOracle.getAddress(), OracleABI.abi, signers[0]);
         const oraclesetup = await Oracle.alterAdminRoles(await Deploy_Exchange.getAddress(), await Deploy_dataHub.getAddress(), await Deploy_depositVault.getAddress());
         oraclesetup.wait();
-        console.log("oracle init done")
+        // console.log("oracle init done")
 
         //////////////////// Init interest //////////////////////
         const _Interest = new hre.ethers.Contract(await Deploy_interest.getAddress(), InterestAbi.abi, signers[0]);
         const interestSetup = await _Interest.alterAdminRoles(await Deploy_dataHub.getAddress(), await Deploy_Exchange.getAddress(), await Deploy_depositVault.getAddress(), await Deploy_Utilities.getAddress());
         interestSetup.wait();
-        console.log("interest init done")
+        // console.log("interest init done")
 
         //////////////////// Set USDT and REXE in interestData //////////////////////
         const InitRatesREXE = await _Interest.initInterest(await REXE.getAddress(), 1, REXEinterestRateInfo, REXEInterestRate)
         const InitRatesUSDT = await _Interest.initInterest(await USDT.getAddress(), 1, USDT_interestRateInfo, USDTInterestRate)
         InitRatesREXE.wait();
         InitRatesUSDT.wait();
-        console.log("Set USDT and REXE in interestData done")
+        // console.log("Set USDT and REXE in interestData done")
 
         //////////////////// InitTokenMarket USDT in DataHub //////////////////////
         const USDT_init_transaction = await DataHub.InitTokenMarket(await USDT.getAddress(), USDTprice, USDTCollValue, tradeFees, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
         USDT_init_transaction.wait();
-        console.log("InitTokenMarket USDT in DataHub done")
+        // console.log("InitTokenMarket USDT in DataHub done")
 
         //////////////////// InitTokenMarket REXE in DataHub //////////////////////
         const REXE_init_transaction = await DataHub.InitTokenMarket(await REXE.getAddress(), REXEprice, EVOXCollValue, tradeFees, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);
         REXE_init_transaction.wait();
-        console.log("InitTokenMarket REXE in DataHub done")
+        // console.log("InitTokenMarket REXE in DataHub done")
 
         ///////////////////////////////// Getting Token Contracts //////////////////////////////////////
         const contractABI = tokenabi.abi; // token abi for approvals 
@@ -228,13 +228,13 @@ describe("Interest Test", function () {
         // Get Rexe Contract
         const REXE_TOKEN = new hre.ethers.Contract(await USDT.getAddress(), contractABI, signers[0]);
 
-        console.log("================================Init Contracts Finished=============================")
+        // console.log("================================Init Contracts Finished=============================")
 
         return {signers, Utils, CurrentExchange, deposit_vault, CurrentLiquidator, DataHub, Oracle, _Interest, USDT_TOKEN, REXE_TOKEN};
     }
 
     describe("Deployment", function () {
-        it("Deploy All contracts ", async function () {
+        it("Deploy and Init All contracts ", async function () {
             const { signers, Utils, CurrentExchange, deposit_vault, CurrentLiquidator, DataHub, Oracle, _Interest, USDT_TOKEN, REXE_TOKEN } = await loadFixture(deployandInitContracts);
             // Add All expect causes
             // DataHub.returnAssetLogs(USDT_TOKEN.getAddress().initialized).to.equal(true);
@@ -250,7 +250,7 @@ describe("Interest Test", function () {
             ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
             /////////////////////////////// DEPOSIT TOKENS //////////////////////////////////
-            console.log("==================== deposit tokens======================");
+            // console.log("==================== deposit tokens======================");
             // taker deposit amounts 
             const deposit_amount = 500_000000000000000000n
 
@@ -263,12 +263,16 @@ describe("Interest Test", function () {
 
             expect(await USDT_TOKEN.balanceOf(signers[1].address)).to.equal(20_000_000000000000000000n);
 
-            return;
-
+            // totalAssetSupply of USDT should be 0 before deposit
+            expect((await DataHub.returnAssetLogs(await USDT_TOKEN.getAddress())).totalAssetSupply).to.equal(0);
+           
             await deposit_vault.deposit_token(
-                await USDT.getAddress(),
+                await USDT_TOKEN.getAddress(),
                 deposit_amount
             )
+            // totalAssetSupply of USDT should be same as deposit_amount after deposit
+            expect((await DataHub.returnAssetLogs(await USDT_TOKEN.getAddress())).totalAssetSupply).to.equal(deposit_amount);
+            return;
 
             expect(await USDT_TOKEN.balanceOf(signers[1].address)).to.equal(20_000_000000000000000000n);
 

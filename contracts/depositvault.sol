@@ -183,6 +183,8 @@ contract DepositVault is Ownable {
             token
         );
 
+        // console.log("assets, liabilities", assets, liabilities);
+
         if (assets == 0) {
             Datahub.alterUsersEarningRateIndex(msg.sender, token);
         } else {
@@ -276,7 +278,7 @@ contract DepositVault is Ownable {
                 Datahub.returnAssetLogs(token).totalAssetSupply,
             "You cannot withdraw this amount as it would exceed the maximum borrow proportion"
         );
-/*
+        /*
 This piece of code is having problems its supposed to be basically a piece of code to protect against dangerous withdraws 
 
         if (getTotalAssetSupplyValue(token) > WithdrawThresholdValue) {
@@ -386,13 +388,10 @@ This piece of code is having problems its supposed to be basically a piece of co
 
         Datahub.settotalAssetSupply(token, amount, true);
 
-        (
-            uint256 assets,
-            uint256 liabilities,
-            ,
-            ,
-            
-        ) = Datahub.ReadUserData(beneficiary, token);
+        (uint256 assets, uint256 liabilities, , , ) = Datahub.ReadUserData(
+            beneficiary,
+            token
+        );
 
         if (assets == 0) {
             Datahub.alterUsersEarningRateIndex(msg.sender, token);

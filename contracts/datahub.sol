@@ -3,7 +3,7 @@ pragma solidity =0.8.20;
 
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-
+import "hardhat/console.sol";
 
 interface IInterestData {
     function fetchCurrentRateIndex(
@@ -12,7 +12,6 @@ interface IInterestData {
 }
 
 contract DataHub is Ownable {
-
     struct UserData {
         mapping(address => uint256) asset_info; // tracks their portfolio (margined, and depositted)
         mapping(address => uint256) liability_info; // tracks what they owe per token * price
@@ -41,7 +40,6 @@ contract DataHub is Ownable {
         uint256 totalDepositors;
     }
 
-    
     modifier checkRoleAuthority() {
         require(admins[msg.sender] == true, "Unauthorized");
         _;
@@ -66,7 +64,6 @@ contract DataHub is Ownable {
 
     IInterestData public interestContract;
 
-
     function alterAdminRoles(
         address _deposit_vault,
         address _executor,
@@ -80,7 +77,6 @@ contract DataHub is Ownable {
         admins[_interest] = true;
         admins[_utils] = true;
         interestContract = IInterestData(_interest);
-
     }
 
     /// @notice Keeps track of a users data
@@ -93,7 +89,6 @@ contract DataHub is Ownable {
 
     /// @notice Keeps track of contract admins
     mapping(address => bool) public admins;
-
 
     /// @notice Alters the users interest rate index (or epoch)
     /// @dev This is to change the users rate epoch, it would be changed after they pay interest.
@@ -111,6 +106,11 @@ contract DataHub is Ownable {
         address user,
         address token
     ) external checkRoleAuthority {
+        console.log("alterUserEarningRateIndex function");
+        console.log(
+            "current rate index",
+            interestContract.fetchCurrentRateIndex(token)
+        );
         userdata[user].earningRateIndex[token] = interestContract
             .fetchCurrentRateIndex(token);
     }
@@ -132,8 +132,6 @@ contract DataHub is Ownable {
     ) public view returns (uint256) {
         return userdata[user].interestRateIndex[token];
     }
-
-
 
     /// -----------------------------------------------------------------------
     /// Assets
@@ -298,9 +296,9 @@ contract DataHub is Ownable {
         address out_token,
         uint256 amount
     ) external checkRoleAuthority {
-        userdata[user].initial_margin_requirement[in_token][
-            out_token
-        ] *= amount / (10 ** 18);
+        userdata[user].initial_margin_requirement[in_token][out_token] *=
+            amount /
+            (10 ** 18);
     }
 
     function addInitialMarginRequirement(
@@ -480,7 +478,6 @@ contract DataHub is Ownable {
         }
     }
 
-
     /// -----------------------------------------------------------------------
     /// Asset Data functions  -->
     /// -----------------------------------------------------------------------
@@ -515,10 +512,19 @@ contract DataHub is Ownable {
         uint256 optimalBorrowProportion,
         uint256 maximumBorrowProportion
     ) external onlyOwner {
-        require(!assetdata[token].initialized, "token has to be not already initialized");
-        require(liquidationFee < MaintenanceMarginRequirement, "liq must be smaller than mmr");
-        require(tradeFees[0] >= tradeFees[1], "taker fee must be bigger than maker fee");
-  
+        require(
+            !assetdata[token].initialized,
+            "token has to be not already initialized"
+        );
+        require(
+            liquidationFee < MaintenanceMarginRequirement,
+            "liq must be smaller than mmr"
+        );
+        require(
+            tradeFees[0] >= tradeFees[1],
+            "taker fee must be bigger than maker fee"
+        );
+
         assetdata[token] = AssetData({
             collateralMultiplier: collateralMultiplier,
             tradeFees: tradeFees,
