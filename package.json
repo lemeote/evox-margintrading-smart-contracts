@@ -14,7 +14,7 @@
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@solarity/hardhat-markup": "^1.0.4",
-    "hardhat": "^2.22.2",
+    "hardhat": "^2.22.3",
     "hardhat-deploy": "^0.11.45"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const OracleABI = require("../artifacts/contracts/Oracle.sol/Oracle.json")
-const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.json")
+const ExecutorAbi = require("../artifacts/contracts/executor.sol/EVO_EXCHANGE.json")
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
@@ -99,7 +99,7 @@ describe("Init the contracts", function () {
 
     const Oracle = new hre.ethers.Contract(oracle, OracleABI.abi, deployer);
 
-    const DepositVault = new hre.ethers.Contract(DV,depositABI.abi, deployer)
+    const deposit_vault = new hre.ethers.Contract(DV,depositABI.abi, deployer)
 
     const Utils  = new hre.ethers.Contract(util, utilABI.abi, deployer);
 

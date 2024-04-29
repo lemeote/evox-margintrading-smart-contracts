@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const OracleABI = require("../artifacts/contracts/Oracle.sol/Oracle.json")
-const ExecutorAbi = require("../artifacts/contracts/executor.sol/REX_EXCHANGE.json")
+const ExecutorAbi = require("../artifacts/contracts/executor.sol/EVO_EXCHANGE.json")
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
 const InterestAbi = require("../artifacts/contracts/interestData.sol/interestData.json")
@@ -115,7 +115,7 @@ const interest = "0xd2C51851d7f438C2B9fE9Eb149Ad3481c80E4d18"
   console.log("INIT with the account:", deployer.address);
 
   const _Interest = new hre.ethers.Contract(interest, InterestAbi.abi, deployer);
-
+ 
   const DataHub = new hre.ethers.Contract(DH, DataHubAbi.abi, deployer);
 
   const Oracle = new hre.ethers.Contract(oracle, OracleABI.abi, deployer);
@@ -126,8 +126,9 @@ const interest = "0xd2C51851d7f438C2B9fE9Eb149Ad3481c80E4d18"
 
   const Exchange = new hre.ethers.Contract(ex, ExecutorAbi.abi, deployer);
 
-
   const setupDH = await DataHub.alterAdminRoles(DV, ex, oracle, interest);
+
+  console.log("Setup interest completed");
 
   setupDH.wait();
 
@@ -135,6 +136,7 @@ const interest = "0xd2C51851d7f438C2B9fE9Eb149Ad3481c80E4d18"
 
   setupDV.wait();
 
+  console.log("Setup dv completed");
 
   const setupUtils = await utils.alterExchange(ex);
 
