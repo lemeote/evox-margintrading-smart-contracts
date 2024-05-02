@@ -106,11 +106,11 @@ contract DataHub is Ownable {
         address user,
         address token
     ) external checkRoleAuthority {
-        console.log("alterUserEarningRateIndex function");
-        console.log(
-            "current rate index",
-            interestContract.fetchCurrentRateIndex(token)
-        );
+        // console.log("alterUserEarningRateIndex function");
+        // console.log(
+        //     "current rate index",
+        //     interestContract.fetchCurrentRateIndex(token)
+        // );
         userdata[user].earningRateIndex[token] = interestContract
             .fetchCurrentRateIndex(token);
     }

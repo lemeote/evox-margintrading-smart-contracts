@@ -170,6 +170,7 @@ contract Utility is Ownable {
         address[][2] memory participants,
         uint256[][2] memory trade_amounts
     ) public view returns (uint256[] memory, uint256[] memory) {
+        console.log("================calculateTradeLiabilityAddtions Function=====================");
         uint256[] memory TakerliabilityAmounts = new uint256[](
             participants[0].length
         );
@@ -183,6 +184,8 @@ contract Utility is Ownable {
                     pair[0],
                     trade_amounts[0][i]
                 );
+            
+            console.log("TakeramountToAddToLiabilities", TakeramountToAddToLiabilities);
 
             TakerliabilityAmounts[i] = TakeramountToAddToLiabilities;
         }
@@ -193,7 +196,7 @@ contract Utility is Ownable {
                     pair[1],
                     trade_amounts[1][i]
                 );
-
+            console.log("MakeramountToAddToLiabilities", MakeramountToAddToLiabilities);
             MakerliabilityAmounts[i] = MakeramountToAddToLiabilities;
         }
 
@@ -266,7 +269,7 @@ contract Utility is Ownable {
         for (uint256 i = 0; i < pair.length; i++) {
             newLiabilitiesIssued = EVO_LIBRARY.calculateTotal(
                 trade_amounts[i]
-            ) > returnBulkAssets(participants[i], pair[i])
+            ) > returnBulkAssets(participants[i], pair[i]) // sum of users assets
                 ? EVO_LIBRARY.calculateTotal(trade_amounts[i]) -
                     returnBulkAssets(participants[i], pair[i])
                 : 0;

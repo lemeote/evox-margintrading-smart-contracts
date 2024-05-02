@@ -1,0 +1,62 @@
+[
+  {
+    "USDT": {
+      "index": 1,
+      "loop #": 0,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1714389706
+    },
+    "REXE": {
+      "index": 1,
+      "loop #": 0,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1714389706
+    }
+  },
+  {
+    "USDT": {
+      "index": 2,
+      "loop #": 1,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1714393306
+    },
+    "REXE": {
+      "index": 2,
+      "loop #": 1,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1714393306
+    }
+  },
+  {
+    "USDT": {
+      "index": 3,
+      "loop #": 2,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1714396906
+    },
+    "REXE": {
+      "index": 3,
+      "loop #": 2,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1714396906
+    }
+  }
+]

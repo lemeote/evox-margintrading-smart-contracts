@@ -67,7 +67,7 @@ library EVO_LIBRARY {
         exp = 0;
         base = x;
 
-        while (base > 1e18) {
+        while (base > 1e18) { // @audit maybe >= ?
             base = base / 10;
             exp = exp + 1;
         }
@@ -80,16 +80,22 @@ library EVO_LIBRARY {
     ) public pure returns (uint256) {
         uint256 borrowProportion = ((assetlogs.totalBorrowedAmount + amount) *
             10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
+        console.log("borrow proportion", borrowProportion);
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
 
         uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
+        console.log("optimal Borrow Proportion", optimalBorrowProportion);
 
         uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
         uint256 optimalInterestRate = interestRateInfo.rateInfo[1];
         uint256 maximumInterestRate = interestRateInfo.rateInfo[2];
+        console.log("minimumInterestRate", minimumInterestRate);
+        console.log("optimalInterestRate", optimalInterestRate);
+        console.log("maximumInterestRate", maximumInterestRate);
 
         if (borrowProportion <= optimalBorrowProportion) {
             uint256 rate = optimalInterestRate - minimumInterestRate;
+            console.log("rate", rate);
             return
                 min(
                     optimalInterestRate,
@@ -147,15 +153,22 @@ library EVO_LIBRARY {
         IDataHub.AssetData memory assetdata,
         uint256 new_liabilities
     ) public pure returns (bool) {
+        console.log("====================calculateBorrowProportionAfterTrades========================");
         uint256 scaleFactor = 1e18; // Scaling factor, e.g., 10^18 for wei
 
         // here we add the current borrowed amount and the new liabilities to be issued, and scale it
         uint256 scaledTotalBorrowed = (assetdata.totalBorrowedAmount +
             new_liabilities) * scaleFactor;
 
+        console.log("scaledTotalBorrowed", scaledTotalBorrowed);
+
         // Calculate the new borrow proportion
         uint256 newBorrowProportion = (scaledTotalBorrowed /
             assetdata.totalAssetSupply); // equal decimal * 10**!8 decimal is max
+
+        console.log("newBorrowProportion", newBorrowProportion);
+
+        console.log("maximum borrow propotion", assetdata.maximumBorrowProportion);
 
         // Compare with maximumBorrowProportion
         return newBorrowProportion <= assetdata.maximumBorrowProportion;
@@ -241,7 +254,7 @@ library EVO_LIBRARY {
     }
 
     function calculateCompoundedLiabilities(
-        uint256 currentIndex,
+        uint256 currentIndex, // token index
         uint256 AverageCumulativeInterest,
         IDataHub.AssetData memory assetdata,
         IInterestData.interestDetails memory interestRateInfo,

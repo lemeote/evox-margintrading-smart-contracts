@@ -7,6 +7,7 @@
     "test": "npx hardhat run test/test.js",
     "deploy": "npx hardhat run scripts/deploy.js",
     "deployzk": "npx hardhat run scripts/zkevm_deploy.js --network zkevm",
+    "test_interest": "npx hardhat test ./unit_tests/interest.js",
     "compile": "npx hardhat compile"
   },
   "author": "",
