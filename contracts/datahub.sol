@@ -119,7 +119,7 @@ contract DataHub is Ownable {
         address user,
         address token
     ) public view returns (uint256) {
-        return userdata[user].earningRateIndex[token];
+        return userdata[user].earningRateIndex[token] == 0 ? 1 : userdata[user].earningRateIndex[token];
     }
 
     /// @notice provides to the caller the users current rate epoch
@@ -130,7 +130,7 @@ contract DataHub is Ownable {
         address user,
         address token
     ) public view returns (uint256) {
-        return userdata[user].interestRateIndex[token];
+        return userdata[user].interestRateIndex[token] == 0 ? 1 : userdata[user].interestRateIndex[token];
     }
 
     /// -----------------------------------------------------------------------
