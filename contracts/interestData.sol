@@ -112,7 +112,7 @@ contract interestData {
         return InterestRateEpochs[0][token][index].totalLiabilitiesAtIndex;
     }
 
-    function calculateAverageCumulativeInterest_fix(
+    function calculateAverageCumulativeInterest(
         uint256 startIndex,
         uint256 endIndex,
         address token
@@ -165,7 +165,7 @@ contract interestData {
             }
 
             // Calculate cumulative interest rates for decreasing indexes
-            while ((runningDownIndex - timeframes[i] + 1) >= startIndex ) {
+            while ((runningDownIndex >= timeframes[i]) && ((runningDownIndex - timeframes[i] + 1) >= startIndex)) {
                 //&& available
                 uint256 adjustedIndex = timeframes.length - 1 - i;
                 // console.log("adjustedindex", adjustedIndex);
@@ -197,102 +197,102 @@ contract interestData {
         return cumulativeInterestRates / (endIndex - (startIndex - 1));
     }
 
-    function calculateAverageCumulativeInterest(
-        uint256 startIndex,
-        uint256 endIndex,
-        address token
-    ) public view returns (uint256) {
-        uint256 cumulativeInterestRates = 0;
-        uint16[5] memory timeframes = [8736, 672, 168, 24, 1];
+    // function calculateAverageCumulativeInterest(
+    //     uint256 startIndex,
+    //     uint256 endIndex,
+    //     address token
+    // ) public view returns (uint256) {
+    //     uint256 cumulativeInterestRates = 0;
+    //     uint16[5] memory timeframes = [8736, 672, 168, 24, 1];
 
-        uint256 runningUpIndex = startIndex;
-        uint256 runningDownIndex = endIndex;
-        uint256 biggestPossibleStartTimeframe;
+    //     uint256 runningUpIndex = startIndex;
+    //     uint256 runningDownIndex = endIndex;
+    //     uint256 biggestPossibleStartTimeframe;
 
-        // console.log("runningUpIndex", runningUpIndex);
-        // console.log("runningDownIndex", runningDownIndex);
+    //     // console.log("runningUpIndex", runningUpIndex);
+    //     // console.log("runningDownIndex", runningDownIndex);
 
-        uint32 counter;
+    //     uint32 counter;
 
-        startIndex += 1;
+    //     startIndex += 1;
 
-        for (uint256 i = 0; i < timeframes.length; i++) {
-            if (startIndex + timeframes[i] <= endIndex) {
-                // console.log("timeframe", timeframes[i]);
-                biggestPossibleStartTimeframe =
-                    ((endIndex - startIndex) / timeframes[i]) *
-                    timeframes[i];
-                // console.log("biggestPossibleStartTimeframe", biggestPossibleStartTimeframe);
-                runningDownIndex = biggestPossibleStartTimeframe; // 168
-                // console.log("runningDownIndex", runningDownIndex);
-                runningUpIndex = biggestPossibleStartTimeframe; // 168
-                // console.log("runningUpIndex", runningUpIndex);
-                break;
-            }
-        }
-        for (uint256 i = 0; i < timeframes.length; i++) {
-            while (runningUpIndex + timeframes[i] <= endIndex) {
-                // this inverses the list order due to interest being stored in the opposite index format 0-4
-                uint256 adjustedIndex = timeframes.length - 1 - i;
-                // console.log("adjusted index", adjustedIndex);
-                // console.log("time scale rate index", fetchTimeScaledRateIndex(
-                //     adjustedIndex,
-                //     token,
-                //     runningUpIndex / timeframes[i] // 168 / 168 = 1
-                // ).interestRate);
-                cumulativeInterestRates +=
-                    fetchTimeScaledRateIndex(
-                        adjustedIndex,
-                        token,
-                        runningUpIndex / timeframes[i] // 168 / 168 = 1
-                    ).interestRate *
-                    timeframes[i];
-                // console.log("cumulativeInterestRates", cumulativeInterestRates);
-                runningUpIndex += timeframes[i];
-                // console.log("runningUpIndex", runningUpIndex);
-                counter++;
-                // console.log("counter", counter);
-            }
+    //     for (uint256 i = 0; i < timeframes.length; i++) {
+    //         if (startIndex + timeframes[i] <= endIndex) {
+    //             // console.log("timeframe", timeframes[i]);
+    //             biggestPossibleStartTimeframe =
+    //                 ((endIndex - startIndex) / timeframes[i]) *
+    //                 timeframes[i];
+    //             // console.log("biggestPossibleStartTimeframe", biggestPossibleStartTimeframe);
+    //             runningDownIndex = biggestPossibleStartTimeframe; // 168
+    //             // console.log("runningDownIndex", runningDownIndex);
+    //             runningUpIndex = biggestPossibleStartTimeframe; // 168
+    //             // console.log("runningUpIndex", runningUpIndex);
+    //             break;
+    //         }
+    //     }
+    //     for (uint256 i = 0; i < timeframes.length; i++) {
+    //         while (runningUpIndex + timeframes[i] <= endIndex) {
+    //             // this inverses the list order due to interest being stored in the opposite index format 0-4
+    //             uint256 adjustedIndex = timeframes.length - 1 - i;
+    //             // console.log("adjusted index", adjustedIndex);
+    //             // console.log("time scale rate index", fetchTimeScaledRateIndex(
+    //             //     adjustedIndex,
+    //             //     token,
+    //             //     runningUpIndex / timeframes[i] // 168 / 168 = 1
+    //             // ).interestRate);
+    //             cumulativeInterestRates +=
+    //                 fetchTimeScaledRateIndex(
+    //                     adjustedIndex,
+    //                     token,
+    //                     runningUpIndex / timeframes[i] // 168 / 168 = 1
+    //                 ).interestRate *
+    //                 timeframes[i];
+    //             // console.log("cumulativeInterestRates", cumulativeInterestRates);
+    //             runningUpIndex += timeframes[i];
+    //             // console.log("runningUpIndex", runningUpIndex);
+    //             counter++;
+    //             // console.log("counter", counter);
+    //         }
 
-            // Calculate cumulative interest rates for decreasing indexes
-            while (
-                runningDownIndex >= startIndex &&
-                runningDownIndex >= timeframes[i]
-            ) {
-                //&& available
-                uint256 adjustedIndex = timeframes.length - 1 - i;
-                // console.log("adjustedindex", adjustedIndex);
+    //         // Calculate cumulative interest rates for decreasing indexes
+    //         while (
+    //             runningDownIndex >= startIndex &&
+    //             runningDownIndex >= timeframes[i]
+    //         ) {
+    //             //&& available
+    //             uint256 adjustedIndex = timeframes.length - 1 - i;
+    //             // console.log("adjustedindex", adjustedIndex);
 
-                cumulativeInterestRates +=
-                    fetchTimeScaledRateIndex(
-                        adjustedIndex,
-                        token,
-                        runningDownIndex / timeframes[i]
-                    ).interestRate *
-                    timeframes[i];
+    //             cumulativeInterestRates +=
+    //                 fetchTimeScaledRateIndex(
+    //                     adjustedIndex,
+    //                     token,
+    //                     runningDownIndex / timeframes[i]
+    //                 ).interestRate *
+    //                 timeframes[i];
 
-                // console.log("cumulativeInterestRates", cumulativeInterestRates);
+    //             // console.log("cumulativeInterestRates", cumulativeInterestRates);
 
-                counter++;
+    //             counter++;
 
-                // console.log("counter", counter);
+    //             // console.log("counter", counter);
 
-                runningDownIndex -= timeframes[i];
+    //             runningDownIndex -= timeframes[i];
 
-                // console.log("runningDownIndex", runningDownIndex);
-            }
-        }
+    //             // console.log("runningDownIndex", runningDownIndex);
+    //         }
+    //     }
 
-        if (
-            cumulativeInterestRates == 0 || (endIndex - (startIndex - 1)) == 0
-        ) {
-            return 0;
-        }
-        // Return the cumulative interest rates
-        return cumulativeInterestRates / (endIndex - (startIndex - 1));
-    }
+    //     if (
+    //         cumulativeInterestRates == 0 || (endIndex - (startIndex - 1)) == 0
+    //     ) {
+    //         return 0;
+    //     }
+    //     // Return the cumulative interest rates
+    //     return cumulativeInterestRates / (endIndex - (startIndex - 1));
+    // }
 
-    function calculateAverageCumulativeDepositInterest_fix(
+    function calculateAverageCumulativeDepositInterest(
         uint256 startIndex,
         uint256 endIndex,
         address token
@@ -345,7 +345,7 @@ contract interestData {
             }
 
             // Calculate cumulative interest rates for decreasing indexes
-            while ((runningDownIndex - timeframes[i] + 1) >= startIndex ) {
+            while ((runningDownIndex >= timeframes[i]) && ((runningDownIndex - timeframes[i] + 1) >= startIndex)) {
                 uint256 adjustedIndex = timeframes.length - 1 - i;
 
                 cumulativeInterestRates +=
@@ -379,97 +379,97 @@ contract interestData {
             (cumulativeBorrowProportion / (endIndex - (startIndex - 1)));
     }
 
-    function calculateAverageCumulativeDepositInterest(
-        uint256 startIndex,
-        uint256 endIndex,
-        address token
-    ) public view returns (uint256) {
-        uint256 cumulativeInterestRates = 0;
-        uint16[5] memory timeframes = [8736, 672, 168, 24, 1];
+    // function calculateAverageCumulativeDepositInterest(
+    //     uint256 startIndex,
+    //     uint256 endIndex,
+    //     address token
+    // ) public view returns (uint256) {
+    //     uint256 cumulativeInterestRates = 0;
+    //     uint16[5] memory timeframes = [8736, 672, 168, 24, 1];
 
-        uint256 cumulativeBorrowProportion;
+    //     uint256 cumulativeBorrowProportion;
 
-        uint256 runningUpIndex = startIndex;
-        uint256 runningDownIndex = endIndex;
-        uint256 biggestPossibleStartTimeframe;
+    //     uint256 runningUpIndex = startIndex;
+    //     uint256 runningDownIndex = endIndex;
+    //     uint256 biggestPossibleStartTimeframe;
 
-        uint32 counter;
+    //     uint32 counter;
 
-        startIndex += 1;
+    //     startIndex += 1;
 
-        for (uint256 i = 0; i < timeframes.length; i++) {
-            if (startIndex + timeframes[i] <= endIndex) {
-                biggestPossibleStartTimeframe =
-                    ((endIndex - startIndex) / timeframes[i]) *
-                    timeframes[i];
-                runningDownIndex = biggestPossibleStartTimeframe; // 168
-                runningUpIndex = biggestPossibleStartTimeframe; // 168
-                break;
-            }
-        }
+    //     for (uint256 i = 0; i < timeframes.length; i++) {
+    //         if (startIndex + timeframes[i] <= endIndex) {
+    //             biggestPossibleStartTimeframe =
+    //                 ((endIndex - startIndex) / timeframes[i]) *
+    //                 timeframes[i];
+    //             runningDownIndex = biggestPossibleStartTimeframe; // 168
+    //             runningUpIndex = biggestPossibleStartTimeframe; // 168
+    //             break;
+    //         }
+    //     }
 
-        for (uint256 i = 0; i < timeframes.length; i++) {
-            while (runningUpIndex + timeframes[i] <= endIndex) {
-                uint256 adjustedIndex = timeframes.length - 1 - i;
-                cumulativeInterestRates +=
-                    fetchTimeScaledRateIndex(
-                        adjustedIndex,
-                        token,
-                        runningUpIndex / timeframes[i] // 168 / 168 = 1
-                    ).interestRate *
-                    timeframes[i];
+    //     for (uint256 i = 0; i < timeframes.length; i++) {
+    //         while (runningUpIndex + timeframes[i] <= endIndex) {
+    //             uint256 adjustedIndex = timeframes.length - 1 - i;
+    //             cumulativeInterestRates +=
+    //                 fetchTimeScaledRateIndex(
+    //                     adjustedIndex,
+    //                     token,
+    //                     runningUpIndex / timeframes[i] // 168 / 168 = 1
+    //                 ).interestRate *
+    //                 timeframes[i];
 
-                cumulativeBorrowProportion +=
-                    fetchTimeScaledRateIndex(
-                        adjustedIndex,
-                        token,
-                        runningUpIndex / timeframes[i] // 168 / 168 = 1
-                    ).borrowProportionAtIndex *
-                    timeframes[i];
+    //             cumulativeBorrowProportion +=
+    //                 fetchTimeScaledRateIndex(
+    //                     adjustedIndex,
+    //                     token,
+    //                     runningUpIndex / timeframes[i] // 168 / 168 = 1
+    //                 ).borrowProportionAtIndex *
+    //                 timeframes[i];
 
-                runningUpIndex += timeframes[i];
-                counter++;
-            }
+    //             runningUpIndex += timeframes[i];
+    //             counter++;
+    //         }
 
-            // Calculate cumulative interest rates for decreasing indexes
-            while (
-                runningDownIndex >= startIndex &&
-                runningDownIndex - startIndex >= timeframes[i]
-            ) {
-                uint256 adjustedIndex = timeframes.length - 1 - i;
+    //         // Calculate cumulative interest rates for decreasing indexes
+    //         while (
+    //             runningDownIndex >= startIndex &&
+    //             runningDownIndex - startIndex >= timeframes[i]
+    //         ) {
+    //             uint256 adjustedIndex = timeframes.length - 1 - i;
 
-                cumulativeInterestRates +=
-                    fetchTimeScaledRateIndex(
-                        adjustedIndex,
-                        token,
-                        runningDownIndex / timeframes[i]
-                    ).interestRate *
-                    timeframes[i];
+    //             cumulativeInterestRates +=
+    //                 fetchTimeScaledRateIndex(
+    //                     adjustedIndex,
+    //                     token,
+    //                     runningDownIndex / timeframes[i]
+    //                 ).interestRate *
+    //                 timeframes[i];
 
-                cumulativeBorrowProportion +=
-                    fetchTimeScaledRateIndex(
-                        adjustedIndex,
-                        token,
-                        runningUpIndex / timeframes[i] // 168 / 168 = 1
-                    ).borrowProportionAtIndex *
-                    timeframes[i];
+    //             cumulativeBorrowProportion +=
+    //                 fetchTimeScaledRateIndex(
+    //                     adjustedIndex,
+    //                     token,
+    //                     runningUpIndex / timeframes[i] // 168 / 168 = 1
+    //                 ).borrowProportionAtIndex *
+    //                 timeframes[i];
 
-                counter++;
+    //             counter++;
 
-                runningDownIndex -= timeframes[i];
-            }
-        }
+    //             runningDownIndex -= timeframes[i];
+    //         }
+    //     }
 
-        if (
-            cumulativeInterestRates == 0 || (endIndex - (startIndex - 1)) == 0
-        ) {
-            return 0;
-        }
+    //     if (
+    //         cumulativeInterestRates == 0 || (endIndex - (startIndex - 1)) == 0
+    //     ) {
+    //         return 0;
+    //     }
 
-        return
-            (cumulativeInterestRates / (endIndex - (startIndex - 1))) *
-            (cumulativeBorrowProportion / (endIndex - (startIndex - 1)));
-    }
+    //     return
+    //         (cumulativeInterestRates / (endIndex - (startIndex - 1))) *
+    //         (cumulativeBorrowProportion / (endIndex - (startIndex - 1)));
+    // }
     /// @notice updates intereest epochs, fills in the struct of data for a new index
     /// @param token the token being targetted
     /// @param index the index of the period
@@ -530,9 +530,9 @@ function updateInterestIndex(
         uint256 index, // 24
         uint256 value
     ) public checkRoleAuthority {
-        console.log("=======================Update Interest Index Function========================");
-        console.log("index", index);
-        console.log("value", value);
+        // console.log("=======================Update Interest Index Function========================");
+        // console.log("index", index);
+        // console.log("value", value);
         currentInterestIndex[token] = index + 1; // 25
 
         InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
@@ -761,7 +761,7 @@ function updateInterestIndex(
                 )
             );
 
-            console.log("current index after update",  fetchRateInfo(token, fetchCurrentRateIndex(token)).interestRate);
+            // console.log("current index after update",  fetchRateInfo(token, fetchCurrentRateIndex(token)).interestRate);
             uint256 currentInterestRateHourly = (
                 fetchRateInfo(token, fetchCurrentRateIndex(token)).interestRate
             ) / 8736;

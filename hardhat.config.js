@@ -50,7 +50,7 @@ module.exports = {
         url: "https://rpc.ankr.com/polygon_zkevm_cardona", // url to RPC node, ${ALCHEMY_KEY} - must be your API key
         // Using Infura
         // url: `https://mainnet.infura.io/v3/${INFURA_KEY}`, // ${INFURA_KEY} - must be your API key
-        blockNumber: 2703667, // a specific block number with which you want to work
+        blockNumber: 2799850, // a specific block number with which you want to work
       },     
       accounts: [
         { privateKey: '0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80', balance: '1000000000000000000000' },

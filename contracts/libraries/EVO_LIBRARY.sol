@@ -80,22 +80,22 @@ library EVO_LIBRARY {
     ) public pure returns (uint256) {
         uint256 borrowProportion = ((assetlogs.totalBorrowedAmount + amount) *
             10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
-        console.log("borrow proportion", borrowProportion);
+        // console.log("borrow proportion", borrowProportion);
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
 
         uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
-        console.log("optimal Borrow Proportion", optimalBorrowProportion);
+        // console.log("optimal Borrow Proportion", optimalBorrowProportion);
 
         uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
         uint256 optimalInterestRate = interestRateInfo.rateInfo[1];
         uint256 maximumInterestRate = interestRateInfo.rateInfo[2];
-        console.log("minimumInterestRate", minimumInterestRate);
-        console.log("optimalInterestRate", optimalInterestRate);
-        console.log("maximumInterestRate", maximumInterestRate);
+        // console.log("minimumInterestRate", minimumInterestRate);
+        // console.log("optimalInterestRate", optimalInterestRate);
+        // console.log("maximumInterestRate", maximumInterestRate);
 
         if (borrowProportion <= optimalBorrowProportion) {
             uint256 rate = optimalInterestRate - minimumInterestRate;
-            console.log("rate", rate);
+            // console.log("rate", rate);
             return
                 min(
                     optimalInterestRate,
