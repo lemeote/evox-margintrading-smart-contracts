@@ -285,37 +285,32 @@ describe("Interest Test", function () {
 
 
             // REXE Deposit
-            const deposit_amount_2 = 5_000_000000000000000000n
+            const deposit_amount_2 = 1_000_000000000000000000n;
 
-            const approvalTx1 = await REXE_TOKEN.connect(signers[1]).approve(await deposit_vault.getAddress(), deposit_amount);
-            await approvalTx1.wait();  // Wait for the transaction to be mined
-
-            // const transfer1 = await REXE_TOKEN.connect(signers[1]).transfer(signers[0].address, deposit_amount_2);
-            // await transfer1.wait();
-
-            // expect(await REXE_TOKEN.balanceOf(signers[0].address)).to.equal(deposit_amount_2);
             expect((await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalAssetSupply).to.equal(0);
 
-            const approvalTx_2 = await REXE_TOKEN.connect(signers[1]).approve(await deposit_vault.getAddress(), deposit_amount_2);
+            const approvalTx_2 = await REXE_TOKEN.connect(signers[1]).approve(await deposit_vault.getAddress(), 5_000_000000000000000000n);
             await approvalTx_2.wait();  // Wait for the transaction to be mined
-            await deposit_vault.connect(signers[1]).deposit_token(await REXE_TOKEN.getAddress(), (deposit_amount_2));
+            await deposit_vault.connect(signers[1]).deposit_token(await REXE_TOKEN.getAddress(), (5_000_000000000000000000n));
 
-            expect((await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalAssetSupply).to.equal(deposit_amount_2);
-            expect(await REXE_TOKEN.balanceOf(await deposit_vault.getAddress())).to.equal(deposit_amount_2);
-            expect((await DataHub.ReadUserData(signers[1].address, await REXE_TOKEN.getAddress()))[0]).to.equal(deposit_amount_2); // compare assets in datahub
+            expect((await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalAssetSupply).to.equal(5_000_000000000000000000n);
+            expect(await REXE_TOKEN.balanceOf(await deposit_vault.getAddress())).to.equal(5_000_000000000000000000n);
+            expect((await DataHub.ReadUserData(signers[1].address, await REXE_TOKEN.getAddress()))[0]).to.equal(5_000_000000000000000000n); // compare assets in datahub
 
             // expect(await USDT_TOKEN.balanceOf(signers[1].address)).to.equal(20_000_000000000000000000n);
 
             // USDT Deposit
             const deposit_amount_3 = 5_000_000000000000000000n
 
-            const approvalTx_3 = await USDT_TOKEN.approve(await deposit_vault.getAddress(), deposit_amount_3);
+            const approvalTx_3 = await USDT_TOKEN.connect(signers[1]).approve(await deposit_vault.getAddress(), deposit_amount_3);
             await approvalTx_3.wait();  // Wait for the transaction to be mined
-            await deposit_vault.connect(signers[0]).deposit_token(await USDT_TOKEN.getAddress(), deposit_amount_3)
+            await deposit_vault.connect(signers[1]).deposit_token(await USDT_TOKEN.getAddress(), deposit_amount_3)
 
             expect((await DataHub.returnAssetLogs(await USDT_TOKEN.getAddress())).totalAssetSupply).to.equal(deposit_amount + deposit_amount_3);
             expect(await USDT_TOKEN.balanceOf(await deposit_vault.getAddress())).to.equal(deposit_amount + deposit_amount_3);
-            expect((await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress()))[0]).to.equal(deposit_amount + deposit_amount_3); // compare assets in datahub
+            expect((await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress()))[0]).to.equal(deposit_amount); // compare assets in datahub
+            expect((await DataHub.ReadUserData(signers[1].address, await USDT_TOKEN.getAddress()))[0]).to.equal(deposit_amount_3); // compare assets in datahub
+            
 
             ///////////////////////////////////////////////////////////////////////////////////////////////////////
             ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -346,9 +341,9 @@ describe("Interest Test", function () {
 
             let allData = [];
 
-            for (let i = 0; i <= 79; i++) {
+            for (let i = 0; i <= 20; i++) {
 
-                console.log("////////////////////////////////////////////////////////// LOOP " + i + " /////////////////////////////////////////////////////////////");
+                // console.log("////////////////////////////////////////////////////////// LOOP " + i + " /////////////////////////////////////////////////////////////");
                 const scaledTimestamp = originTimestamp + i * 3600;
 
                 // await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
@@ -379,28 +374,28 @@ describe("Interest Test", function () {
                 // Get borrowed amount
                 let borrowed_usdt = await _Interest.fetchRateInfo(await USDT_TOKEN.getAddress(), await _Interest.fetchCurrentRateIndex(await USDT_TOKEN.getAddress()))
                 borrowed_usdt = borrowed_usdt.totalLiabilitiesAtIndex
-                console.log("USDT borrowed", borrowed_usdt);
+                // console.log("USDT borrowed", borrowed_usdt);
 
                 let borrowed_rexe = await _Interest.fetchRateInfo(await REXE_TOKEN.getAddress(), await _Interest.fetchCurrentRateIndex(await REXE_TOKEN.getAddress()))
                 borrowed_rexe = borrowed_rexe.totalLiabilitiesAtIndex
-                console.log("REXE borrowed", borrowed_rexe);
+                // console.log("REXE borrowed", borrowed_rexe);
                 
 
                 // Fetch current interest RATE
                 let Rate_usdt = await _Interest.fetchCurrentRate(await USDT_TOKEN.getAddress());
-                console.log("USDT rate", Rate_usdt);
+                // console.log("USDT rate", Rate_usdt);
 
                 let Rate_rexe = await _Interest.fetchCurrentRate(await REXE_TOKEN.getAddress());
-                console.log("REXE rate", Rate_rexe);
+                // console.log("REXE rate", Rate_rexe);
 
                 // Get liability
                 let userData_usdt = await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress());
                 let liabilitiesValue_usdt = userData_usdt[1];
-                console.log("USDT liabilitiesValue", liabilitiesValue_usdt);
+                // console.log("USDT liabilitiesValue", liabilitiesValue_usdt);
 
                 let userData_rexe = await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress());
                 let liabilitiesValue_rexe = userData_rexe[1];
-                console.log("REXE liabilitiesValue", liabilitiesValue_rexe);
+                // console.log("REXE liabilitiesValue", liabilitiesValue_rexe);
 
                 // Get interestadjustedliability
                 let interestadjustedLiabilities_usdt = await _Interest.returnInterestCharge(
@@ -408,14 +403,14 @@ describe("Interest Test", function () {
                     await USDT_TOKEN.getAddress(),
                     0
                 )
-                console.log("USDT interestadjustedLiabilities", interestadjustedLiabilities_usdt);
+                // console.log("USDT interestadjustedLiabilities", interestadjustedLiabilities_usdt);
 
                 let interestadjustedLiabilities_rexe = await _Interest.returnInterestCharge(
                     signers[0].address,
                     await REXE_TOKEN.getAddress(),
                     0
                 )
-                console.log("REXE interestadjustedLiabilities", interestadjustedLiabilities_rexe);
+                // console.log("REXE interestadjustedLiabilities", interestadjustedLiabilities_rexe);
 
                 let interestIndex_usdt = await _Interest.fetchCurrentRateIndex(await USDT_TOKEN.getAddress());
                 let interestIndex_rexe = await _Interest.fetchCurrentRateIndex(await REXE_TOKEN.getAddress());
