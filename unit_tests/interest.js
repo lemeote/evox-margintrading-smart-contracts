@@ -341,7 +341,7 @@ describe("Interest Test", function () {
 
             let allData = [];
 
-            for (let i = 0; i <= 20; i++) {
+            for (let i = 0; i <= 79; i++) {
 
                 // console.log("////////////////////////////////////////////////////////// LOOP " + i + " /////////////////////////////////////////////////////////////");
                 const scaledTimestamp = originTimestamp + i * 3600;
