@@ -300,7 +300,7 @@ describe("Interest Test", function () {
             // expect(await USDT_TOKEN.balanceOf(signers[1].address)).to.equal(20_000_000000000000000000n);
 
             // USDT Deposit
-            const deposit_amount_3 = 5_000_000000000000000000n
+            const deposit_amount_3 = 1_000_000000000000000000n
 
             const approvalTx_3 = await USDT_TOKEN.connect(signers[1]).approve(await deposit_vault.getAddress(), deposit_amount_3);
             await approvalTx_3.wait();  // Wait for the transaction to be mined
@@ -340,8 +340,8 @@ describe("Interest Test", function () {
             ///////////////////////////////////////////////////// SUBMIT ORDER ////////////////////////////////////////////////////
 
             let allData = [];
-
-            for (let i = 0; i <= 174; i++) {
+            // for (let i = 0; i <= 174; i++) {
+            for (let i = 0; i < 3; i++) {
 
                 // console.log("////////////////////////////////////////////////////////// LOOP " + i + " /////////////////////////////////////////////////////////////");
                 const scaledTimestamp = originTimestamp + i * 3600;
@@ -358,7 +358,7 @@ describe("Interest Test", function () {
                 const masscharges_rexe = await _Interest.chargeMassinterest(await REXE_TOKEN.getAddress()); // increase borrow amount
                 await masscharges_rexe.wait(); // Wait for the transaction to be mined
 
-                if (i == 2) {
+                if (i == 1) {
                     await CurrentExchange.SubmitOrder(pair, participants, trade_amounts, trade_sides)
 
                     console.log(await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress()), "signer0, usdt") // taker has 10 usdt 
@@ -416,6 +416,14 @@ describe("Interest Test", function () {
                 let interestIndex_rexe = await _Interest.fetchCurrentRateIndex(await REXE_TOKEN.getAddress());
                 let hourly_rate_usdt = Number(Rate_usdt.toString()) / 8736;
                 let hourly_rate_rexe = Number(Rate_rexe.toString()) / 8736;
+                
+                let user_usdt_data = await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress());
+                let rexe_usdt_data = await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress());
+
+                let usdt_amount = user_usdt_data[0];    
+                let rexe_amount = rexe_usdt_data[0];
+                let usdt_supply = (await DataHub.returnAssetLogs(await USDT_TOKEN.getAddress())).totalAssetSupply;
+                let rexe_supply = (await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalAssetSupply;
 
                 //    https://docs.google.com/spreadsheets/u/5/d/1IS3WFMcbda7v_rshOefMGGS70yabp6qJ2PmDcBs8J1w/edit?usp=sharing&pli=1
                 // Go above and refer to line 1-5 for the excel sheet to check numbers against what we have 
@@ -425,6 +433,8 @@ describe("Interest Test", function () {
                     "USDT" : {
                         "index": Number(interestIndex_usdt.toString()),
                         "loop #": i,
+                        "usdt_amount": Number(usdt_amount.toString()) / 10 ** 18,
+                        "usdt_supply" : Number(usdt_supply.toString()) / 10 ** 18,
                         "total-borrowed": Number(borrowed_usdt.toString()) / 10 ** 18,
                         "rate": Number(Rate_usdt.toString()) / 10 ** 18,
                         "hourly-rate": hourly_rate_usdt / 10 ** 18,
@@ -434,6 +444,8 @@ describe("Interest Test", function () {
                     "REXE" : {
                         "index": Number(interestIndex_rexe.toString()),
                         "loop #": i,
+                        "rexe_amount" : Number(rexe_amount.toString()) / 10 ** 18,
+                        "rexe_supply" : Number(rexe_supply.toString()) / 10 ** 18,
                         "total-borrowed": Number(borrowed_rexe.toString()) / 10 ** 18,
                         "rate": Number(Rate_rexe.toString()) / 10 ** 18,
                         "hourly-rate": hourly_rate_rexe / 10 ** 18,

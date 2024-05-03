@@ -67,7 +67,7 @@ library EVO_LIBRARY {
         exp = 0;
         base = x;
 
-        while (base > 1e18) { // @audit maybe >= ?
+        while (base > 1e18) {
             base = base / 10;
             exp = exp + 1;
         }
@@ -94,7 +94,7 @@ library EVO_LIBRARY {
         // console.log("maximumInterestRate", maximumInterestRate);
 
         if (borrowProportion <= optimalBorrowProportion) {
-            uint256 rate = optimalInterestRate - minimumInterestRate;
+            uint256 rate = optimalInterestRate - minimumInterestRate; // 0.145
             // console.log("rate", rate);
             return
                 min(
@@ -262,7 +262,9 @@ library EVO_LIBRARY {
         uint256 usersLiabilities,
         uint256 usersOriginIndex
     ) public pure returns (uint256) {
+        console.log("=====================calculateCompundedLiabilities Function======================");
         uint256 amountOfBilledHours = currentIndex - usersOriginIndex;
+        console.log("amount of billed hours", amountOfBilledHours);
 
         // calculate what the rate would be after their trade and charge that
 
@@ -274,6 +276,7 @@ library EVO_LIBRARY {
                     assetdata,
                     interestRateInfo
                 ) / 8736))) / (10 ** 18);
+        console.log("adjustedNewLiabilities", adjustedNewLiabilities);
         uint256 initalMarginFeeAmount;
 
         if (newLiabilities == 0) {
@@ -285,7 +288,11 @@ library EVO_LIBRARY {
             );
         }
 
+        console.log("initalMarginFeeAmount", initalMarginFeeAmount);
+
         if (newLiabilities != 0) {
+            console.log("result", (adjustedNewLiabilities + initalMarginFeeAmount) -
+            newLiabilities);
             return
                 (adjustedNewLiabilities + initalMarginFeeAmount) -
                 newLiabilities;
@@ -293,11 +300,11 @@ library EVO_LIBRARY {
             uint256 interestCharge;
 
             uint256 averageHourly = 1e18 + AverageCumulativeInterest / 8736;
+            console.log("averageHourly", averageHourly);
 
             (uint256 averageHourlyBase, int256 averageHourlyExp) = normalize(
                 averageHourly
             );
-            averageHourlyExp = averageHourlyExp - 18;
 
             uint256 hourlyChargesBase = 1;
             int256 hourlyChargesExp = 0;
@@ -337,11 +344,14 @@ library EVO_LIBRARY {
                         (10 ** uint256(-hourlyChargesExp));
                 }
 
+                console.log("compoundedLiabilities", compoundedLiabilities);
+
                 interestCharge =
                     (compoundedLiabilities +
                         adjustedNewLiabilities +
                         initalMarginFeeAmount) -
                     (usersLiabilities + newLiabilities);
+                console.log("interestCharge", interestCharge);
             }
             return interestCharge;
         }

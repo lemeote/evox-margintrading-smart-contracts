@@ -739,17 +739,21 @@ function updateInterestIndex(
     /// @param token the token being targetted
 
     function chargeMassinterest(address token) public {
+        console.log("================charge Massininterest Function=================");
+        // console.log("current token index", fetchCurrentRateIndex(token));
         if (
             fetchRateInfo(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
                 1 hours <=
             block.timestamp
         ) {
-            // console.log("current index");
-            // console.log(fetchCurrentRateIndex(token));
-            // // console.log("assetlogs");
-            // // console.log(Datahub.returnAssetLogs(token));
+            console.log("current index");
+            console.log(fetchCurrentRateIndex(token));
+            // console.log("assetlogs");
+            // console.log(Datahub.returnAssetLogs(token));
             // console.log("rate info");
             // console.log(fetchRateInfo(token, fetchCurrentRateIndex(token)));
+
+            console.log("calculate interest rate", EVO_LIBRARY.calculateInterestRate(0, Datahub.returnAssetLogs(token), fetchRateInfo(token, fetchCurrentRateIndex(token))));
 
             updateInterestIndex(
                 token,
@@ -761,10 +765,14 @@ function updateInterestIndex(
                 )
             );
 
+            console.log("current index after update");
+            console.log(fetchCurrentRateIndex(token));
+
             // console.log("current index after update",  fetchRateInfo(token, fetchCurrentRateIndex(token)).interestRate);
             uint256 currentInterestRateHourly = (
                 fetchRateInfo(token, fetchCurrentRateIndex(token)).interestRate
             ) / 8736;
+            console.log("current interestrate hourly", currentInterestRateHourly);
             // total borroed amount * current interest rate -> up total borrowed amount by this fucking value
             Datahub.setTotalBorrowedAmount(
                 token,
@@ -772,6 +780,8 @@ function updateInterestIndex(
                     (currentInterestRateHourly)) / 10 ** 18),
                 true
             );
+
+            console.log("total borrow amount", (Datahub.returnAssetLogs(token).totalBorrowedAmount));
         }
     }
 
@@ -780,7 +790,18 @@ function updateInterestIndex(
         address token,
         uint256 liabilitiesAccrued
     ) public view returns (uint256) {
+        console.log("========================return interest charge function========================");
         (, uint256 liabilities, , , ) = Datahub.ReadUserData(user, token);
+        console.log("liabilities", liabilities);
+        console.log("fetchcurrentreateIndex", fetchCurrentRateIndex(token));
+        console.log("calculate avareage cumulative interest", calculateAverageCumulativeInterest(
+            Datahub.viewUsersInterestRateIndex(user, token),
+            fetchCurrentRateIndex(token),
+            token
+        ));
+        console.log("liabilitiesAccrued", liabilitiesAccrued);
+        console.log("viewUsersInterestRateIndex", Datahub.viewUsersInterestRateIndex(user, token));
+
         uint256 interestCharge = EVO_LIBRARY.calculateCompoundedLiabilities(
             fetchCurrentRateIndex(token),
             calculateAverageCumulativeInterest(
@@ -794,6 +815,7 @@ function updateInterestIndex(
             liabilities,
             Datahub.viewUsersInterestRateIndex(user, token)
         );
+        console.log("interest charge", interestCharge);
         return interestCharge;
     }
 

@@ -10,6 +10,8 @@ import "./interfaces/IUtilityContract.sol";
 import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
 
+import "hardhat/console.sol";
+
 contract Liquidator is Ownable {
     /* LIQUIDATION + INTEREST FUNCTIONS */
 

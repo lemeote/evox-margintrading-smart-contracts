@@ -148,6 +148,7 @@ contract EVO_EXCHANGE is Ownable {
         uint256[][2] memory trade_amounts,
         bool[][2] memory trade_side
     ) public {
+        console.log("========================submit order function==========================");
         require(DepositVault.viewcircuitBreakerStatus() == false);
         // require(airnode address == airnode address set on deployment )
         // (bool success, ) = payable(airnode_details[2]).call{value: msg.value}(
@@ -164,6 +165,9 @@ contract EVO_EXCHANGE is Ownable {
                 participants,
                 trade_amounts
             );
+
+        console.log("taker liabilities", takerLiabilities[0]);
+        console.log("maker liabilities", makerLiabilities[0]);
 
         // this checks if the asset they are trying to trade isn't pass max borrow
         require(
@@ -204,6 +208,7 @@ contract EVO_EXCHANGE is Ownable {
         uint256[] memory MakerliabilityAmounts,
         bool[][2] memory trade_side
     ) external checkRoleAuthority {
+
         require(DepositVault.viewcircuitBreakerStatus() == false);
         Datahub.checkIfAssetIsPresent(takers, pair[1]);
         Datahub.checkIfAssetIsPresent(makers, pair[0]);
@@ -246,11 +251,14 @@ contract EVO_EXCHANGE is Ownable {
         address out_token,
         address in_token
     ) private {
+        console.log("===========================executeTrade Function===========================");
         for (uint256 i = 0; i < users.length; i++) {
             // here is the amount we are adding to their liabilities it is calculated using the difference between their assets and the trade amounts
             // this is calcualte above in submit order
             uint256 amountToAddToLiabilities = liabilityAmounts[i];
-
+            console.log("amount to add to liabilities", amountToAddToLiabilities);
+            console.log("tradefee0", Datahub.tradeFee(out_token, 0));
+            console.log("tradefee1", Datahub.tradeFee(out_token, 1));
             if (msg.sender != address(Liquidator)) {
                 if (trade_side[i] == true) {} else {
                     // This is where we take trade fees it is not called if the msg.sender is the liquidator
@@ -267,6 +275,19 @@ contract EVO_EXCHANGE is Ownable {
                         10 ** 18;
                 }
             }
+
+            // (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+            //     fetchDaoWallet(),
+            //     out_token
+            // );
+            // console.log("assets after process fee", assets);
+            // console.log("liabilities after process fee", liabilities);
+            // console.log("pending after process fee", pending);
+            // console.log("margined after process fee", margined);
+            // console.log("tokens after process fee", tokens);
+
+            console.log("amountToAddToLiabilities after process fee", amountToAddToLiabilities);
+
             if (amountToAddToLiabilities != 0) {
                 // in this function we charge interest to the user and add to their liabilities
                 chargeinterest(
@@ -275,16 +296,37 @@ contract EVO_EXCHANGE is Ownable {
                     amountToAddToLiabilities,
                     false
                 );
+
+                // (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+                //     users[i],
+                //     out_token
+                // );
+
+                // console.log("assets after after charge", assets);
+                // console.log("liabilities after charge", liabilities);
+                // console.log("pending after charge", pending);
+                // console.log("margined after charge", margined);
+                // // console.log("tokens after charge", tokens);
+
+                console.log("amountToAddToLiabilities after charge", amountToAddToLiabilities);
+
+                console.log("maintenancerequirementfortrade", EVO_LIBRARY.calculateMaintenanceRequirementForTrade( // 150
+                    Datahub.returnAssetLogs(in_token),
+                    amountToAddToLiabilities
+                ));
+
                 // this is where we add to their maintenance margin requirement because we are issuing them liabilities
                 Datahub.addMaintenanceMarginRequirement(
                     users[i],
                     out_token,
                     in_token,
-                    EVO_LIBRARY.calculateMaintenanceRequirementForTrade(
+                    EVO_LIBRARY.calculateMaintenanceRequirementForTrade( // 150
                         Datahub.returnAssetLogs(in_token),
                         amountToAddToLiabilities
                     )
                 );
+
+
             }
             // if the amount coming into their wallet is larger than their current liabilities
             if (
@@ -391,7 +433,9 @@ contract EVO_EXCHANGE is Ownable {
     /// @param user the user to be debitted
     /// @param token the token they have accred deposit interest on
     function debitAssetInterest(address user, address token) private {
+        console.log("====================debit asset interest function======================");
         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
+        console.log("assets", assets);
 
         uint256 cumulativeinterest = interestContract
             .calculateAverageCumulativeDepositInterest(
@@ -399,6 +443,8 @@ contract EVO_EXCHANGE is Ownable {
                 interestContract.fetchCurrentRateIndex(token),
                 token
             );
+        
+        console.log("cumulative interest", cumulativeinterest);
 
         (
             uint256 interestCharge,
@@ -411,20 +457,60 @@ contract EVO_EXCHANGE is Ownable {
                 Datahub.viewUsersEarningRateIndex(user, token)
             );
 
+        console.log("interestCharge", interestCharge);
+        console.log("OrderBookProviderCharge", OrderBookProviderCharge);
+        console.log("DaoInterestCharge", DaoInterestCharge);
+
         Datahub.alterUsersEarningRateIndex(user, token);
 
+        console.log("currentUsersEarningRateIndex", Datahub.viewUsersEarningRateIndex(user, token));
+
         Datahub.addAssets(user, token, (interestCharge / 10 ** 18));
+
+        (uint256 assets_test, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+            user,
+            token
+        );
+
+        console.log("assets after after add assets", assets_test);
+        console.log("liabilities after add assets", liabilities);
+        console.log("pending after add assets", pending);
+        console.log("margined after add assets", margined);
+        // console.log("tokens after add assets", tokens);
+
         Datahub.addAssets(
             fetchDaoWallet(),
             token,
             (DaoInterestCharge / 10 ** 18)
         );
 
+        (assets, liabilities, pending, margined, ) = Datahub.ReadUserData(
+            fetchDaoWallet(),
+            token
+        );
+
+        console.log("assets after after add assets", assets);
+        console.log("liabilities after add assets", liabilities);
+        console.log("pending after add assets", pending);
+        console.log("margined after add assets", margined);
+        // console.log("tokens after add assets", tokens);
+
         Datahub.addAssets(
             fetchOrderBookProvider(),
             token,
             (OrderBookProviderCharge / 10 ** 18)
         );
+
+        (assets, liabilities, pending, margined, ) = Datahub.ReadUserData(
+            fetchOrderBookProvider(),
+            token
+        );
+
+        console.log("assets after after add assets", assets);
+        console.log("liabilities after add assets", liabilities);
+        console.log("pending after add assets", pending);
+        console.log("margined after add assets", margined);
+        // console.log("tokens after add assets", tokens);
     }
 
     /// @notice This fetches a users accrued deposit interest
@@ -465,8 +551,22 @@ contract EVO_EXCHANGE is Ownable {
         uint256 liabilitiesAccrued,
         bool minus
     ) private {
+
+        console.log("=====================chargeinterest function===================");
         //Step 1) charge mass interest on outstanding liabilities
         interestContract.chargeMassinterest(token);
+
+        (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+            user,
+            token
+        );
+        console.log("assets after charge massin interest", assets);
+        console.log("liabilities after charge massin interest", liabilities);
+        console.log("pending after charge massin interest", pending);
+        console.log("margined after charge massin interest", margined);
+        // console.log("tokens after charge massin interest", tokens);
+
+        console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);
 
         if (minus == false) {
             //Step 2) calculate the trade's liabilities + interest
@@ -476,17 +576,34 @@ contract EVO_EXCHANGE is Ownable {
                 liabilitiesAccrued
             );
 
+            console.log("interest charge after returnInterestCharge", interestCharge);
+
             Datahub.addLiabilities(
                 user,
                 token,
                 liabilitiesAccrued + interestCharge
             );
 
+            (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+                user,
+                token
+            );
+
+            console.log("assets after add liabilities", assets);
+            console.log("liabilities after add liabilities", liabilities);
+            console.log("pending after add liabilities", pending);
+            console.log("margined after add liabilities", margined);
+            // console.log("tokens after add liabilities", tokens);
+
+            console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);
+
             Datahub.setTotalBorrowedAmount(
                 token,
                 (liabilitiesAccrued + interestCharge),
                 true
             );
+
+            console.log("total borrow amount after setting borrow amount", Datahub.returnAssetLogs(token).totalBorrowedAmount);
 
             Datahub.alterUsersInterestRateIndex(user, token);
         } else {
@@ -496,15 +613,41 @@ contract EVO_EXCHANGE is Ownable {
                 0
             );
 
+            console.log("interest charge after returnInterestCharge", interestCharge);
+
             Datahub.addLiabilities(user, token, interestCharge);
 
+            (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+                user,
+                token
+            );
+
+            console.log("assets after add liabilities", assets);
+            console.log("liabilities after add liabilities", liabilities);
+            console.log("pending after add liabilities", pending);
+            console.log("margined after add liabilities", margined);
+            // console.log("tokens after add liabilities", tokens);
+
             Datahub.removeLiabilities(user, token, liabilitiesAccrued);
+
+            (assets, liabilities, pending, margined, ) = Datahub.ReadUserData(
+                user,
+                token
+            );
+
+            console.log("assets after remove liabilities", assets);
+            console.log("liabilities after remove liabilities", liabilities);
+            console.log("pending after remove liabilities", pending);
+            console.log("margined after remove liabilities", margined);
+            // console.log("tokens after remove liabilities", tokens);
 
             Datahub.setTotalBorrowedAmount(
                 token,
                 (liabilitiesAccrued - interestCharge),
                 false
             );
+
+            console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);
 
             Datahub.alterUsersInterestRateIndex(user, token);
         }
