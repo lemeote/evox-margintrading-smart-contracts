@@ -395,9 +395,9 @@ contract DepositVault is Ownable {
         );
 
         if (assets == 0) {
-            Datahub.alterUsersEarningRateIndex(msg.sender, token);
+            Datahub.alterUsersEarningRateIndex(beneficiary, token);
         } else {
-            debitAssetInterest(msg.sender, token);
+            debitAssetInterest(beneficiary, token);
         }
 
         if (liabilities > 0) {

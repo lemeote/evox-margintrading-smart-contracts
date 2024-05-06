@@ -9,7 +9,7 @@
       "rate": 0.005,
       "hourly-rate": 5.723443223443223e-7,
       "liabilities": 0,
-      "timestamp": 1714680091
+      "timestamp": 1714680089
     },
     "REXE": {
       "index": 1,
@@ -20,44 +20,44 @@
       "rate": 0.005,
       "hourly-rate": 5.723443223443223e-7,
       "liabilities": 0,
-      "timestamp": 1714680091
+      "timestamp": 1714680089
     }
   },
   {
     "USDT": {
       "index": 2,
       "loop #": 1,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 0,
-      "rate": 0.005,
-      "hourly-rate": 5.723443223443223e-7,
-      "liabilities": 753.7593210361067,
-      "timestamp": 1714683691
-    },
-    "REXE": {
-      "index": 2,
-      "loop #": 1,
-      "rexe_amount": 2500,
-      "rexe_supply": 5000,
-      "total-borrowed": 0,
-      "rate": 0.005,
-      "hourly-rate": 5.723443223443223e-7,
-      "liabilities": 0,
-      "timestamp": 1714683691
-    }
-  },
-  {
-    "USDT": {
-      "index": 3,
-      "loop #": 2,
       "usdt_amount": 0,
       "usdt_supply": 1500,
       "total-borrowed": 753.7593210361067,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 753.7593210361067,
+      "timestamp": 1714683689
+    },
+    "REXE": {
+      "index": 2,
+      "loop #": 1,
+      "rexe_amount": 2500,
+      "rexe_supply": 5000,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1714683689
+    }
+  },
+  {
+    "USDT": {
+      "index": 3,
+      "loop #": 2,
+      "usdt_amount": 0,
+      "usdt_supply": 1500,
+      "total-borrowed": 753.768733586034,
       "rate": 0.10909057290498618,
       "hourly-rate": 0.00001248747400469164,
-      "liabilities": 753.7642430160042,
-      "timestamp": 1714687291
+      "liabilities": 753.7593210361067,
+      "timestamp": 1714687289
     },
     "REXE": {
       "index": 3,
@@ -68,7 +68,7 @@
       "rate": 0.005,
       "hourly-rate": 5.723443223443223e-7,
       "liabilities": 0,
-      "timestamp": 1714687291
+      "timestamp": 1714687289
     }
   }
 ]
