@@ -386,6 +386,11 @@ contract DepositVault is Ownable {
             "this asset is not available to be deposited or traded"
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
+        // extending support for token with fee on transfer 
+        if(Datahub.ViewTokenTransferFees(token) > 0){
+            amount = amount-(amount*Datahub.ViewTokenTransferFees(token))/10000;
+            console.log("amount to be paid if fee is applicable", amount);
+        }
         require(
             ERC20Token.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"

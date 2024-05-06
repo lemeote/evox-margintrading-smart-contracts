@@ -305,9 +305,7 @@ async function main() {
 
     console.log("deposit successful moving to withdraw")
 
-    await DVM.withdraw_token(await USDT.getAddress(),
-    deposit_amount_2);
-
+    await DVM.withdraw_token(await USDT.getAddress(), deposit_amount_2);
     console.log("withdraw success")
 
 
