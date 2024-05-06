@@ -156,6 +156,13 @@ interface IDataHub {
         address token
     ) external returns (bool);
 
+     function toggleTokenTransferFee(
+        address token,
+        uint256 value
+    ) external ;
+
+    function ViewTokenTransferFees(address token)external returns(uint256);
+
     function ReadUserData(
         address user,
         address token

@@ -34,6 +34,7 @@ contract DataHub is Ownable {
         uint256 liquidationFee;
         uint256 initialMarginRequirement; // not for potantial removal - unnessecary
         uint256 MaintenanceMarginRequirement;
+        uint256 tokenTransferFee;  // add zero for normal token , add transfer fee amount if there is fee on transfer 
         uint256 totalAssetSupply;
         uint256 totalBorrowedAmount;
         uint256 optimalBorrowProportion; // need to brainsotrm on how to set this information
@@ -527,6 +528,7 @@ contract DataHub is Ownable {
             liquidationFee: liquidationFee,
             initialMarginRequirement: initialMarginRequirement,
             MaintenanceMarginRequirement: MaintenanceMarginRequirement,
+            tokenTransferFee: 0,
             totalAssetSupply: 0,
             totalBorrowedAmount: 0,
             optimalBorrowProportion: optimalBorrowProportion,
@@ -551,6 +553,16 @@ contract DataHub is Ownable {
         uint256 value
     ) external checkRoleAuthority {
         assetdata[token].assetPrice = value;
+    }
+
+    /// @notice Changes the assets transfer_fee
+    /// @param token the token being targetted
+    /// @param value the new Fee
+    function toggleTokenTransferFee(
+        address token,
+        uint256 value
+    ) external checkRoleAuthority {
+        assetdata[token].tokenTransferFee = value;
     }
 
     /// -----------------------------------------------------------------------
@@ -717,6 +729,13 @@ contract DataHub is Ownable {
             }
         }
         return AMMR;
+    }
+
+    /// @notice Returns a TokenTransferFee data
+    /// @param token address of the token 
+    /// @return fee value of the Fee 
+    function ViewTokenTransferFees(address token)external view returns(uint256 fee){
+        return assetdata[token].tokenTransferFee;
     }
 
     receive() external payable {}
