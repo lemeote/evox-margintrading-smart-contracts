@@ -274,6 +274,19 @@ contract Oracle is Ownable{
             // The reason why we update price AFTER we make the call to the executor is because if it fails, the prices wont update
             // and the update prices wll not be included in the  TX
             if (pair[0] == USDT) {
+                console.log("taker amount", OrderDetails[requestId].taker_amounts[
+                    OrderDetails[requestId].taker_amounts.length - 1
+                ]);
+                console.log("decimal", DepositVault.fetchDecimals(pair[1]));
+                console.log("maker amount", OrderDetails[requestId].maker_amounts[
+                    OrderDetails[requestId].maker_amounts.length - 1
+                ]);
+                console.log("result", ((OrderDetails[requestId].taker_amounts[
+                    OrderDetails[requestId].taker_amounts.length - 1
+                ] * (10 ** DepositVault.fetchDecimals(pair[1]))) /
+                    OrderDetails[requestId].maker_amounts[
+                        OrderDetails[requestId].maker_amounts.length - 1
+                    ]));
                 Datahub.toggleAssetPrice(
                     pair[1],
                     ((OrderDetails[requestId].taker_amounts[
@@ -284,6 +297,19 @@ contract Oracle is Ownable{
                         ])
                 );
             } else {
+                console.log("maker amount", OrderDetails[requestId].maker_amounts[
+                    OrderDetails[requestId].maker_amounts.length - 1
+                ]);
+                console.log("decimal", DepositVault.fetchDecimals(pair[0]));
+                console.log("taker amount", OrderDetails[requestId].taker_amounts[
+                    OrderDetails[requestId].maker_amounts.length - 1
+                ]);
+                console.log("result", ((OrderDetails[requestId].maker_amounts[
+                    OrderDetails[requestId].maker_amounts.length - 1
+                ] * (10 ** DepositVault.fetchDecimals(pair[0]))) /
+                    OrderDetails[requestId].taker_amounts[
+                        OrderDetails[requestId].taker_amounts.length - 1
+                    ]));
                 Datahub.toggleAssetPrice(
                     pair[0],
                     ((OrderDetails[requestId].maker_amounts[

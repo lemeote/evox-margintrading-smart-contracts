@@ -5,7 +5,7 @@ const {
   } = require("@nomicfoundation/hardhat-toolbox/network-helpers");
 const tokenabi = require("../scripts/token_abi.json");
 const depositABI = require("../artifacts/contracts/depositvault.sol/DepositVault.json")
-const OracleABI = require("../artifacts/contracts/Oracle.sol/Oracle.json")
+const OracleABI = require("../artifacts/contracts/mock/MockOracle.sol/MockOracle.json")
 const ExecutorAbi = require("../artifacts/contracts/executor.sol/EVO_EXCHANGE.json")
 const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/datahub.sol/DataHub.json");
@@ -80,7 +80,7 @@ describe("Interest Test", function () {
         // console.log("Deposit Vault deployed to", await Deploy_depositVault.getAddress());
 
         /////////////////////////////////Deploy Oracle///////////////////////////////////////////
-        const DeployOracle = await hre.ethers.deployContract("Oracle", [initialOwner,
+        const DeployOracle = await hre.ethers.deployContract("MockOracle", [initialOwner,
             initialOwner,
             initialOwner,
             initialOwner])
@@ -260,6 +260,9 @@ describe("Interest Test", function () {
             // console.log(signers);
             ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+            // Set USDT Address in Oracle
+            await Oracle.setUSDT(await USDT_TOKEN.getAddress());
+
             /////////////////////////////// DEPOSIT TOKENS //////////////////////////////////
             // console.log("==================== deposit tokens======================");
             // taker deposit amounts 
@@ -343,7 +346,7 @@ describe("Interest Test", function () {
             // for (let i = 0; i <= 174; i++) {
             for (let i = 0; i < 3; i++) {
 
-                // console.log("////////////////////////////////////////////////////////// LOOP " + i + " /////////////////////////////////////////////////////////////");
+                console.log("////////////////////////////////////////////////////////// LOOP " + i + " /////////////////////////////////////////////////////////////");
                 const scaledTimestamp = originTimestamp + i * 3600;
 
                 // await hre.ethers.provider.send("evm_setNextBlockTimestamp", [scaledTimestamp]);
@@ -361,14 +364,13 @@ describe("Interest Test", function () {
                 if (i == 1) {
                     await CurrentExchange.SubmitOrder(pair, participants, trade_amounts, trade_sides)
 
-                    console.log(await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress()), "signer0, usdt") // taker has 10 usdt 
-                    console.log(await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress()), "signer0 REXE") // taker has 0 rexe 
-                    console.log(await DataHub.ReadUserData(signers[1].address, await USDT_TOKEN.getAddress()), "signer1, usdt") // maker has 20 usdt 
-                    console.log(await DataHub.ReadUserData(signers[1].address, await REXE_TOKEN.getAddress()), "signer1 REXE") // maker has 20 rexe 
+                    // console.log(await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress()), "signer0, usdt") // taker has 10 usdt 
+                    // console.log(await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress()), "signer0 REXE") // taker has 0 rexe 
+                    // console.log(await DataHub.ReadUserData(signers[1].address, await USDT_TOKEN.getAddress()), "signer1, usdt") // maker has 20 usdt 
+                    // console.log(await DataHub.ReadUserData(signers[1].address, await REXE_TOKEN.getAddress()), "signer1 REXE") // maker has 20 rexe 
 
-                    console.log(await DataHub.calculateAMMRForUser(signers[0].address), "ammr");
-                    console.log(await DataHub.returnPairMMROfUser(signers[0].address, await USDT_TOKEN.getAddress(), await REXE_TOKEN.getAddress()), "mmr");
-
+                    // console.log(await DataHub.calculateAMMRForUser(signers[0].address), "ammr");
+                    // console.log(await DataHub.returnPairMMROfUser(signers[0].address, await USDT_TOKEN.getAddress(), await REXE_TOKEN.getAddress()), "mmr");
                 }
 
                 // Get borrowed amount

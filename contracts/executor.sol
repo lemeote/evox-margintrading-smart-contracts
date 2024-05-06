@@ -326,6 +326,7 @@ contract EVO_EXCHANGE is Ownable {
                     )
                 );
 
+                console.log("maintenance margin requirement", Datahub.returnPairMMROfUser(users[i], out_token, in_token));
 
             }
             // if the amount coming into their wallet is larger than their current liabilities

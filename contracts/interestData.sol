@@ -124,7 +124,9 @@ contract interestData {
         uint256 runningDownIndex = endIndex;
         uint256 biggestPossibleStartTimeframe;
         
-        startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
+        // if(startIndex != 1) {
+        //     startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
+        // }
 
         for (uint256 i = 0; i < timeframes.length; i++) {
             if ( startIndex + timeframes[i] - 1 <= endIndex) { // For spliting
@@ -194,7 +196,7 @@ contract interestData {
             return 0;
         }
         // Return the cumulative interest rates
-        return cumulativeInterestRates / (endIndex - (startIndex - 1));
+        return cumulativeInterestRates / (endIndex - (startIndex  - 1));
     }
 
     // function calculateAverageCumulativeInterest(
@@ -306,8 +308,10 @@ contract interestData {
         uint256 runningDownIndex = endIndex;
         uint256 biggestPossibleStartTimeframe;
 
-        startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
-
+        // if(startIndex != 1) {
+        //     startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
+        // }
+        
         for (uint256 i = 0; i < timeframes.length; i++) {
             if ( startIndex + timeframes[i] - 1 <= endIndex) { // For spliting
                 biggestPossibleStartTimeframe = (startIndex / timeframes[i]) * timeframes[i];
@@ -794,6 +798,7 @@ function updateInterestIndex(
         (, uint256 liabilities, , , ) = Datahub.ReadUserData(user, token);
         console.log("liabilities", liabilities);
         console.log("fetchcurrentreateIndex", fetchCurrentRateIndex(token));
+        console.log("userearningrateIndex", Datahub.viewUsersInterestRateIndex(user, token));
         console.log("calculate avareage cumulative interest", calculateAverageCumulativeInterest(
             Datahub.viewUsersInterestRateIndex(user, token),
             fetchCurrentRateIndex(token),
