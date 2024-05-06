@@ -173,6 +173,12 @@ contract DepositVault is Ownable {
             "this asset is not available to be deposited or traded"
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
+        
+        if(Datahub.ViewTokenTransferFees(token) > 0){
+            amount = amount-(amount*Datahub.ViewTokenTransferFees(token))/10000;
+            console.log("amount to be paid if fee is applicable", amount);
+        }
+        // we need to add the function that transfertokenwithfee  : https://docs.uniswap.org/contracts/v2/reference/smart-contracts/router-02#swapexacttokensfortokenssupportingfeeontransfertokens
         require(ERC20Token.transferFrom(msg.sender, address(this), amount));
         require(!circuitBreakerStatus);
 
@@ -191,7 +197,7 @@ contract DepositVault is Ownable {
             debitAssetInterest(msg.sender, token);
         }
 
-        ///
+        
         // checks to see if user is in the sytem and inits their struct if not
         if (liabilities > 0) {
             // checks to see if the user has liabilities of that asset
@@ -241,7 +247,6 @@ contract DepositVault is Ownable {
             return true;
         }
     }
-
     /* WITHDRAW FUNCTION */
 
     /// @notice This withdraws tokens from the exchange
@@ -397,7 +402,7 @@ contract DepositVault is Ownable {
             Datahub.alterUsersEarningRateIndex(msg.sender, token);
         } else {
             debitAssetInterest(msg.sender, token);
-        }
+        } 
 
         if (liabilities > 0) {
             if (amount <= liabilities) {
@@ -439,6 +444,7 @@ contract DepositVault is Ownable {
             return true;
         }
     }
+
 
     receive() external payable {}
 }

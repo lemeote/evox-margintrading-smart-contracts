@@ -228,8 +228,18 @@ async function main() {
 
     const USDT_init_transaction = await DataHub.InitTokenMarket(await USDT.getAddress(), USDTprice, USDTCollValue, tradeFees, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
+    const USDT_toggleTokenTransferFee = await DataHub.toggleTokenTransferFee(await USDT.getAddress(), "3000") // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
+
+    const USDT_ViewTokenTransferFees = await DataHub.ViewTokenTransferFees(await USDT.getAddress());
+
+    // const ViewTokenTransferFees = USDT_ViewTokenTransferFees.wait();
+
+    console.log(USDT_ViewTokenTransferFees, "tradingfeeeee ")
 
     USDT_init_transaction.wait();
+
+    USDT_toggleTokenTransferFee.wait();
+
 
 
     const REXE_init_transaction = await DataHub.InitTokenMarket(await REXE.getAddress(), REXEprice, EVOXCollValue, tradeFees, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);
@@ -278,19 +288,17 @@ async function main() {
 
     await DVM.deposit_token(
         await REXE.getAddress(),
-        ("5000000000000000000000")
+        deposit_amount_2
     )
 
-
+    const deposit_amount_3 = "1000000000000000000000"
     const TOKENCONTRACT_3 = new hre.ethers.Contract(await USDT.getAddress(), tokenabi.abi, signers[1]);
 
     const approvalTx_3 = await TOKENCONTRACT_3.approve(await Deploy_depositVault.getAddress(), deposit_amount_2);
 
     await approvalTx_3.wait();  // Wait for the transaction to be mined
 
-    await DVM.deposit_token(
-        await USDT.getAddress(),
-        deposit_amount_2)
+    await DVM.deposit_token(await USDT.getAddress(),deposit_amount_3)
     console.log("deposits complete")
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
