@@ -298,9 +298,7 @@ async function main() {
 
     await approvalTx_3.wait();  // Wait for the transaction to be mined
 
-    await DVM.deposit_token(
-        await USDT.getAddress(),
-        deposit_amount_3)
+    await DVM.deposit_token(await USDT.getAddress(),deposit_amount_3)
     console.log("deposits complete")
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
