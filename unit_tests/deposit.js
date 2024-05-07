@@ -228,8 +228,18 @@ async function main() {
 
     const USDT_init_transaction = await DataHub.InitTokenMarket(await USDT.getAddress(), USDTprice, USDTCollValue, tradeFees, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
+    const USDT_setTokenTransferFee = await DataHub.setTokenTransferFee(await USDT.getAddress(), "3000") // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
+
+    const USDT_tokenTransferFees = await DataHub.tokenTransferFees(await USDT.getAddress());
+
+    // const tokenTransferFees = USDT_tokenTransferFees.wait();
+
+    console.log(USDT_tokenTransferFees, "tradingfeeeee ")
 
     USDT_init_transaction.wait();
+
+    USDT_setTokenTransferFee.wait();
+
 
 
     const REXE_init_transaction = await DataHub.InitTokenMarket(await REXE.getAddress(), REXEprice, EVOXCollValue, tradeFees, REXEinitialMarginFee, REXEliquidationFee, REXEinitialMarginRequirement, REXEMaintenanceMarginRequirement, REXEoptimalBorrowProportion, REXEmaximumBorrowProportion);
@@ -278,28 +288,24 @@ async function main() {
 
     await DVM.deposit_token(
         await REXE.getAddress(),
-        ("5000000000000000000000")
+        deposit_amount_2
     )
 
-
+    const deposit_amount_3 = "1000000000000000000000"
     const TOKENCONTRACT_3 = new hre.ethers.Contract(await USDT.getAddress(), tokenabi.abi, signers[1]);
 
     const approvalTx_3 = await TOKENCONTRACT_3.approve(await Deploy_depositVault.getAddress(), deposit_amount_2);
 
     await approvalTx_3.wait();  // Wait for the transaction to be mined
 
-    await DVM.deposit_token(
-        await USDT.getAddress(),
-        deposit_amount_2)
+    await DVM.deposit_token(await USDT.getAddress(),deposit_amount_3)
     console.log("deposits complete")
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     console.log("deposit successful moving to withdraw")
 
-    await DVM.withdraw_token(await USDT.getAddress(),
-    deposit_amount_2);
-
+    await DVM.withdraw_token(await USDT.getAddress(), deposit_amount_2);
     console.log("withdraw success")
 
 

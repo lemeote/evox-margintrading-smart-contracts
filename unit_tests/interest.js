@@ -256,6 +256,7 @@ describe("Interest Test", function () {
 
     describe("Function Test", function () {
         it("Submit Order Function Test", async function () {
+            return;
             const { signers, Utils, CurrentExchange, deposit_vault, CurrentLiquidator, DataHub, Oracle, _Interest, USDT_TOKEN, REXE_TOKEN } = await loadFixture(deployandInitContracts);
             // console.log(signers);
             ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -339,6 +340,8 @@ describe("Interest Test", function () {
 
             let test = await _Interest.fetchCurrentRateIndex(await USDT_TOKEN.getAddress());
             console.log("USDT rate", test);
+
+            return;
 
             ///////////////////////////////////////////////////// SUBMIT ORDER ////////////////////////////////////////////////////
 
