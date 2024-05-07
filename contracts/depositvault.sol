@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/interfaces/IERC20.sol" as IERC20;
 import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
 import "./interfaces/IinterestData.sol";
+import "hardhat/console.sol";
 
 contract DepositVault is Ownable {
     constructor(
@@ -404,10 +405,10 @@ contract DepositVault is Ownable {
         );
 
         if (assets == 0) {
-            Datahub.alterUsersEarningRateIndex(msg.sender, token);
+            Datahub.alterUsersEarningRateIndex(beneficiary, token);
         } else {
-            debitAssetInterest(msg.sender, token);
-        } 
+            debitAssetInterest(beneficiary, token);
+        }
 
         if (liabilities > 0) {
             if (amount <= liabilities) {
