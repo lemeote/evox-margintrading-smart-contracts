@@ -344,7 +344,7 @@ describe("Interest Test", function () {
 
             let allData = [];
             // for (let i = 0; i <= 174; i++) {
-            for (let i = 0; i < 3; i++) {
+            for (let i = 0; i < 170; i++) {
 
                 console.log("////////////////////////////////////////////////////////// LOOP " + i + " /////////////////////////////////////////////////////////////");
                 const scaledTimestamp = originTimestamp + i * 3600;
@@ -358,8 +358,8 @@ describe("Interest Test", function () {
                 const masscharges_usdt = await _Interest.chargeMassinterest(await USDT_TOKEN.getAddress()); // increase borrow amount
                 await masscharges_usdt.wait(); // Wait for the transaction to be mined
 
-                const masscharges_rexe = await _Interest.chargeMassinterest(await REXE_TOKEN.getAddress()); // increase borrow amount
-                await masscharges_rexe.wait(); // Wait for the transaction to be mined
+                // const masscharges_rexe = await _Interest.chargeMassinterest(await REXE_TOKEN.getAddress()); // increase borrow amount
+                // await masscharges_rexe.wait(); // Wait for the transaction to be mined
 
                 if (i == 1) {
                     await CurrentExchange.SubmitOrder(pair, participants, trade_amounts, trade_sides)
@@ -378,7 +378,7 @@ describe("Interest Test", function () {
                 // borrowed_usdt = borrowed_usdt.totalLiabilitiesAtIndex
                 // console.log("USDT borrowed", borrowed_usdt);
 
-                let borrowed_rexe = (await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalBorrowedAmount;
+                // let borrowed_rexe = (await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalBorrowedAmount;
                 // borrowed_rexe = borrowed_rexe.totalLiabilitiesAtIndex
                 // console.log("REXE borrowed", borrowed_rexe);
                 
@@ -386,7 +386,7 @@ describe("Interest Test", function () {
                 let Rate_usdt = await _Interest.fetchCurrentRate(await USDT_TOKEN.getAddress());
                 // console.log("USDT rate", Rate_usdt);
 
-                let Rate_rexe = await _Interest.fetchCurrentRate(await REXE_TOKEN.getAddress());
+                // let Rate_rexe = await _Interest.fetchCurrentRate(await REXE_TOKEN.getAddress());
                 // console.log("REXE rate", Rate_rexe);
 
                 // Get liability
@@ -394,17 +394,17 @@ describe("Interest Test", function () {
                 let liabilitiesValue_usdt = userData_usdt[1];
                 // console.log("USDT liabilitiesValue", liabilitiesValue_usdt);
 
-                let userData_rexe = await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress());
-                let liabilitiesValue_rexe = userData_rexe[1];
+                // let userData_rexe = await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress());
+                // let liabilitiesValue_rexe = userData_rexe[1];
                 // console.log("REXE liabilitiesValue", liabilitiesValue_rexe);
 
-                // // Get interestadjustedliability
-                // let interestadjustedLiabilities_usdt = await _Interest.returnInterestCharge(
-                //     signers[0].address,
-                //     await USDT_TOKEN.getAddress(),
-                //     0
-                // )
-                // console.log("USDT interestadjustedLiabilities", interestadjustedLiabilities_usdt);
+                // Get interestadjustedliability
+                let interestadjustedLiabilities_usdt = await _Interest.returnInterestCharge(
+                    signers[0].address,
+                    await USDT_TOKEN.getAddress(),
+                    0
+                )
+                console.log("USDT interestadjustedLiabilities", interestadjustedLiabilities_usdt);
 
                 // let interestadjustedLiabilities_rexe = await _Interest.returnInterestCharge(
                 //     signers[0].address,
@@ -414,17 +414,17 @@ describe("Interest Test", function () {
                 // console.log("REXE interestadjustedLiabilities", interestadjustedLiabilities_rexe);
 
                 let interestIndex_usdt = await _Interest.fetchCurrentRateIndex(await USDT_TOKEN.getAddress());
-                let interestIndex_rexe = await _Interest.fetchCurrentRateIndex(await REXE_TOKEN.getAddress());
+                // let interestIndex_rexe = await _Interest.fetchCurrentRateIndex(await REXE_TOKEN.getAddress());
                 let hourly_rate_usdt = Number(Rate_usdt.toString()) / 8736;
-                let hourly_rate_rexe = Number(Rate_rexe.toString()) / 8736;
+                // let hourly_rate_rexe = Number(Rate_rexe.toString()) / 8736;
                 
                 let user_usdt_data = await DataHub.ReadUserData(signers[0].address, await USDT_TOKEN.getAddress());
-                let rexe_usdt_data = await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress());
+                // let rexe_usdt_data = await DataHub.ReadUserData(signers[0].address, await REXE_TOKEN.getAddress());
 
                 let usdt_amount = user_usdt_data[0];    
-                let rexe_amount = rexe_usdt_data[0];
+                // let rexe_amount = rexe_usdt_data[0];
                 let usdt_supply = (await DataHub.returnAssetLogs(await USDT_TOKEN.getAddress())).totalAssetSupply;
-                let rexe_supply = (await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalAssetSupply;
+                // let rexe_supply = (await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress())).totalAssetSupply;
 
                 //    https://docs.google.com/spreadsheets/u/5/d/1IS3WFMcbda7v_rshOefMGGS70yabp6qJ2PmDcBs8J1w/edit?usp=sharing&pli=1
                 // Go above and refer to line 1-5 for the excel sheet to check numbers against what we have 
@@ -439,20 +439,20 @@ describe("Interest Test", function () {
                         "total-borrowed": Number(borrowed_usdt.toString()) / 10 ** 18,
                         "rate": Number(Rate_usdt.toString()) / 10 ** 18,
                         "hourly-rate": hourly_rate_usdt / 10 ** 18,
-                        "liabilities": Number((liabilitiesValue_usdt)) / 10 ** 18,
+                        "liabilities": Number(Number(liabilitiesValue_usdt) + Number(interestadjustedLiabilities_usdt)) / 10 ** 18,
                         "timestamp": Number(scaledTimestamp.toString()),
                     },
-                    "REXE" : {
-                        "index": Number(interestIndex_rexe.toString()),
-                        "loop #": i,
-                        "rexe_amount" : Number(rexe_amount.toString()) / 10 ** 18,
-                        "rexe_supply" : Number(rexe_supply.toString()) / 10 ** 18,
-                        "total-borrowed": Number(borrowed_rexe.toString()) / 10 ** 18,
-                        "rate": Number(Rate_rexe.toString()) / 10 ** 18,
-                        "hourly-rate": hourly_rate_rexe / 10 ** 18,
-                        "liabilities": Number((liabilitiesValue_rexe)) / 10 ** 18,
-                        "timestamp": Number(scaledTimestamp.toString()),
-                    }
+                    // "REXE" : {
+                    //     "index": Number(interestIndex_rexe.toString()),
+                    //     "loop #": i,
+                    //     "rexe_amount" : Number(rexe_amount.toString()) / 10 ** 18,
+                    //     "rexe_supply" : Number(rexe_supply.toString()) / 10 ** 18,
+                    //     "total-borrowed": Number(borrowed_rexe.toString()) / 10 ** 18,
+                    //     "rate": Number(Rate_rexe.toString()) / 10 ** 18,
+                    //     "hourly-rate": hourly_rate_rexe / 10 ** 18,
+                    //     "liabilities": Number(Number(liabilitiesValue_rexe) + Number(interestIndex_rexe)) / 10 ** 18,
+                    //     "timestamp": Number(scaledTimestamp.toString()),
+                    // }
                 };
 
                 // Add the data object to the array

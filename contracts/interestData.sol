@@ -127,6 +127,7 @@ contract interestData {
         // if(startIndex != 1) {
         //     startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
         // }
+        startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
 
         for (uint256 i = 0; i < timeframes.length; i++) {
             if ( startIndex + timeframes[i] - 1 <= endIndex) { // For spliting
@@ -311,6 +312,7 @@ contract interestData {
         // if(startIndex != 1) {
         //     startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
         // }
+        startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
         
         for (uint256 i = 0; i < timeframes.length; i++) {
             if ( startIndex + timeframes[i] - 1 <= endIndex) { // For spliting
@@ -784,6 +786,8 @@ function updateInterestIndex(
                     (currentInterestRateHourly)) / 10 ** 18),
                 true
             );
+
+            console.log("borrow add amount", (Datahub.returnAssetLogs(token).totalBorrowedAmount * currentInterestRateHourly) / 10 **  18);
 
             console.log("total borrow amount", (Datahub.returnAssetLogs(token).totalBorrowedAmount));
         }

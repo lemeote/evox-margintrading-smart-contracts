@@ -553,7 +553,7 @@ contract EVO_EXCHANGE is Ownable {
         bool minus
     ) private {
 
-        console.log("=====================chargeinterest function===================");
+        console.log("=====================chargeinterest function=====================");
         //Step 1) charge mass interest on outstanding liabilities
         interestContract.chargeMassinterest(token);
 
@@ -561,10 +561,10 @@ contract EVO_EXCHANGE is Ownable {
             user,
             token
         );
-        console.log("assets after charge massin interest", assets);
-        console.log("liabilities after charge massin interest", liabilities);
-        console.log("pending after charge massin interest", pending);
-        console.log("margined after charge massin interest", margined);
+        console.log("assets after charge massin assets", assets);
+        console.log("liabilities after charge massin liabilities", liabilities);
+        console.log("pending after charge massin pending", pending);
+        console.log("margined after charge massin margined", margined);
         // console.log("tokens after charge massin interest", tokens);
 
         console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);

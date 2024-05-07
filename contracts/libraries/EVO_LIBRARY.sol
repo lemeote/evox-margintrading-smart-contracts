@@ -64,13 +64,16 @@ library EVO_LIBRARY {
     function normalize(
         uint256 x
     ) public pure returns (uint256 base, int256 exp) {
+        // console.log("=============normalize function=================");
         exp = 0;
         base = x;
 
         while (base > 1e18) {
             base = base / 10;
+            // console.log("base", base);
             exp = exp + 1;
         }
+        // console.log("===============end==============");
     }
 
     function calculateInterestRate(
@@ -322,6 +325,8 @@ library EVO_LIBRARY {
             (uint256 averageHourlyBase, int256 averageHourlyExp) = normalize(
                 averageHourly
             );
+            console.log("averageHourlyBase", averageHourlyBase);
+            // console.log("averageHourlyExp", averageHourlyExp);
             averageHourlyExp = averageHourlyExp - 18;
 
             uint256 hourlyChargesBase = 1;
@@ -348,8 +353,12 @@ library EVO_LIBRARY {
                 amountOfBilledHours /= 2;
             }
 
+            console.log("hourlyChargesBase", hourlyChargesBase);
+
             uint256 compoundedLiabilities = usersLiabilities *
                 hourlyChargesBase;
+
+            console.log("compoundedLiabilities", compoundedLiabilities);
 
             unchecked {
                 if (hourlyChargesExp >= 0) {
@@ -363,6 +372,8 @@ library EVO_LIBRARY {
                 }
 
                 console.log("compoundedLiabilities", compoundedLiabilities);
+                console.log("user liabilities", usersLiabilities);
+                console.log("interest rate", compoundedLiabilities - usersLiabilities);
 
                 interestCharge =
                     (compoundedLiabilities +
