@@ -174,8 +174,8 @@ contract DepositVault is Ownable {
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
         
-        if(Datahub.ViewTokenTransferFees(token) > 0){
-            amount = amount-(amount*Datahub.ViewTokenTransferFees(token))/10000;
+        if(Datahub.tokenTransferFees(token) > 0){
+            amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
             console.log("amount to be paid if fee is applicable", amount);
         }
         // we need to add the function that transfertokenwithfee  : https://docs.uniswap.org/contracts/v2/reference/smart-contracts/router-02#swapexacttokensfortokenssupportingfeeontransfertokens
@@ -387,8 +387,8 @@ contract DepositVault is Ownable {
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
         // extending support for token with fee on transfer 
-        if(Datahub.ViewTokenTransferFees(token) > 0){
-            amount = amount-(amount*Datahub.ViewTokenTransferFees(token))/10000;
+        if(Datahub.tokenTransferFees(token) > 0){
+            amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
             console.log("amount to be paid if fee is applicable", amount);
         }
         require(

@@ -228,17 +228,17 @@ async function main() {
 
     const USDT_init_transaction = await DataHub.InitTokenMarket(await USDT.getAddress(), USDTprice, USDTCollValue, tradeFees, USDTinitialMarginFee, USDTliquidationFee, USDTinitialMarginRequirement, USDTMaintenanceMarginRequirement, USDToptimalBorrowProportion, USDTmaximumBorrowProportion);
 
-    const USDT_toggleTokenTransferFee = await DataHub.toggleTokenTransferFee(await USDT.getAddress(), "3000") // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
+    const USDT_setTokenTransferFee = await DataHub.setTokenTransferFee(await USDT.getAddress(), "3000") // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
 
-    const USDT_ViewTokenTransferFees = await DataHub.ViewTokenTransferFees(await USDT.getAddress());
+    const USDT_tokenTransferFees = await DataHub.tokenTransferFees(await USDT.getAddress());
 
-    // const ViewTokenTransferFees = USDT_ViewTokenTransferFees.wait();
+    // const tokenTransferFees = USDT_tokenTransferFees.wait();
 
-    console.log(USDT_ViewTokenTransferFees, "tradingfeeeee ")
+    console.log(USDT_tokenTransferFees, "tradingfeeeee ")
 
     USDT_init_transaction.wait();
 
-    USDT_toggleTokenTransferFee.wait();
+    USDT_setTokenTransferFee.wait();
 
 
 
