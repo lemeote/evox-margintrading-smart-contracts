@@ -8,6 +8,7 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
+import "hardhat/console.sol";
 
 contract Utility is Ownable {
     function alterAdminRoles(
@@ -170,7 +171,7 @@ contract Utility is Ownable {
         address[][2] memory participants,
         uint256[][2] memory trade_amounts
     ) public view returns (uint256[] memory, uint256[] memory) {
-        console.log("================calculateTradeLiabilityAddtions Function=====================");
+        // console.log("================calculateTradeLiabilityAddtions Function=====================");
         uint256[] memory TakerliabilityAmounts = new uint256[](
             participants[0].length
         );
@@ -185,7 +186,7 @@ contract Utility is Ownable {
                     trade_amounts[0][i]
                 );
             
-            console.log("TakeramountToAddToLiabilities", TakeramountToAddToLiabilities);
+            // console.log("TakeramountToAddToLiabilities", TakeramountToAddToLiabilities);
 
             TakerliabilityAmounts[i] = TakeramountToAddToLiabilities;
         }
@@ -196,7 +197,7 @@ contract Utility is Ownable {
                     pair[1],
                     trade_amounts[1][i]
                 );
-            console.log("MakeramountToAddToLiabilities", MakeramountToAddToLiabilities);
+            // console.log("MakeramountToAddToLiabilities", MakeramountToAddToLiabilities);
             MakerliabilityAmounts[i] = MakeramountToAddToLiabilities;
         }
 
