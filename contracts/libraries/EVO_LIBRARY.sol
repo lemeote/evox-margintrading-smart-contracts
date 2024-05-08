@@ -70,7 +70,7 @@ library EVO_LIBRARY {
 
         while (base > 1e18) {
             base = base / 10;
-            // console.log("base", base);
+            console.log("base", base);
             exp = exp + 1;
         }
         // console.log("===============end==============");

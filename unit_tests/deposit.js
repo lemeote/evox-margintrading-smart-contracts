@@ -299,7 +299,8 @@ async function main() {
     await approvalTx_3.wait();  // Wait for the transaction to be mined
 
     await DVM.deposit_token(await USDT.getAddress(),deposit_amount_3)
-    console.log("deposits complete")
+    const bal = await DataHub.returnAssetLogs(await USDT.getAddress())
+    console.log("deposits complete", bal[9])
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -307,8 +308,6 @@ async function main() {
 
     await DVM.withdraw_token(await USDT.getAddress(), deposit_amount_2);
     console.log("withdraw success")
-
-
 }
 //npx hardhat run scripts/deploy.js 
 main().then(() => process.exit(0))

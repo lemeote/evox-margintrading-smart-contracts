@@ -564,6 +564,5 @@ contract Utility is Ownable {
     ) external view returns (uint256) {
         return  Datahub.returnAssetLogs(token).totalAssetSupply;
     }
-
     receive() external payable {}
 }

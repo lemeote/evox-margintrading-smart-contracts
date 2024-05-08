@@ -127,12 +127,13 @@ contract DepositVault is Ownable {
         uint256 amount
     ) private {
         address[] memory tokens = Datahub.returnUsersAssetTokens(user);
+        uint256 liabilityMultiplier;
         (, uint256 liabilities, , , ) = Datahub.ReadUserData(
             msg.sender,
             in_token
         );
         for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 liabilityMultiplier = EVO_LIBRARY
+            liabilityMultiplier = EVO_LIBRARY
                 .calculatedepositLiabilityRatio(liabilities, amount);
             Datahub.alterMMR(user, in_token, tokens[i], liabilityMultiplier);
         }
@@ -148,12 +149,13 @@ contract DepositVault is Ownable {
         uint256 amount
     ) private {
         address[] memory tokens = Datahub.returnUsersAssetTokens(user);
+        uint256 liabilityMultiplier;
         (, uint256 liabilities, , , ) = Datahub.ReadUserData(
             msg.sender,
             in_token
         );
         for (uint256 i = 0; i < tokens.length; i++) {
-            uint256 liabilityMultiplier = EVO_LIBRARY
+            liabilityMultiplier = EVO_LIBRARY
                 .calculatedepositLiabilityRatio(liabilities, amount);
             Datahub.alterIMR(user, in_token, tokens[i], liabilityMultiplier);
         }
@@ -173,17 +175,19 @@ contract DepositVault is Ownable {
             Datahub.returnAssetLogs(token).initialized == true,
             "this asset is not available to be deposited or traded"
         );
-        IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
-        
-        if(Datahub.tokenTransferFees(token) > 0){
-            amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
-            console.log("amount to be paid if fee is applicable", amount);
-        }
+        // console.log("amount before fee", amount);
+        amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
+        console.log("amount to be paid if fee is applicable", amount);
+        // console.log("amount after fee", amount);
         // we need to add the function that transfertokenwithfee  : https://docs.uniswap.org/contracts/v2/reference/smart-contracts/router-02#swapexacttokensfortokenssupportingfeeontransfertokens
-        require(ERC20Token.transferFrom(msg.sender, address(this), amount));
+        require(IERC20.IERC20(token).transferFrom(msg.sender, address(this), amount));
         require(!circuitBreakerStatus);
 
+        // console.log("total supply before", Datahub.returnAssetLogs(token).totalAssetSupply);
         Datahub.settotalAssetSupply(token, amount, true);
+        // console.log("total supply after", Datahub.returnAssetLogs(token).totalAssetSupply);
+        
+        // console.log("amount after total asset supply", amount);
 
         (uint256 assets, uint256 liabilities, , , ) = Datahub.ReadUserData(
             msg.sender,
@@ -206,13 +210,16 @@ contract DepositVault is Ownable {
             if (amount <= liabilities) {
                 // if the amount is less or equal to their current liabilities -> lower their liabilities using the multiplier
 
-                uint256 liabilityMultiplier = EVO_LIBRARY
-                    .calculatedepositLiabilityRatio(liabilities, amount);
+                // uint256 liabilityMultiplier = EVO_LIBRARY
+                //     .calculatedepositLiabilityRatio(liabilities, amount);
 
-                Datahub.alterLiabilities(
-                    msg.sender,
-                    token,
-                    ((10 ** 18) - liabilityMultiplier)
+                // Datahub.alterLiabilities(
+                //     msg.sender,
+                //     token,
+                //     ((10 ** 18) - liabilityMultiplier)
+                // );
+
+                Datahub.alterLiabilities(msg.sender, token, ((10 ** 18) -  EVO_LIBRARY.calculatedepositLiabilityRatio(liabilities, amount))
                 );
 
                 Datahub.setTotalBorrowedAmount(token, amount, false);
@@ -225,9 +232,11 @@ contract DepositVault is Ownable {
 
                 modifyIMROnDeposit(msg.sender, token, amount);
                 // if amount depositted is bigger that liability info 0 it out
-                uint256 amountAddedtoAssets = amount - liabilities; // amount - outstanding liabilities
+                // uint256 amountAddedtoAssets = amount - liabilities; // amount - outstanding liabilities
 
-                Datahub.addAssets(msg.sender, token, amountAddedtoAssets); // add to assets
+                // Datahub.addAssets(msg.sender, token, amountAddedtoAssets); // add to assets
+
+                Datahub.addAssets(msg.sender, token, amount - liabilities); // add to assets
 
                 Datahub.removeLiabilities(msg.sender, token, liabilities); // remove all liabilities
 

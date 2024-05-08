@@ -123,6 +123,7 @@ contract interestData {
         uint256 runningUpIndex = startIndex;
         uint256 runningDownIndex = endIndex;
         uint256 biggestPossibleStartTimeframe;
+        uint256 adjustedIndex;
         
         // if(startIndex != 1) {
         //     startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
@@ -147,7 +148,7 @@ contract interestData {
         for (uint256 i = 0; i < timeframes.length; i++) {
             while ((runningUpIndex + timeframes[i] - 1) <= endIndex) {
                 // this inverses the list order due to interest being stored in the opposite index format 0-4
-                uint256 adjustedIndex = timeframes.length - 1 - i;
+                adjustedIndex = timeframes.length - 1 - i;
                 // console.log("adjusted index", adjustedIndex);
                 // console.log("time scale rate index", fetchTimeScaledRateIndex(
                 //     adjustedIndex,
@@ -170,7 +171,7 @@ contract interestData {
             // Calculate cumulative interest rates for decreasing indexes
             while ((runningDownIndex >= timeframes[i]) && ((runningDownIndex - timeframes[i] + 1) >= startIndex)) {
                 //&& available
-                uint256 adjustedIndex = timeframes.length - 1 - i;
+                adjustedIndex = timeframes.length - 1 - i;
                 // console.log("adjustedindex", adjustedIndex);
 
                 cumulativeInterestRates +=
@@ -308,6 +309,7 @@ contract interestData {
         uint256 runningUpIndex = startIndex;
         uint256 runningDownIndex = endIndex;
         uint256 biggestPossibleStartTimeframe;
+        uint256 adjustedIndex;
 
         // if(startIndex != 1) {
         //     startIndex = startIndex + 1; // For calculating untouched and cause of gas fee
@@ -330,7 +332,7 @@ contract interestData {
 
         for (uint256 i = 0; i < timeframes.length; i++) {
             while ((runningUpIndex + timeframes[i] - 1) <= endIndex) {
-                uint256 adjustedIndex = timeframes.length - 1 - i;
+                adjustedIndex = timeframes.length - 1 - i;
                 cumulativeInterestRates +=
                     fetchTimeScaledRateIndex(
                         adjustedIndex,
@@ -352,7 +354,7 @@ contract interestData {
 
             // Calculate cumulative interest rates for decreasing indexes
             while ((runningDownIndex >= timeframes[i]) && ((runningDownIndex - timeframes[i] + 1) >= startIndex)) {
-                uint256 adjustedIndex = timeframes.length - 1 - i;
+                adjustedIndex = timeframes.length - 1 - i;
 
                 cumulativeInterestRates +=
                     fetchTimeScaledRateIndex(
@@ -747,6 +749,7 @@ function updateInterestIndex(
     function chargeMassinterest(address token) public {
         console.log("================charge Massininterest Function=================");
         // console.log("current token index", fetchCurrentRateIndex(token));
+        // console.log("token address", token);
         if (
             fetchRateInfo(token, fetchCurrentRateIndex(token)).lastUpdatedTime +
                 1 hours <=
@@ -755,7 +758,7 @@ function updateInterestIndex(
             console.log("current index");
             console.log(fetchCurrentRateIndex(token));
             // console.log("assetlogs");
-            // console.log(Datahub.returnAssetLogs(token));
+            // console.log(Datahub.returnAssetLogs(token).totalAssetSupply);
             // console.log("rate info");
             // console.log(fetchRateInfo(token, fetchCurrentRateIndex(token)));
 
