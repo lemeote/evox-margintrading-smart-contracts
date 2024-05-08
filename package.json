@@ -9,8 +9,8 @@
     "deployzk": "npx hardhat run scripts/zkevm_deploy.js --network zkevm",
     "test_deposit_function": "node ./unit_tests/deposit.js",
     "test_interest": "npx hardhat test ./unit_tests/interest.js",
-    "test_deposit" : "npx hardhat test ./unit_tests/deposit_test.js",
-    "test_margin" : "npx hardhat test ./unit_tests/margin_trading_test.js",
+    "test_deposit": "npx hardhat test ./unit_tests/deposit_test.js",
+    "test_margin": "npx hardhat test ./unit_tests/margin_trading_test.js",
     "compile": "npx hardhat compile"
   },
   "author": "",
@@ -19,6 +19,7 @@
     "@nomicfoundation/hardhat-toolbox": "^3.0.0",
     "@solarity/hardhat-markup": "^1.0.4",
     "hardhat": "^2.22.3",
+    "hardhat-contract-sizer": "^2.10.0",
     "hardhat-deploy": "^0.11.45"
   },
   "dependencies": {

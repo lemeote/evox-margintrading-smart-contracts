@@ -196,7 +196,7 @@ contract DepositVault is Ownable {
 
         // console.log("assets, liabilities", assets, liabilities);
 
-        if (assets == 0) {
+        if (assets == 0 && amount > liabilities) {
             Datahub.alterUsersEarningRateIndex(msg.sender, token);
         } else {
             debitAssetInterest(msg.sender, token);
@@ -210,17 +210,17 @@ contract DepositVault is Ownable {
             if (amount <= liabilities) {
                 // if the amount is less or equal to their current liabilities -> lower their liabilities using the multiplier
 
-                // uint256 liabilityMultiplier = EVO_LIBRARY
-                //     .calculatedepositLiabilityRatio(liabilities, amount);
+                modifyMMROnDeposit(msg.sender, token, amount);
 
-                // Datahub.alterLiabilities(
-                //     msg.sender,
-                //     token,
-                //     ((10 ** 18) - liabilityMultiplier)
+                modifyIMROnDeposit(msg.sender, token, amount);
+
+                // Datahub.alterLiabilities(msg.sender, token, ((10 ** 18) -  EVO_LIBRARY.calculatedepositLiabilityRatio(liabilities, amount))
                 // );
 
-                Datahub.alterLiabilities(msg.sender, token, ((10 ** 18) -  EVO_LIBRARY.calculatedepositLiabilityRatio(liabilities, amount))
-                );
+                // Datahub.setTotalBorrowedAmount(token, amount, false);
+
+                // interestContract.chargeMassinterest(token);
+                liabilities -= amount;
 
                 Datahub.setTotalBorrowedAmount(token, amount, false);
 
@@ -397,10 +397,12 @@ contract DepositVault is Ownable {
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
         // extending support for token with fee on transfer 
-        if(Datahub.tokenTransferFees(token) > 0){
-            amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
-            console.log("amount to be paid if fee is applicable", amount);
-        }
+        // if(Datahub.tokenTransferFees(token) > 0){
+        //     amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
+        //     console.log("amount to be paid if fee is applicable", amount);
+        // }
+        amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
+        console.log("amount to be paid if fee is applicable", amount);
         require(
             ERC20Token.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"

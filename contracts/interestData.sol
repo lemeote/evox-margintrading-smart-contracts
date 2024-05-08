@@ -543,172 +543,114 @@ function updateInterestIndex(
         // console.log("value", value);
         currentInterestIndex[token] = index + 1; // 25
 
-        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .interestRate = value;
-
-        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .lastUpdatedTime = block.timestamp;
-
-        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .totalLiabilitiesAtIndex = Datahub
-            .returnAssetLogs(token)
-            .totalBorrowedAmount;
-
-        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .totalAssetSuplyAtIndex = Datahub
-            .returnAssetLogs(token)
-            .totalAssetSupply;
-
-        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .borrowProportionAtIndex = EVO_LIBRARY.calculateBorrowProportion(
-            Datahub.returnAssetLogs(token)
+        setInterestRateEpoch(
+            0,
+            token,
+            uint(currentInterestIndex[token]),
+            EVO_LIBRARY.calculateBorrowProportion(
+                Datahub.returnAssetLogs(token)
+            ),
+            value
         );
-
-        InterestRateEpochs[0][token][uint(currentInterestIndex[token])]
-            .rateInfo = InterestRateEpochs[0][token][
-            uint(currentInterestIndex[token]) - 1
-        ].rateInfo;
-
+        
         if (index % 24 == 0) {
-            // 168
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .interestRate = EVO_LIBRARY.calculateAverage(
-                fetchRatesList(
-                    currentInterestIndex[token] - 23, // 1
-                    currentInterestIndex[token], //24
-                    token
+            setInterestRateEpoch(
+                1,
+                token,
+                uint(currentInterestIndex[token] / 24),
+                EVO_LIBRARY.calculateAverage(
+                    utils.fetchBorrowProportionList(
+                        currentInterestIndex[token] - 23, // 1
+                        currentInterestIndex[token], //24
+                        token
+                    )
+                ),
+                EVO_LIBRARY.calculateAverage(
+                    fetchRatesList(
+                        currentInterestIndex[token] - 23, // 1
+                        currentInterestIndex[token], //24
+                        token
+                    )
                 )
             );
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .lastUpdatedTime = block.timestamp;
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .totalLiabilitiesAtIndex = Datahub
-                .returnAssetLogs(token)
-                .totalBorrowedAmount;
-
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .totalAssetSuplyAtIndex = Datahub
-                .returnAssetLogs(token)
-                .totalAssetSupply;
-
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
-                utils.fetchBorrowProportionList(
-                    currentInterestIndex[token] - 23, // 1
-                    currentInterestIndex[token], //24
-                    token
-                )
-            );
-
-            InterestRateEpochs[1][token][uint(currentInterestIndex[token] / 24)]
-                .rateInfo = InterestRateEpochs[1][token][
-                uint(currentInterestIndex[token]) - 1
-            ].rateInfo;
         }
         if (index % 168 == 0) {
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / 168)
-            ].interestRate = EVO_LIBRARY.calculateAverage(
-                fetchRatesList(
-                    currentInterestIndex[token] - 167,
-                    currentInterestIndex[token],
-                    token
+            setInterestRateEpoch(
+                2,
+                token,
+                uint(currentInterestIndex[token] / 168),
+                EVO_LIBRARY.calculateAverage(
+                    utils.fetchBorrowProportionList(
+                        currentInterestIndex[token] - 167,
+                        currentInterestIndex[token],
+                        token
+                    )
+                ),
+                EVO_LIBRARY.calculateAverage(
+                    fetchRatesList(
+                        currentInterestIndex[token] - 167,
+                        currentInterestIndex[token],
+                        token
+                    )
                 )
             );
-
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / 168)
-            ].lastUpdatedTime = block.timestamp;
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / 168)
-            ].totalLiabilitiesAtIndex = Datahub
-                .returnAssetLogs(token)
-                .totalBorrowedAmount;
-
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / 168)
-            ].borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
-                utils.fetchBorrowProportionList(
-                    currentInterestIndex[token] - 167,
-                    currentInterestIndex[token],
-                    token
-                )
-            );
-
-            InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token] / 168)
-            ].rateInfo = InterestRateEpochs[2][token][
-                uint(currentInterestIndex[token]) - 1
-            ].rateInfo;
         }
         if (index % 672 == 0) {
-            InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / 672) //8736, 672, 168, 24
-            ].interestRate = EVO_LIBRARY.calculateAverage(
-                fetchRatesList(
-                    currentInterestIndex[token] - 671,
-                    currentInterestIndex[token],
-                    token
+            setInterestRateEpoch(
+                3,
+                token,
+                uint(currentInterestIndex[token] / 672),
+                EVO_LIBRARY.calculateAverage(
+                    utils.fetchBorrowProportionList(
+                        currentInterestIndex[token] - 671,
+                        currentInterestIndex[token],
+                        token
+                    )
+                ),
+                EVO_LIBRARY.calculateAverage(
+                    fetchRatesList(
+                        currentInterestIndex[token] - 671,
+                        currentInterestIndex[token],
+                        token
+                    )
                 )
             );
-            InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / 672)
-            ].lastUpdatedTime = block.timestamp;
-            InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / 672)
-            ].totalLiabilitiesAtIndex = Datahub
-                .returnAssetLogs(token)
-                .totalBorrowedAmount;
-
-            InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / 672)
-            ].borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
-                utils.fetchBorrowProportionList(
-                    currentInterestIndex[token] - 671,
-                    currentInterestIndex[token],
-                    token
-                )
-            );
-
-            InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token] / 672)
-            ].rateInfo = InterestRateEpochs[3][token][
-                uint(currentInterestIndex[token]) - 1
-            ].rateInfo;
         }
         if (index % 8736 == 0) {
-            InterestRateEpochs[4][token][
-                uint(currentInterestIndex[token] / 8736)
-            ].interestRate = EVO_LIBRARY.calculateAverage(
-                fetchRatesList(
-                    currentInterestIndex[token] - 8735,
-                    currentInterestIndex[token],
-                    token
+            setInterestRateEpoch(
+                4,
+                token,
+                uint(currentInterestIndex[token] / 8736),
+                EVO_LIBRARY.calculateAverage(
+                    utils.fetchBorrowProportionList(
+                        currentInterestIndex[token] - 8735,
+                        currentInterestIndex[token],
+                        token
+                    )
+                ),
+                EVO_LIBRARY.calculateAverage(
+                    fetchRatesList(
+                        currentInterestIndex[token] - 8735,
+                        currentInterestIndex[token],
+                        token
+                    )
                 )
             );
-            InterestRateEpochs[4][token][
-                uint(currentInterestIndex[token] / 8736)
-            ].lastUpdatedTime = block.timestamp;
-            InterestRateEpochs[4][token][
-                uint(currentInterestIndex[token] / 8736)
-            ].totalLiabilitiesAtIndex = Datahub
-                .returnAssetLogs(token)
-                .totalBorrowedAmount;
-            InterestRateEpochs[4][token][
-                uint(currentInterestIndex[token] / 8736)
-            ].borrowProportionAtIndex = EVO_LIBRARY.calculateAverage(
-                utils.fetchBorrowProportionList(
-                    currentInterestIndex[token] - 8735,
-                    currentInterestIndex[token],
-                    token
-                )
-            );
-            InterestRateEpochs[4][token][
-                uint(currentInterestIndex[token] / 8736)
-            ].rateInfo = InterestRateEpochs[4][token][
-                uint(currentInterestIndex[token]) - 1
-            ].rateInfo;
         }
+    }
+
+    function setInterestRateEpoch(uint256 dimension, address token, uint256 index, uint256 borrowProportionAtIndex, uint256 interestRate ) internal {
+        InterestRateEpochs[dimension][token][index].interestRate = interestRate;
+
+        InterestRateEpochs[dimension][token][index].lastUpdatedTime = block.timestamp;
+
+        InterestRateEpochs[dimension][token][index].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
+
+        InterestRateEpochs[dimension][token][index].totalAssetSuplyAtIndex = Datahub.returnAssetLogs(token).totalAssetSupply;
+
+        InterestRateEpochs[dimension][token][index].borrowProportionAtIndex = borrowProportionAtIndex;
+
+        InterestRateEpochs[dimension][token][index].rateInfo = InterestRateEpochs[dimension][token][index-1].rateInfo;
     }
     /// @notice returns a list of interest rates for a set amount of indexs or hours
     function fetchRatesList(
@@ -762,7 +704,7 @@ function updateInterestIndex(
             // console.log("rate info");
             // console.log(fetchRateInfo(token, fetchCurrentRateIndex(token)));
 
-            console.log("calculate interest rate", EVO_LIBRARY.calculateInterestRate(0, Datahub.returnAssetLogs(token), fetchRateInfo(token, fetchCurrentRateIndex(token))));
+            // console.log("calculate interest rate", EVO_LIBRARY.calculateInterestRate(0, Datahub.returnAssetLogs(token), fetchRateInfo(token, fetchCurrentRateIndex(token))));
 
             updateInterestIndex(
                 token,

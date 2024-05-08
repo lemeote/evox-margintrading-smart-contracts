@@ -4,6 +4,7 @@ require('hardhat-abi-exporter');
 require('hardhat-gui');
 require('hardhat-deploy');
 require("@solarity/hardhat-markup")
+require("hardhat-contract-sizer");
 //https://www.npmjs.com/package/hardhat-abi-exporter
 /** @type import('hardhat/config').HardhatUserConfig */
 
@@ -17,6 +18,14 @@ module.exports = {
         runs: 200,
       },
     },
+  },
+  contractSizer: {
+    alphaSort: true,
+    disambiguatePaths: false,
+    runOnCompile: true,
+    strict: false,
+    unit: "KiB",
+
   },
   defaultNetwork: "hardhat",
   mocha: {
