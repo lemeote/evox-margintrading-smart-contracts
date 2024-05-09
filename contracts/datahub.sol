@@ -737,12 +737,11 @@ contract DataHub is Ownable {
         address token;
         uint256 liabilities;
         address token_2;
-        uint256 j;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
             token = userdata[user].tokens[i];
             liabilities = userdata[user].liability_info[token];
             if (liabilities > 0) {
-                for (j = 0; j < userdata[user].tokens.length; j++) {
+                for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
                     token_2 = userdata[user].tokens[j];
                     if (
                         userdata[user].maintenance_margin_requirement[token][

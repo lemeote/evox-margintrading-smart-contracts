@@ -360,27 +360,36 @@ contract DepositVault is Ownable {
 
     function debitAssetInterest(address user, address token) private {
         (uint256 assets, , , , ) = Datahub.ReadUserData(user, token);
+
+        uint256 currentReateIndex = interestContract.fetchCurrentRateIndex(token);
+        uint256 usersEarningRateIndex = Datahub.viewUsersEarningRateIndex(user, token);
+        address orderBookProvider = Executor.fetchOrderBookProvider();
+        address daoWallet = Executor.fetchDaoWallet();
+
+        uint256 averageCumulativeDepositInterest = interestContract.calculateAverageCumulativeDepositInterest(
+            usersEarningRateIndex,
+            currentReateIndex,
+            token
+        );
+
         (
             uint256 interestCharge,
             uint256 OrderBookProviderCharge,
             uint256 DaoInterestCharge
         ) = EVO_LIBRARY.calculateCompoundedAssets(
-                interestContract.fetchCurrentRateIndex(token),
-                interestContract.calculateAverageCumulativeDepositInterest(
-                    Datahub.viewUsersEarningRateIndex(user, token),
-                    interestContract.fetchCurrentRateIndex(token),
-                    token
-                ),
+                currentReateIndex,
+                averageCumulativeDepositInterest,
                 assets,
-                Datahub.viewUsersEarningRateIndex(user, token)
+                usersEarningRateIndex
             );
+        
         Datahub.alterUsersEarningRateIndex(user, token);
 
         Datahub.addAssets(user, token, interestCharge);
-        Datahub.addAssets(Executor.fetchDaoWallet(), token, DaoInterestCharge);
+        Datahub.addAssets(daoWallet, token, DaoInterestCharge);
 
         Datahub.addAssets(
-            Executor.fetchOrderBookProvider(),
+            orderBookProvider,
             token,
             OrderBookProviderCharge
         );
@@ -396,7 +405,7 @@ contract DepositVault is Ownable {
             Datahub.returnAssetLogs(token).initialized == true,
             "this asset is not available to be deposited or traded"
         );
-        address[] memory users;
+    
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
         // extending support for token with fee on transfer 
         // if(Datahub.tokenTransferFees(token) > 0){
@@ -454,7 +463,7 @@ contract DepositVault is Ownable {
                 return true;
             }
         } else {
-            users = new address[](1);
+            address[] memory users = new address[](1);
             users[0] = beneficiary;
 
             Datahub.checkIfAssetIsPresent(users, token);

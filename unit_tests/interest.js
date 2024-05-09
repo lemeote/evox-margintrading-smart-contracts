@@ -11,6 +11,7 @@ const utilABI = require("../artifacts/contracts/utils.sol/Utility.json")
 const DataHubAbi = require("../artifacts/contracts/mock/MockDatahub.sol/MockDatahub.json");
 const InterestAbi = require("../artifacts/contracts/mock/MockInterestData.sol/MockInterestData.json")
 const LiquidatorAbi = require("../artifacts/contracts/liquidator.sol/Liquidator.json")
+const MathAbi = require("../artifacts/contracts/Math.sol/Math.json")
 const increaseTime =  require("./utils.js");
 
 

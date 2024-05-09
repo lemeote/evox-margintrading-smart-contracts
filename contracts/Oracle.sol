@@ -174,22 +174,21 @@ contract Oracle is Ownable{
         bool[] memory tradeside,
         address pair
     ) internal returns (bool) {
-        console.log("================alterPending Function================");
+        // console.log("================alterPending Function================");
 
         for (uint256 i = 0; i < participants.length; i++) {
             (uint256 assets, , , , ) = Datahub.ReadUserData(
                 participants[i],
                 pair
             );
-            console.log("user assets", assets);
+            // console.log("user assets", assets);
             if (tradeside[i] == true) {} else {
-                tradeAmounts[i] =
-                    (tradeAmounts[i] * Datahub.tradeFee(pair, 1)) /
-                    10 ** 18;
+                uint256 trade1 = Datahub.tradeFee(pair, 1);
+                tradeAmounts[i] = trade1 / 10 ** 18;
             }
-            console.log("trade amounts after process fee", tradeAmounts[i]);
+            // console.log("trade amounts after process fee", tradeAmounts[i]);
             uint256 balanceToAdd = tradeAmounts[i] > assets ? assets : tradeAmounts[i];
-            console.log("balanceToAdd", balanceToAdd);
+            // console.log("balanceToAdd", balanceToAdd);
             AlterPendingBalances(participants[i], pair, balanceToAdd);
         }
         return true;
@@ -216,18 +215,18 @@ contract Oracle is Ownable{
         bool[][2] memory trade_side
     ) internal returns (uint) {
 
-        console.log("=================make request funciton================");
+        // console.log("=================make request funciton================");
 
         freezeTempBalance(pair, participants, trade_amounts, trade_side);
 
-        (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
-            participants[0][0],
-            pair[0]
-        );
-        console.log("assets after freeze", assets);
-        console.log("liabilities after freeze", liabilities);
-        console.log("pending after freeze", pending);
-        console.log("margined after freeze", margined);
+        // (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+        //     participants[0][0],
+        //     pair[0]
+        // );
+        // console.log("assets after freeze", assets);
+        // console.log("liabilities after freeze", liabilities);
+        // console.log("pending after freeze", pending);
+        // console.log("margined after freeze", margined);
         // console.log("tokens after freeze", tokens);
 
         requestId = bytes32(uint256(2636288841321219110873651998422106944));
@@ -245,7 +244,7 @@ contract Oracle is Ownable{
 
             revert Error_FufillUnSuccessful(requestId, block.timestamp); //
         } else {
-            console.log("=====================fulfill function=================");
+            // console.log("=====================fulfill function=================");
             address[2] memory pair;
             pair[0] = OrderDetails[requestId].taker_token;
             pair[1] = OrderDetails[requestId].maker_token;
@@ -261,60 +260,62 @@ contract Oracle is Ownable{
                 OrderDetails[requestId].trade_sides
             );
 
-            (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
-                OrderDetails[requestId].takers[0],
-                pair[0]
-            );
-            console.log("assets after transfer", assets);
-            console.log("liabilities after transfer", liabilities);
-            console.log("pending after transfer", pending);
-            console.log("margined after transfer", margined);
+            // (uint256 assets, uint256 liabilities, uint256 pending, bool margined, ) = Datahub.ReadUserData(
+            //     OrderDetails[requestId].takers[0],
+            //     pair[0]
+            // );
+            // console.log("assets after transfer", assets);
+            // console.log("liabilities after transfer", liabilities);
+            // console.log("pending after transfer", pending);
+            // console.log("margined after transfer", margined);
             // console.log("tokens after transfer", tokens);
 
             // The reason why we update price AFTER we make the call to the executor is because if it fails, the prices wont update
             // and the update prices wll not be included in the  TX
             if (pair[0] == USDT) {
-                console.log("taker amount", OrderDetails[requestId].taker_amounts[
-                    OrderDetails[requestId].taker_amounts.length - 1
-                ]);
-                console.log("decimal", DepositVault.fetchDecimals(pair[1]));
-                console.log("maker amount", OrderDetails[requestId].maker_amounts[
-                    OrderDetails[requestId].maker_amounts.length - 1
-                ]);
-                console.log("result", ((OrderDetails[requestId].taker_amounts[
-                    OrderDetails[requestId].taker_amounts.length - 1
-                ] * (10 ** DepositVault.fetchDecimals(pair[1]))) /
-                    OrderDetails[requestId].maker_amounts[
-                        OrderDetails[requestId].maker_amounts.length - 1
-                    ]));
+                // console.log("taker amount", OrderDetails[requestId].taker_amounts[
+                //     OrderDetails[requestId].taker_amounts.length - 1
+                // ]);
+                // console.log("decimal", DepositVault.fetchDecimals(pair[1]));
+                // console.log("maker amount", OrderDetails[requestId].maker_amounts[
+                //     OrderDetails[requestId].maker_amounts.length - 1
+                // ]);
+                // console.log("result", ((OrderDetails[requestId].taker_amounts[
+                //     OrderDetails[requestId].taker_amounts.length - 1
+                // ] * (10 ** DepositVault.fetchDecimals(pair[1]))) /
+                //     OrderDetails[requestId].maker_amounts[
+                //         OrderDetails[requestId].maker_amounts.length - 1
+                //     ]));
+                uint256 decimals = DepositVault.fetchDecimals(pair[1]);
                 Datahub.toggleAssetPrice(
                     pair[1],
                     ((OrderDetails[requestId].taker_amounts[
                         OrderDetails[requestId].taker_amounts.length - 1
-                    ] * (10 ** DepositVault.fetchDecimals(pair[1]))) /
+                    ] * (10 ** decimals)) /
                         OrderDetails[requestId].maker_amounts[
                             OrderDetails[requestId].maker_amounts.length - 1
                         ])
                 );
             } else {
-                console.log("maker amount", OrderDetails[requestId].maker_amounts[
-                    OrderDetails[requestId].maker_amounts.length - 1
-                ]);
-                console.log("decimal", DepositVault.fetchDecimals(pair[0]));
-                console.log("taker amount", OrderDetails[requestId].taker_amounts[
-                    OrderDetails[requestId].maker_amounts.length - 1
-                ]);
-                console.log("result", ((OrderDetails[requestId].maker_amounts[
-                    OrderDetails[requestId].maker_amounts.length - 1
-                ] * (10 ** DepositVault.fetchDecimals(pair[0]))) /
-                    OrderDetails[requestId].taker_amounts[
-                        OrderDetails[requestId].taker_amounts.length - 1
-                    ]));
+                // console.log("maker amount", OrderDetails[requestId].maker_amounts[
+                //     OrderDetails[requestId].maker_amounts.length - 1
+                // ]);
+                // console.log("decimal", DepositVault.fetchDecimals(pair[0]));
+                // console.log("taker amount", OrderDetails[requestId].taker_amounts[
+                //     OrderDetails[requestId].maker_amounts.length - 1
+                // ]);
+                // console.log("result", ((OrderDetails[requestId].maker_amounts[
+                //     OrderDetails[requestId].maker_amounts.length - 1
+                // ] * (10 ** DepositVault.fetchDecimals(pair[0]))) /
+                //     OrderDetails[requestId].taker_amounts[
+                //         OrderDetails[requestId].taker_amounts.length - 1
+                //     ]));
+                uint256 decimals = DepositVault.fetchDecimals(pair[0]);
                 Datahub.toggleAssetPrice(
                     pair[0],
                     ((OrderDetails[requestId].maker_amounts[
                         OrderDetails[requestId].maker_amounts.length - 1
-                    ] * (10 ** DepositVault.fetchDecimals(pair[0]))) /
+                    ] * (10 ** decimals)) /
                         OrderDetails[requestId].taker_amounts[
                             OrderDetails[requestId].taker_amounts.length - 1
                         ])
@@ -330,9 +331,11 @@ contract Oracle is Ownable{
         uint256[] memory taker_amounts,
         uint256[] memory maker_amounts
     ) private {
+        uint256 balanceToAdd;
+        uint256 MakerbalanceToAdd;
         for (uint256 i = 0; i < takers.length; i++) {
             (uint256 assets, , , , ) = Datahub.ReadUserData(takers[i], pair[0]);
-            uint256 balanceToAdd = taker_amounts[i] > assets
+            balanceToAdd = taker_amounts[i] > assets
                 ? assets
                 : taker_amounts[i];
 
@@ -342,7 +345,7 @@ contract Oracle is Ownable{
 
         for (uint256 i = 0; i < makers.length; i++) {
             (uint256 assets, , , , ) = Datahub.ReadUserData(makers[i], pair[1]);
-            uint256 MakerbalanceToAdd = maker_amounts[i] > assets
+            MakerbalanceToAdd = maker_amounts[i] > assets
                 ? assets
                 : maker_amounts[i];
 
