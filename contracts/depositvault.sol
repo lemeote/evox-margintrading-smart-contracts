@@ -175,17 +175,12 @@ contract DepositVault is Ownable {
             Datahub.returnAssetLogs(token).initialized == true,
             "this asset is not available to be deposited or traded"
         );
-<<<<<<< HEAD
         // console.log("amount before fee", amount);
         amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
         console.log("amount to be paid if fee is applicable", amount);
         // console.log("amount after fee", amount);
         // we need to add the function that transfertokenwithfee  : https://docs.uniswap.org/contracts/v2/reference/smart-contracts/router-02#swapexacttokensfortokenssupportingfeeontransfertokens
         require(IERC20.IERC20(token).transferFrom(msg.sender, address(this), amount));
-=======
-        IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
-        require(ERC20Token.transferFrom(msg.sender, address(this), amount));
->>>>>>> 0782dc97a1e749027f4b9de66188f1ad7024f0fd
         require(!circuitBreakerStatus);
 
         // console.log("total supply before", Datahub.returnAssetLogs(token).totalAssetSupply);
@@ -402,7 +397,6 @@ contract DepositVault is Ownable {
             "this asset is not available to be deposited or traded"
         );
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
-<<<<<<< HEAD
         // extending support for token with fee on transfer 
         // if(Datahub.tokenTransferFees(token) > 0){
         //     amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
@@ -410,8 +404,6 @@ contract DepositVault is Ownable {
         // }
         amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
         console.log("amount to be paid if fee is applicable", amount);
-=======
->>>>>>> 0782dc97a1e749027f4b9de66188f1ad7024f0fd
         require(
             ERC20Token.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"
