@@ -396,9 +396,9 @@ contract DataHub is Ownable {
         address tokenToRemove
     ) external checkRoleAuthority {
         UserData storage userData = userdata[user];
-
+        address token;
         for (uint256 i = 0; i < userData.tokens.length; i++) {
-            address token = userData.tokens[i];
+            token = userData.tokens[i];
             if (token == tokenToRemove) {
                 userData.tokens[i] = userData.tokens[
                     userData.tokens.length - 1
@@ -425,9 +425,10 @@ contract DataHub is Ownable {
         address token
     ) external checkRoleAuthority returns (bool) {
         bool tokenFound = false;
+        address user;
 
         for (uint256 i = 0; i < users.length; i++) {
-            address user = users[i];
+            user = users[i];
 
             for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
                 if (userdata[user].tokens[j] == token) {
@@ -613,8 +614,9 @@ contract DataHub is Ownable {
         address user
     ) public view returns (uint256) {
         uint256 sumOfAssets;
+        address token;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
+            token = userdata[user].tokens[i];
             sumOfAssets +=
                 (assetdata[token].assetPrice *
                     userdata[user].asset_info[token]) /
@@ -630,8 +632,9 @@ contract DataHub is Ownable {
         address user
     ) public view returns (uint256) {
         uint256 sumOfliabilities;
+        address token;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
+            token = userdata[user].tokens[i];
             sumOfliabilities +=
                 (assetdata[token].assetPrice *
                     userdata[user].liability_info[token]) /
@@ -656,8 +659,9 @@ contract DataHub is Ownable {
         address user
     ) external view returns (uint256) {
         uint256 sumOfAssets;
+        address token;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
+            token = userdata[user].tokens[i];
             sumOfAssets +=
                 (((assetdata[token].assetPrice *
                     userdata[user].pending_balances[token]) / 10 ** 18) *
@@ -674,8 +678,9 @@ contract DataHub is Ownable {
         address user
     ) external view returns (uint256) {
         uint256 sumOfAssets;
+        address token;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
+            token = userdata[user].tokens[i];
             sumOfAssets +=
                 (((assetdata[token].assetPrice *
                     userdata[user].asset_info[token]) / 10 ** 18) *
@@ -695,12 +700,15 @@ contract DataHub is Ownable {
         address user
     ) external view returns (uint256) {
         uint256 AIMR;
+        address token;
+        uint256 liabilities;
+        address token_2;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
-            uint256 liabilities = userdata[user].liability_info[token];
+            token = userdata[user].tokens[i];
+            liabilities = userdata[user].liability_info[token];
             if (liabilities > 0) {
                 for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
-                    address token_2 = userdata[user].tokens[j];
+                    token_2 = userdata[user].tokens[j];
                     if (
                         userdata[user].initial_margin_requirement[token][
                             token_2
@@ -726,12 +734,16 @@ contract DataHub is Ownable {
         address user
     ) external view returns (uint256) {
         uint256 AMMR;
+        address token;
+        uint256 liabilities;
+        address token_2;
+        uint256 j;
         for (uint256 i = 0; i < userdata[user].tokens.length; i++) {
-            address token = userdata[user].tokens[i];
-            uint256 liabilities = userdata[user].liability_info[token];
+            token = userdata[user].tokens[i];
+            liabilities = userdata[user].liability_info[token];
             if (liabilities > 0) {
-                for (uint256 j = 0; j < userdata[user].tokens.length; j++) {
-                    address token_2 = userdata[user].tokens[j];
+                for (j = 0; j < userdata[user].tokens.length; j++) {
+                    token_2 = userdata[user].tokens[j];
                     if (
                         userdata[user].maintenance_margin_requirement[token][
                             token_2
