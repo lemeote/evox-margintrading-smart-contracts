@@ -123,4 +123,73 @@ contract MockInterestData is interestData {
         // Return the cumulative interest rates
         return cumulativeInterestRates / (endIndex - (startIndex - 1));
     }
+
+    function updateInterestIndexTest(
+        address token,
+        uint256 index, // 24
+        uint256 value
+    ) public {
+        // console.log("=======================Update Interest Index Function========================");
+        // console.log("index", index);
+        // console.log("value", value);
+        currentInterestIndex[token] = index + 1; // 25
+        uint8[5] memory timeframes = [1, 2, 4, 8, 16];
+        uint256 period_start;
+        uint256 period_interval;
+        uint256 borrowProportion;
+        uint256 interestReate;
+
+        // borrowProportion = EVO_LIBRARY.calculateBorrowProportion(
+        //     Datahub.returnAssetLogs(token)
+        // );
+        // borrowProportion = 0;
+
+        setInterestRateEpoch(
+            0,
+            token,
+            uint(currentInterestIndex[token]),
+            borrowProportion,
+            value
+        );
+
+        for (uint256 i = 1; i < timeframes.length; i++) {
+            if( (currentInterestIndex[token] % timeframes[i]) == 0 ) {
+                // console.log("///////////////////////start//////////////////////////");
+                // console.log("index - timeframe", currentInterestIndex[token], timeframes[i]);
+                period_interval = timeframes[i] / timeframes[i-1];
+                period_start = currentInterestIndex[token] / timeframes[i-1];
+                period_start = (period_start / period_interval - 1) * period_interval + 1;
+                borrowProportion = EVO_LIBRARY.calculateAverage(
+                    utils.fetchBorrowProportionList(
+                        i - 1,
+                        period_start, // 1
+                        period_start + period_interval - 1, //24
+                        token
+                    )
+                );
+                // borrowProportion = 0;
+                // console.log("period interval", period_interval);
+                // console.log("start", period_start);
+                // console.log("end", period_start + period_interval - 1);
+                interestReate = EVO_LIBRARY.calculateAverage(
+                    utils.fetchRatesList(
+                        i - 1,
+                        period_start, // 1
+                        period_start + period_interval - 1, //24
+                        token
+                    )
+                );
+                // console.log("interest rate", interestReate);
+                // interestReate = value;
+                setInterestRateEpoch(
+                    i,
+                    token,
+                    uint(currentInterestIndex[token] / timeframes[i]),
+                    borrowProportion,
+                    interestReate
+                );
+                // console.log("////////////////////end/////////////////////");
+            }
+        }
+    }
 }

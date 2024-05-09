@@ -499,9 +499,9 @@ contract DataHub is Ownable {
     function returnAssetLogs(
         address token
     ) public view returns (AssetData memory) {
-        console.log("================returnAssetLogs Function===============");
-        console.log("return asset token address", token);
-        console.log("total supply in return Assetlogs", assetdata[token].totalAssetSupply);
+        // console.log("================returnAssetLogs Function===============");
+        // console.log("return asset token address", token);
+        // console.log("total supply in return Assetlogs", assetdata[token].totalAssetSupply);
         return assetdata[token];
     }
 

@@ -305,42 +305,47 @@ contract interestData {
         // console.log("index", index);
         // console.log("value", value);
         currentInterestIndex[token] = index + 1; // 25
-        uint16[4] memory timeframes = [24, 168, 672, 8736];
-        uint256 period;
+        uint16[5] memory timeframes = [1, 24, 168, 672, 8736];
+        uint256 period_start;
+        uint256 period_interval;
         uint256 borrowProportion;
         uint256 interestReate;
+
+        borrowProportion = EVO_LIBRARY.calculateBorrowProportion(
+            Datahub.returnAssetLogs(token)
+        );
 
         setInterestRateEpoch(
             0,
             token,
             uint(currentInterestIndex[token]),
-            EVO_LIBRARY.calculateBorrowProportion(
-                Datahub.returnAssetLogs(token)
-            ),
+            borrowProportion,
             value
         );
 
-        for (uint256 i = 0; i < timeframes.length; i++) {
+        for (uint256 i = 1; i < timeframes.length; i++) {
             if( (index % timeframes[i]) == 0 ) {
-                period = currentInterestIndex[token] / timeframes[i-1];
+                period_interval = timeframes[i] / timeframes[i-1];
+                period_start = currentInterestIndex[token] / timeframes[i-1];
+                period_start = (period_start / period_interval - 1) * period_interval + 1;
                 borrowProportion = EVO_LIBRARY.calculateAverage(
                     utils.fetchBorrowProportionList(
                         i - 1,
-                        period - timeframes[i-1] + 1, // 1
-                        period, //24
+                        period_start, // 1
+                        period_start + period_interval - 1, //24
                         token
                     )
                 );
                 interestReate = EVO_LIBRARY.calculateAverage(
                     utils.fetchRatesList(
                         i - 1,
-                        period - timeframes[i-1] + 1, // 1
-                        period, //24
+                        period_start, // 1
+                        period_start + period_interval - 1, //24
                         token
                     )
                 );
                 setInterestRateEpoch(
-                    1,
+                    i,
                     token,
                     uint(currentInterestIndex[token] / timeframes[i]),
                     borrowProportion,
@@ -351,6 +356,7 @@ contract interestData {
     }
 
     function setInterestRateEpoch(uint256 dimension, address token, uint256 index, uint256 borrowProportionAtIndex, uint256 interestRate ) internal {
+        // console.log("======================setInterestRateEpoch function=========================");
         InterestRateEpochs[dimension][token][index].interestRate = interestRate;
 
         InterestRateEpochs[dimension][token][index].lastUpdatedTime = block.timestamp;
@@ -362,6 +368,7 @@ contract interestData {
         InterestRateEpochs[dimension][token][index].borrowProportionAtIndex = borrowProportionAtIndex;
 
         InterestRateEpochs[dimension][token][index].rateInfo = InterestRateEpochs[dimension][token][index-1].rateInfo;
+        // console.log("===============================end===============================");
     }
     /// @notice initilizes the interest data for a token
     function initInterest(
