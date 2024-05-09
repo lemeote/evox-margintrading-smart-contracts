@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "@api3/airnode-protocol": "^0.14.0",
-    "@nomicfoundation/edr-win32-x64-msvc": "^0.3.7",
     "@openzeppelin/contracts": "^5.0.1",
     "fs": "^0.0.1-security",
     "hardhat-abi-exporter": "^2.10.1",
