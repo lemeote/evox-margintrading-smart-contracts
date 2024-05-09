@@ -396,6 +396,7 @@ contract DepositVault is Ownable {
             Datahub.returnAssetLogs(token).initialized == true,
             "this asset is not available to be deposited or traded"
         );
+        address[] memory users;
         IERC20.IERC20 ERC20Token = IERC20.IERC20(token);
         // extending support for token with fee on transfer 
         // if(Datahub.tokenTransferFees(token) > 0){
@@ -453,7 +454,7 @@ contract DepositVault is Ownable {
                 return true;
             }
         } else {
-            address[] memory users = new address[](1);
+            users = new address[](1);
             users[0] = beneficiary;
 
             Datahub.checkIfAssetIsPresent(users, token);
