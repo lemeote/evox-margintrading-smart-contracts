@@ -238,13 +238,13 @@ describe("Interest Test", function () {
         // Get Rexe Contract
         const REXE_TOKEN = new hre.ethers.Contract(await REXE.getAddress(), contractABI, signers[0]);
 
-        // const USDT_setTokenTransferFee = await DataHub.setTokenTransferFee(await USDT_TOKEN.getAddress(), 0) // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
-        // USDT_setTokenTransferFee.wait();
-        // expect(await DataHub.tokenTransferFees(await USDT_TOKEN.getAddress())).to.equal(0);
+        const USDT_setTokenTransferFee = await DataHub.setTokenTransferFee(await USDT_TOKEN.getAddress(), 0) // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
+        USDT_setTokenTransferFee.wait();
+        expect(await DataHub.tokenTransferFees(await USDT_TOKEN.getAddress())).to.equal(0);
 
-        // const REXE_setTokenTransferFee = await DataHub.setTokenTransferFee(await REXE_TOKEN.getAddress(), 0) // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
-        // REXE_setTokenTransferFee.wait();
-        // expect(await DataHub.tokenTransferFees(await REXE_TOKEN.getAddress())).to.equal(0);
+        const REXE_setTokenTransferFee = await DataHub.setTokenTransferFee(await REXE_TOKEN.getAddress(), 0) // 0.003% ==> 3  // 3000 for 3% percentage of fees. 
+        REXE_setTokenTransferFee.wait();
+        expect(await DataHub.tokenTransferFees(await REXE_TOKEN.getAddress())).to.equal(0);
 
         await Oracle.setUSDT(await USDT_TOKEN.getAddress());
 

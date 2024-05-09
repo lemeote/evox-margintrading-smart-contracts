@@ -224,4 +224,11 @@ interface IDataHub {
     function calculatePendingCollateralValue(
         address user
     ) external view returns (uint256);
+
+    function setTokenTransferFee(
+        address token,
+        uint256 value
+    ) external ;
+
+    function tokenTransferFees(address token)external returns(uint256);
 }
