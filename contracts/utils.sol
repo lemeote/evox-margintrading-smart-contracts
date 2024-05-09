@@ -258,7 +258,7 @@ contract Utility is Ownable {
         uint256 amount
     ) external view returns (uint256) {
         IDataHub.AssetData memory assetLogs = Datahub.returnAssetLogs(token);
-        uint256 maintenace = assetLogs.MaintenanceMarginRequirement;
+        uint256 maintenace = assetLogs.marginRequirement[1]; // 1 -> MaintenanceMarginRequirement
         return ((maintenace * (amount)) / 10 ** 18); //
     }
 
@@ -366,10 +366,10 @@ contract Utility is Ownable {
             in_token
         );
         if (amount <= returnliabilities(user, in_token)) {
-            uint256 StartingDollarMMR = (amount * assetLogsOutToken.MaintenanceMarginRequirement) / 10 ** 18; // check to make sure this is right
+            uint256 StartingDollarMMR = (amount * assetLogsOutToken.marginRequirement[1]) / 10 ** 18; // 1 -> MaintenanceMarginRequirement
             uint256 pairMMROfUser = Datahub.returnPairMMROfUser(user, in_token, out_token);
             if (StartingDollarMMR > pairMMROfUser) {
-                uint256 overage = (StartingDollarMMR - pairMMROfUser) * (10 ** 18) / assetLogsInToken.MaintenanceMarginRequirement;
+                uint256 overage = (StartingDollarMMR - pairMMROfUser) * (10 ** 18) / assetLogsInToken.marginRequirement[1]; // 1 -> MaintenanceMarginRequirement
 
                 Datahub.removeMaintenanceMarginRequirement(
                     user,
@@ -431,10 +431,10 @@ contract Utility is Ownable {
             in_token
         );
         if (amount <= returnliabilities(user, in_token)) {
-            uint256 StartingDollarIMR = (amount * assetLogsOutToken.initialMarginRequirement) / 10 ** 18; // check to make sure this is right
+            uint256 StartingDollarIMR = (amount * assetLogsOutToken.marginRequirement[0]) / 10 ** 18; // 0 -> InitialMarginRequirement
             uint256 pairMMROfUser = Datahub.returnPairMMROfUser(user, in_token, out_token);
             if (StartingDollarIMR > pairMMROfUser) {
-                uint256 overage = (StartingDollarIMR - pairMMROfUser) * (10 ** 18) / assetLogsInToken.initialMarginRequirement;
+                uint256 overage = (StartingDollarIMR - pairMMROfUser) * (10 ** 18) / assetLogsInToken.marginRequirement[0]; // 0-> initialMarginRequirement
 
                 Datahub.removeInitialMarginRequirement(
                     user,
@@ -563,7 +563,7 @@ contract Utility is Ownable {
     function fetchTotalAssetSupply(
         address token
     ) external view returns (uint256) {
-        return  Datahub.returnAssetLogs(token).totalAssetSupply;
+        return  Datahub.returnAssetLogs(token).assetInfo[0]; // 0 -> totalAssetSupply
     }
     receive() external payable {}
 }

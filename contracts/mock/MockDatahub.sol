@@ -52,9 +52,9 @@ contract MockDatahub is DataHub {
   
   function settotalAssetSupplyTest(address token, uint256 amount, bool pos_neg) public {
     if (pos_neg == true) {
-      assetdata[token].totalAssetSupply += amount;
+      assetdata[token].assetInfo[0] += amount; // 0 -> totalAssetSupply
     } else {
-      assetdata[token].totalAssetSupply -= amount;
+      assetdata[token].assetInfo[0] -= amount; // 0 -> totalAssetSupply
     }
   }
 }

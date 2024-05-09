@@ -361,9 +361,9 @@ contract interestData {
 
         InterestRateEpochs[dimension][token][index].lastUpdatedTime = block.timestamp;
 
-        InterestRateEpochs[dimension][token][index].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
+        InterestRateEpochs[dimension][token][index].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).assetInfo[1]; // 1 -> totalBorrowedAmount
 
-        InterestRateEpochs[dimension][token][index].totalAssetSuplyAtIndex = Datahub.returnAssetLogs(token).totalAssetSupply;
+        InterestRateEpochs[dimension][token][index].totalAssetSuplyAtIndex = Datahub.returnAssetLogs(token).assetInfo[0]; // 0 -> totalAssetSupply
 
         InterestRateEpochs[dimension][token][index].borrowProportionAtIndex = borrowProportionAtIndex;
 
@@ -420,10 +420,10 @@ contract interestData {
 
             // console.log("current index after update",  fetchRateInfo(token, fetchCurrentRateIndex(token)).interestRate);
             uint256 currentInterestRateHourly = interestRate / 8736;
-            uint256 calculatedBorroedAmount = ((assetLogs.totalBorrowedAmount) * (currentInterestRateHourly)) / 10 ** 18;
+            uint256 calculatedBorroedAmount = ((assetLogs.assetInfo[1]) * (currentInterestRateHourly)) / 10 ** 18; // 1 -> totalBorrowedAmount
             console.log("current interestrate hourly", currentInterestRateHourly);
             // total borroed amount * current interest rate -> up total borrowed amount by this fucking value
-            Datahub.setTotalBorrowedAmount(token, calculatedBorroedAmount, true);
+            Datahub.setAssetInfo(1, token, calculatedBorroedAmount, true); // 1 -> totalBorrowedAmount
 
             // console.log("borrow add amount", (Datahub.returnAssetLogs(token).totalBorrowedAmount * currentInterestRateHourly) / 10 **  18);
 

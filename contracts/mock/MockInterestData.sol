@@ -19,9 +19,9 @@ contract MockInterestData is interestData {
 
         InterestRateEpochs[dimension][token][index].lastUpdatedTime = block.timestamp;
 
-        InterestRateEpochs[dimension][token][index].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).totalBorrowedAmount;
+        InterestRateEpochs[dimension][token][index].totalLiabilitiesAtIndex = Datahub.returnAssetLogs(token).assetInfo[1]; // 1 -> totalBorrowedAmount
 
-        InterestRateEpochs[dimension][token][index].totalAssetSuplyAtIndex = Datahub.returnAssetLogs(token).totalAssetSupply;
+        InterestRateEpochs[dimension][token][index].totalAssetSuplyAtIndex = Datahub.returnAssetLogs(token).assetInfo[0]; // 0 -> totalBorrowedAmount
 
         InterestRateEpochs[dimension][token][index].borrowProportionAtIndex = EVO_LIBRARY.calculateBorrowProportion(Datahub.returnAssetLogs(token));
 

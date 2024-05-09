@@ -84,12 +84,12 @@ library EVO_LIBRARY {
         IInterestData.interestDetails memory interestRateInfo
     ) public pure returns (uint256) {
         console.log("======================calculate interest rate function===========================");
-        uint256 borrowProportion = ((assetlogs.totalBorrowedAmount + amount) *
-            10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
+        // uint256 borrowProportion = ((assetlogs.totalBorrowedAmount + amount) * 10 ** 18) / assetlogs.totalAssetSupply; /// check for div by 0
+        uint256 borrowProportion = ((assetlogs.assetInfo[1] + amount) * 10 ** 18) / assetlogs.assetInfo[0]; /// 0 -> totalAssetSupply 1 -> totalBorrowedAmount
         console.log("borrow proportion", borrowProportion);
         // also those will need to be updated on every borrow (trade) and every deposit -> need to write in
 
-        uint256 optimalBorrowProportion = assetlogs.optimalBorrowProportion;
+        uint256 optimalBorrowProportion = assetlogs.borrowPosition[0]; // 0 -> optimalBorrowProportion
         console.log("optimal Borrow Proportion", optimalBorrowProportion);
 
         uint256 minimumInterestRate = interestRateInfo.rateInfo[0];
@@ -117,13 +117,13 @@ library EVO_LIBRARY {
                 );
         } else {
             uint256 rate = maximumInterestRate - optimalInterestRate;
-            console.log("rate", rate);
-            console.log("result", min(
-                maximumInterestRate,
-                optimalInterestRate +
-                    (rate * (borrowProportion - optimalBorrowProportion)) /
-                    (1e18 - optimalBorrowProportion)
-            ));
+            // console.log("rate", rate);
+            // console.log("result", min(
+            //     maximumInterestRate,
+            //     optimalInterestRate +
+            //         (rate * (borrowProportion - optimalBorrowProportion)) /
+            //         (1e18 - optimalBorrowProportion)
+            // ));
             return
                 min(
                     maximumInterestRate,
@@ -149,14 +149,14 @@ library EVO_LIBRARY {
         IDataHub.AssetData memory assetdata,
         uint256 liabilities
     ) public pure returns (uint256) {
-        return (assetdata.initialMarginFee * liabilities) / 10 ** 18;
+        return (assetdata.feeInfo[0] * liabilities) / 10 ** 18; // 0 -> initialMarginFee
     }
 
     function calculateMaintenanceRequirementForTrade(
         IDataHub.AssetData memory assetdata,
         uint256 amount
     ) public pure returns (uint256) {
-        uint256 maintenance = assetdata.MaintenanceMarginRequirement; // 10 * 18 -> this function will output a 10*18 number
+        uint256 maintenance = assetdata.marginRequirement[1]; // 1 -> MaintenanceMarginRequirement
         return (maintenance * (amount)) / 10 ** 18;
     } // 13 deimcals to big
 
@@ -164,8 +164,8 @@ library EVO_LIBRARY {
         IDataHub.AssetData memory assetdata
     ) public pure returns (uint256) {
         return
-            (assetdata.totalBorrowedAmount * 10 ** 18) /
-            assetdata.totalAssetSupply; // 10 ** 18 output
+            (assetdata.assetInfo[1] * 10 ** 18) /
+            assetdata.assetInfo[0]; // 0 -> totalAssetSupply, 1 -> totalBorrowedAmount
     }
 
     function calculateBorrowProportionAfterTrades(
@@ -176,21 +176,21 @@ library EVO_LIBRARY {
         uint256 scaleFactor = 1e18; // Scaling factor, e.g., 10^18 for wei
 
         // here we add the current borrowed amount and the new liabilities to be issued, and scale it
-        uint256 scaledTotalBorrowed = (assetdata.totalBorrowedAmount +
-            new_liabilities) * scaleFactor;
+        uint256 scaledTotalBorrowed = (assetdata.assetInfo[1] +
+            new_liabilities) * scaleFactor; // 1 -> totalBorrowedAmount
 
         console.log("scaledTotalBorrowed", scaledTotalBorrowed);
 
         // Calculate the new borrow proportion
         uint256 newBorrowProportion = (scaledTotalBorrowed /
-            assetdata.totalAssetSupply); // equal decimal * 10**!8 decimal is max
+            assetdata.assetInfo[0]); // totalAssetSupply
 
         console.log("newBorrowProportion", newBorrowProportion);
 
-        console.log("maximum borrow propotion", assetdata.maximumBorrowProportion);
+        console.log("maximum borrow propotion", assetdata.borrowPosition[1]);
 
         // Compare with maximumBorrowProportion
-        return newBorrowProportion <= assetdata.maximumBorrowProportion;
+        return newBorrowProportion <= assetdata.borrowPosition[1]; // 1 -> maximumBorrowProportion
     }
 
     function calculateFee(

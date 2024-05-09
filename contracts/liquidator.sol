@@ -144,9 +144,9 @@ contract Liquidator is Ownable {
         address token
     ) private view returns (uint256) {
         if (!short) {
-            return 10 ** 18 - fetchLogs(token).liquidationFee; //100000000000000000
+            return 10 ** 18 - fetchLogs(token).feeInfo[1]; // 1 -> liquidationFee 100000000000000000
         } else {
-            return 10 ** 18 + fetchLogs(token).liquidationFee;
+            return 10 ** 18 + fetchLogs(token).feeInfo[1]; // 1 -> liquidationFee
         }
     }
 

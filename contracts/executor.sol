@@ -578,7 +578,7 @@ contract EVO_EXCHANGE is Ownable {
         // console.log("margined after charge massin margined", margined);
         // console.log("tokens after charge massin interest", tokens);
 
-        console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);
+        // console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);
 
         if (minus == false) {
             //Step 2) calculate the trade's liabilities + interest
@@ -607,15 +607,17 @@ contract EVO_EXCHANGE is Ownable {
             // console.log("margined after add liabilities", margined);
             // console.log("tokens after add liabilities", tokens);
 
-            console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);
+            console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).assetInfo[1]); // 1 -> totalBorrowedAmount
 
-            Datahub.setTotalBorrowedAmount(
+            Datahub.setAssetInfo(
+                1, // 1 -> totalBorrowedAmount
                 token,
                 (liabilitiesAccrued + interestCharge),
                 true
             );
 
-            console.log("total borrow amount after setting borrow amount", Datahub.returnAssetLogs(token).totalBorrowedAmount);
+            console.log("total borrow amount after setting borrow amount", Datahub.returnAssetLogs(token).assetInfo[1]);
+            // totalBorrowedAmount
 
             Datahub.alterUsersInterestRateIndex(user, token);
         } else {
@@ -653,13 +655,9 @@ contract EVO_EXCHANGE is Ownable {
             // console.log("margined after remove liabilities", margined);
             // console.log("tokens after remove liabilities", tokens);
 
-            Datahub.setTotalBorrowedAmount(
-                token,
-                (liabilitiesAccrued - interestCharge),
-                false
-            );
+            Datahub.setAssetInfo(1, token, (liabilitiesAccrued - interestCharge), false); // 1 -> totalBorrowedAmount
 
-            console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).totalBorrowedAmount);
+            console.log("total borrow amount after charge massin interest", Datahub.returnAssetLogs(token).assetInfo[1]);
 
             Datahub.alterUsersInterestRateIndex(user, token);
         }
