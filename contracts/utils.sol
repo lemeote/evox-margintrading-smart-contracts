@@ -8,6 +8,7 @@ import "./interfaces/IDepositVault.sol";
 import "./interfaces/IOracle.sol";
 import "./libraries/EVO_LIBRARY.sol";
 import "./interfaces/IExecutor.sol";
+import "./interfaces/IinterestData.sol";
 import "hardhat/console.sol";
 
 contract Utility is Ownable {
@@ -536,6 +537,7 @@ contract Utility is Ownable {
     }
 */
     function fetchBorrowProportionList(
+        uint256 dimension,
         uint256 startingIndex,
         uint256 endingIndex,
         address token
@@ -546,7 +548,7 @@ contract Utility is Ownable {
         uint counter = 0;
         for (uint256 i = startingIndex; i < endingIndex; i++) {
             BorrowProportionsForThePeriod[counter] = interestContract
-                .fetchRateInfo(token, i)
+                .fetchTimeScaledRateIndex(dimension, token, i)
                 .borrowProportionAtIndex;
 
             counter += 1;
@@ -554,7 +556,25 @@ contract Utility is Ownable {
         return BorrowProportionsForThePeriod;
     }
 
+    /// @notice returns a list of interest rates for a set amount of indexs or hours
+    function fetchRatesList(
+        uint256 dimension,
+        uint256 startingIndex,
+        uint256 endingIndex,
+        address token
+    ) private view returns (uint256[] memory) {
+        uint256[] memory interestRatesForThePeriod = new uint256[](
+            (endingIndex) - startingIndex
+        );
+        uint counter = 0;
+        for (uint256 i = startingIndex; i < endingIndex; i++) {
+            interestRatesForThePeriod[counter] = interestContract
+            .fetchTimeScaledRateIndex(dimension, token, i).interestRate;
 
+            counter += 1;
+        }
+        return interestRatesForThePeriod;
+    }
 
     /// @notice Fetches the total amount borrowed of the token
     /// @param token the token being queried

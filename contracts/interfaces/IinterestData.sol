@@ -53,4 +53,10 @@ interface IInterestData {
         uint256 index,
         uint256 value
     ) external;
+
+    function fetchTimeScaledRateIndex(
+        uint targetEpoch,
+        address token,
+        uint256 index
+    ) external view returns (interestDetails memory);
 }

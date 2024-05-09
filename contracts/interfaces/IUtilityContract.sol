@@ -65,6 +65,14 @@ interface IUtilityContract {
     ) external returns (bool);
 
     function fetchBorrowProportionList(
+        uint256 dimension,
+        uint256 startingIndex,
+        uint256 endingIndex,
+        address token
+    ) external view returns (uint256[] memory);
+
+    function fetchRatesList(
+        uint256 dimension,
         uint256 startingIndex,
         uint256 endingIndex,
         address token
