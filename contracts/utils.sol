@@ -561,24 +561,24 @@ contract Utility is Ownable {
         uint256 endingIndex,
         address token
     ) external view returns (uint256[] memory) {
-        console.log("====================================rate list==============================");
-        console.log("dimension", dimension);
-        console.log("start", startingIndex);
-        console.log("endingIndex", endingIndex);
+        // console.log("====================================rate list==============================");
+        // console.log("dimension", dimension);
+        // console.log("start", startingIndex);
+        // console.log("endingIndex", endingIndex);
 
         uint256[] memory interestRatesForThePeriod = new uint256[](
             (endingIndex) - startingIndex + 1
         );
         uint counter = 0;
         for (uint256 i = startingIndex; i <= endingIndex; i++) {
-            console.log("i", i);
+            // console.log("i", i);
             interestRatesForThePeriod[counter] = interestContract
             .fetchTimeScaledRateIndex(dimension, token, i).interestRate;
-            console.log("interest reate", interestRatesForThePeriod[counter]);
+            // console.log("interest reate", interestRatesForThePeriod[counter]);
             counter += 1;
         }
-        console.log("counter", counter);
-        console.log("=========================end==============================");
+        // console.log("counter", counter);
+        // console.log("=========================end==============================");
         return interestRatesForThePeriod;
     }
 

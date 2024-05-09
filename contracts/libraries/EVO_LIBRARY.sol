@@ -32,7 +32,7 @@ library EVO_LIBRARY {
     function calculateAverage(
         uint256[] memory values
     ) public pure returns (uint256) {
-        console.log("length", values.length);
+        // console.log("length", values.length);
         if (values.length == 0) {
             return 0;
         }
@@ -42,7 +42,7 @@ library EVO_LIBRARY {
             total += values[i];
         }
         value = total / values.length;
-        console.log("average value", value);
+        // console.log("average value", value);
         return value;
     }
 
