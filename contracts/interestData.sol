@@ -389,7 +389,7 @@ contract interestData {
     /// @param token the token being targetted
 
     function chargeMassinterest(address token) public {
-        console.log("================charge Massininterest Function=================");
+        // console.log("================charge Massininterest Function=================");
         // console.log("current token index", fetchCurrentRateIndex(token));
         // console.log("token address", token);
         uint256 currentRateIndex = fetchCurrentRateIndex(token);
@@ -397,8 +397,8 @@ contract interestData {
         uint256 lastUpdatedTime = rateInfo.lastUpdatedTime;
 
         if (lastUpdatedTime + 1 hours <= block.timestamp) {
-            console.log("current index");
-            console.log(currentRateIndex);
+            // console.log("current index");
+            // console.log(currentRateIndex);
             // console.log("assetlogs");
             // console.log(Datahub.returnAssetLogs(token).totalAssetSupply);
             // console.log("rate info");
@@ -421,7 +421,7 @@ contract interestData {
             // console.log("current index after update",  fetchRateInfo(token, fetchCurrentRateIndex(token)).interestRate);
             uint256 currentInterestRateHourly = interestRate / 8736;
             uint256 calculatedBorroedAmount = ((assetLogs.assetInfo[1]) * (currentInterestRateHourly)) / 10 ** 18; // 1 -> totalBorrowedAmount
-            console.log("current interestrate hourly", currentInterestRateHourly);
+            // console.log("current interestrate hourly", currentInterestRateHourly);
             // total borroed amount * current interest rate -> up total borrowed amount by this fucking value
             Datahub.setAssetInfo(1, token, calculatedBorroedAmount, true); // 1 -> totalBorrowedAmount
 
@@ -436,7 +436,7 @@ contract interestData {
         address token,
         uint256 liabilitiesAccrued
     ) public view returns (uint256) {
-        console.log("========================return interest charge function========================");
+        // console.log("========================return interest charge function========================");
         (, uint256 liabilities, , , ) = Datahub.ReadUserData(user, token);
 
         uint256 interestRateIndex = Datahub.viewUsersInterestRateIndex(user, token);
@@ -469,7 +469,7 @@ contract interestData {
             liabilities,
             interestRateIndex
         );
-        console.log("interest charge", interestCharge);
+        // console.log("interest charge", interestCharge);
         return interestCharge;
     }
 

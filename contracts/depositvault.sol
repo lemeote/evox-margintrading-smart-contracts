@@ -417,7 +417,7 @@ contract DepositVault is Ownable {
         //     console.log("amount to be paid if fee is applicable", amount);
         // }
         amount = amount-(amount*Datahub.tokenTransferFees(token))/10000;
-        console.log("amount to be paid if fee is applicable", amount);
+        // console.log("amount to be paid if fee is applicable", amount);
         require(
             ERC20Token.transferFrom(msg.sender, address(this), amount),
             "Transfer failed"

@@ -9,7 +9,7 @@
       "rate": 0.005,
       "hourly-rate": 5.723443223443223e-7,
       "liabilities": 0,
-      "timestamp": 1715185813
+      "timestamp": 1715185812
     }
   },
   {
@@ -22,111 +22,7 @@
       "rate": 0.005,
       "hourly-rate": 5.723443223443223e-7,
       "liabilities": 900.0093210361067,
-      "timestamp": 1715189413
-    }
-  },
-  {
-    "USDT": {
-      "index": 3,
-      "loop #": 2,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.0226405766765,
-      "rate": 0.12928700147641473,
-      "hourly-rate": 0.000014799336249589599,
-      "liabilities": 900.0226405766765,
-      "timestamp": 1715193013
-    }
-  },
-  {
-    "USDT": {
-      "index": 4,
-      "loop #": 3,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.0359605038665,
-      "rate": 0.12928884084154105,
-      "hourly-rate": 0.000014799546799626951,
-      "liabilities": 900.0359605038664,
-      "timestamp": 1715196613
-    }
-  },
-  {
-    "USDT": {
-      "index": 5,
-      "loop #": 4,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.0492808176934,
-      "rate": 0.12929068026005774,
-      "hourly-rate": 0.00001479975735577584,
-      "liabilities": 900.0492808176933,
-      "timestamp": 1715200213
-    }
-  },
-  {
-    "USDT": {
-      "index": 6,
-      "loop #": 5,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.0626015181741,
-      "rate": 0.12929251973196718,
-      "hourly-rate": 0.000014799967918036536,
-      "liabilities": 900.062601518174,
-      "timestamp": 1715203813
-    }
-  },
-  {
-    "USDT": {
-      "index": 7,
-      "loop #": 6,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.0759226053256,
-      "rate": 0.12929435925727167,
-      "hourly-rate": 0.000014800178486409303,
-      "liabilities": 900.0759226053254,
-      "timestamp": 1715207413
-    }
-  },
-  {
-    "USDT": {
-      "index": 8,
-      "loop #": 7,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.0892440791645,
-      "rate": 0.12929619883597354,
-      "hourly-rate": 0.000014800389060894406,
-      "liabilities": 900.0892440791644,
-      "timestamp": 1715211013
-    }
-  },
-  {
-    "USDT": {
-      "index": 9,
-      "loop #": 8,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.1025659397077,
-      "rate": 0.12929803846807508,
-      "hourly-rate": 0.000014800599641492111,
-      "liabilities": 900.1025659397077,
-      "timestamp": 1715214613
-    }
-  },
-  {
-    "USDT": {
-      "index": 10,
-      "loop #": 9,
-      "usdt_amount": 0,
-      "usdt_supply": 1500,
-      "total-borrowed": 900.115888186972,
-      "rate": 0.12929987815357868,
-      "hourly-rate": 0.00001480081022820269,
-      "liabilities": 900.1158881869719,
-      "timestamp": 1715218213
+      "timestamp": 1715189412
     }
   }
 ]
