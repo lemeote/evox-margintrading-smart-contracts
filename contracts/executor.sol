@@ -426,7 +426,9 @@ contract EVO_EXCHANGE is Ownable {
         address token,
         uint256 amount
     ) private {
-        amount > Utilities.returnPending(user, token)
+        uint256 pendingAmount = Utilities.returnPending(user, token);
+        // console.log("pending amount", pendingAmount);
+        amount > pendingAmount
             ? Datahub.removePendingBalances(
                 user,
                 token,

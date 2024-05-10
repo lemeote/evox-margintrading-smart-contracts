@@ -181,14 +181,11 @@ contract Oracle is Ownable{
                 participants[i],
                 pair
             );
-            // console.log("user assets", assets);
             if (tradeside[i] == true) {} else {
                 uint256 trade1 = Datahub.tradeFee(pair, 1);
-                tradeAmounts[i] = trade1 / 10 ** 18;
+                tradeAmounts[i] = (trade1 * tradeAmounts[i]) / 10 ** 18;
             }
-            // console.log("trade amounts after process fee", tradeAmounts[i]);
             uint256 balanceToAdd = tradeAmounts[i] > assets ? assets : tradeAmounts[i];
-            // console.log("balanceToAdd", balanceToAdd);
             AlterPendingBalances(participants[i], pair, balanceToAdd);
         }
         return true;

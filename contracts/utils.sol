@@ -274,7 +274,6 @@ contract Utility is Ownable {
             uint256 collateral = EVO_LIBRARY.calculateTotal(trade_amounts[i]);
             uint256 bulkAssets = returnBulkAssets(participants[i], pair[i]);
             newLiabilitiesIssued = collateral > bulkAssets ? collateral - bulkAssets: 0;
-
             if (newLiabilitiesIssued > 0) {
                 IDataHub.AssetData memory assetLogs = Datahub.returnAssetLogs(pair[i]);
                 bool flag = EVO_LIBRARY.calculateBorrowProportionAfterTrades(
