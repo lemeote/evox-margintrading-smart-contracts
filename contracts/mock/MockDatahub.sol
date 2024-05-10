@@ -57,4 +57,11 @@ contract MockDatahub is DataHub {
       assetdata[token].assetInfo[0] -= amount; // 0 -> totalAssetSupply
     }
   }
+
+  function toggleAssetPriceTest(
+    address token,
+    uint256 value
+  ) external {
+      assetdata[token].assetPrice = value;
+  }
 }

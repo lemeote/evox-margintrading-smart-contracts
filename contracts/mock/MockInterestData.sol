@@ -192,4 +192,13 @@ contract MockInterestData is interestData {
             }
         }
     }
+    function calculateCompoundedAssetsTest(
+        uint256 currentIndex,
+        uint256 AverageCumulativeDepositInterest,
+        uint256 usersAssets,
+        uint256 usersOriginIndex
+    ) public pure returns (uint256, uint256, uint256) {
+        (uint256 interestCharge, uint256 OrderBookProviderCharge, uint256 DaoInterestCharge) = EVO_LIBRARY.calculateCompoundedAssets(currentIndex, AverageCumulativeDepositInterest, usersAssets, usersOriginIndex);
+        return (interestCharge, OrderBookProviderCharge, DaoInterestCharge);
+    }
 }

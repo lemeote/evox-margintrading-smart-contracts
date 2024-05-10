@@ -208,6 +208,7 @@ library EVO_LIBRARY {
         uint256 usersOriginIndex
     ) public pure returns (uint256, uint256, uint256) {
         uint256 earningHours = currentIndex - usersOriginIndex;
+        // console.log("Billed Hours", earningHours);
 
         uint256 DaoInterestCharge;
         uint256 OrderBookProviderCharge;
