@@ -259,7 +259,7 @@ contract EVO_EXCHANGE is Ownable {
             // here is the amount we are adding to their liabilities it is calculated using the difference between their assets and the trade amounts
             // this is calcualte above in submit order
             amountToAddToLiabilities = liabilityAmounts[i];
-            // console.log("amount to add to liabilities", amountToAddToLiabilities);
+            console.log("amount to add to liabilities", amountToAddToLiabilities);
             // console.log("tradefee0", Datahub.tradeFee(out_token, 0));
             // console.log("tradefee1", Datahub.tradeFee(out_token, 1));
             // address daoWallet = fetchDaoWallet();
@@ -313,11 +313,23 @@ contract EVO_EXCHANGE is Ownable {
 
                 // console.log("amountToAddToLiabilities after charge", amountToAddToLiabilities);
                 IDataHub.AssetData memory assetLogs = Datahub.returnAssetLogs(in_token);
+                uint256 initialRequirementForTrade = EVO_LIBRARY.calculateInitialRequirementForTrade( // 150
+                    assetLogs,
+                    amountToAddToLiabilities
+                );
                 uint256 maintenanceRequirementForTrade = EVO_LIBRARY.calculateMaintenanceRequirementForTrade( // 150
                     assetLogs,
                     amountToAddToLiabilities
                 );
-                // console.log("maintenancerequirementfortrade", maintenanceRequirementForTrade);
+                console.log("maintenancerequirementfortrade", maintenanceRequirementForTrade);
+                console.log("initialRequirementForTrade", initialRequirementForTrade);
+
+                Datahub.addInitialMarginRequirement(
+                    users[i],
+                    out_token,
+                    in_token,
+                    initialRequirementForTrade
+                );
 
                 // this is where we add to their maintenance margin requirement because we are issuing them liabilities
                 Datahub.addMaintenanceMarginRequirement(
@@ -328,10 +340,12 @@ contract EVO_EXCHANGE is Ownable {
                 );
 
                 // console.log("maintenance margin requirement", Datahub.returnPairMMROfUser(users[i], out_token, in_token));
+                // console.log("initialRequirementForTrade", Datahub.returnPairIMROfUser(users[i], out_token, in_token));
 
             }
             // if the amount coming into their wallet is larger than their current liabilities
             usersLiabilities = Utilities.returnliabilities(users[i], in_token);
+            console.log("amount in - liability", amounts_in_token[i], usersLiabilities);
             if ( amounts_in_token[i] <= usersLiabilities ) {
                 // charge interest and subtract from their liabilities, do not add to assets just subtract from liabilities
                 chargeinterest(users[i], in_token, amounts_in_token[i], true);

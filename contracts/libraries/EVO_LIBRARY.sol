@@ -152,11 +152,22 @@ library EVO_LIBRARY {
         return (assetdata.feeInfo[0] * liabilities) / 10 ** 18; // 0 -> initialMarginFee
     }
 
+    function calculateInitialRequirementForTrade(
+        IDataHub.AssetData memory assetdata,
+        uint256 amount
+    ) public pure returns (uint256) {
+        uint256 initial = assetdata.marginRequirement[0]; // 0 -> InitialMarginRequirement
+        // console.log("maintenance", maintenance);
+        return (initial * (amount)) / 10 ** 18;
+    }
+
     function calculateMaintenanceRequirementForTrade(
         IDataHub.AssetData memory assetdata,
         uint256 amount
     ) public pure returns (uint256) {
+        // console.log("margin requirement", assetdata.marginRequirement[1]);
         uint256 maintenance = assetdata.marginRequirement[1]; // 1 -> MaintenanceMarginRequirement
+        // console.log("maintenance", maintenance);
         return (maintenance * (amount)) / 10 ** 18;
     } // 13 deimcals to big
 

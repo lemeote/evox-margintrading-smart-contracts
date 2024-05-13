@@ -782,6 +782,9 @@ describe("Interest Test", function () {
             console.log("imr for signers before trade", imr_singers);
             console.log("mmr for signers before trade", mmr_singers);
 
+            console.log("usdt asssetLogs", await DataHub.returnAssetLogs(await USDT_TOKEN.getAddress()));
+            console.log("rexe asssetLogs", await DataHub.returnAssetLogs(await REXE_TOKEN.getAddress()));
+
             const deposit_amount = 500_000000000000000000n;
             const approvalTx = await USDT_TOKEN.approve(await deposit_vault.getAddress(), deposit_amount);
             await approvalTx.wait();  // Wait for the transaction to be mined
@@ -848,9 +851,9 @@ describe("Interest Test", function () {
             console.log("userData_usdt_signer1_liabilities", userData_usdt_signer11[1]);
             console.log("userData_rexe_signer1_liabilities", userData_rexe_signer11[1]);
 
-            const approvalTx2 = await USDT_TOKEN.approve(await deposit_vault.getAddress(), deposit_amount);
-            await approvalTx2.wait();  // Wait for the transaction to be mined
-            await deposit_vault.connect(signers[0]).deposit_token(await USDT_TOKEN.getAddress(), deposit_amount);
+            // const approvalTx2 = await USDT_TOKEN.approve(await deposit_vault.getAddress(), deposit_amount);
+            // await approvalTx2.wait();  // Wait for the transaction to be mined
+            // await deposit_vault.connect(signers[0]).deposit_token(await USDT_TOKEN.getAddress(), deposit_amount);
 
             imr_singers = await DataHub.returnPairIMROfUser(signers[0].address, await USDT_TOKEN.getAddress(), await REXE_TOKEN.getAddress());
             mmr_singers = await DataHub.returnPairMMROfUser(signers[0].address, await USDT_TOKEN.getAddress(), await REXE_TOKEN.getAddress());
