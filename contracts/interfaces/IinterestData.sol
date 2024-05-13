@@ -1,31 +1,40 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.20;
-import "../interfaces/IDataHub.sol";
+//import "../interfaces/IDataHub.sol";
 
 interface IInterestData {
     struct interestDetails {
         uint256 lastUpdatedTime; // last updated time
+        uint256 totalAssetSuplyAtIndex;
         uint256 totalLiabilitiesAtIndex;
         uint256 borrowProportionAtIndex;
         uint256[] rateInfo; ///minimumInterestRate,  optimalInterestRate, maximumInterestRate
         uint256 interestRate; // current interestRate
     }
-    function calculateCompoundedLiabilities(
+
+    function fetchCurrentRate(address token) external view returns (uint256);
+
+    function fetchLiabilitiesOfIndex(
         address token,
-        uint256 newLiabilities,
-        uint256 usersLiabilities,
-        uint256 usersOriginIndex
-    ) external view returns (uint256) ;
+        uint256 index
+    ) external view returns (uint256);
+
+    function calculateAverageCumulativeInterest(
+        uint256 startIndex,
+        uint256 endIndex,
+        address token
+    ) external view returns (uint256);
+
+    function calculateAverageCumulativeDepositInterest(
+        uint256 startIndex,
+        uint256 endIndex,
+        address token
+    ) external view returns (uint256);
 
     function fetchRateInfo(
         address token,
         uint256 index
     ) external view returns (interestDetails memory);
-
-    function fetchRate(
-        address token,
-        uint256 index
-    ) external view returns (uint256);
 
     function fetchCurrentRateIndex(
         address token
@@ -33,7 +42,11 @@ interface IInterestData {
 
     function chargeMassinterest(address token) external;
 
-    function fetchCurrentRate(address token) external view returns (uint256);
+        function returnInterestCharge(
+        address user,
+        address token,
+        uint256 liabilitiesAccrued
+    ) external view returns (uint256);
 
     function updateInterestIndex(
         address token,
@@ -41,8 +54,9 @@ interface IInterestData {
         uint256 value
     ) external;
 
-    function chargeStaticLiabilityInterest(
+    function fetchTimeScaledRateIndex(
+        uint targetEpoch,
         address token,
         uint256 index
-    ) external view returns (uint256);
+    ) external view returns (interestDetails memory);
 }

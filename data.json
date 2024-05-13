@@ -1,0 +1,28 @@
+[
+  {
+    "USDT": {
+      "index": 1,
+      "loop #": 0,
+      "usdt_amount": 500,
+      "usdt_supply": 1500,
+      "total-borrowed": 0,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 0,
+      "timestamp": 1715185812
+    }
+  },
+  {
+    "USDT": {
+      "index": 2,
+      "loop #": 1,
+      "usdt_amount": 0,
+      "usdt_supply": 1500,
+      "total-borrowed": 900.0093210361067,
+      "rate": 0.005,
+      "hourly-rate": 5.723443223443223e-7,
+      "liabilities": 900.0093210361067,
+      "timestamp": 1715189412
+    }
+  }
+]

@@ -1,0 +1,63 @@
+
+
+Borrow functionality:
+
+   /// @notice Borrow allows a trader to just borrow funds from the exchange
+    /// @dev Explain to a developer any extra details
+    /// @param amount the amount of token to borrow
+    /// @param borrowToken the token the user wishes to borrow
+    /// @param collateralToken the token the user wants to use as the collaterally token for MMR
+    function Borrow(
+        uint256 amount,
+        address borrowToken,
+        address collateralToken
+    ) public {
+        require(
+            REX_LIBRARY.calculateBorrowProportionAfterTrades(
+                returnAssetLogs(borrowToken),
+                amount
+            ),
+            "cannot exceed max borrow"
+        );
+        uint256 initalMarginFeeAmount = REX_LIBRARY
+            .calculateinitialMarginFeeAmount(
+                returnAssetLogs(borrowToken),
+                amount
+            );
+        initalMarginFeeAmount *= returnAssetLogs(borrowToken).assetPrice;
+        require(
+            Datahub.calculateTotalPortfolioValue(msg.sender) >=
+                Datahub.calculateAIMRForUser(msg.sender) +
+                    initalMarginFeeAmount,
+            "your portfolio value is too low to borrow this much asset"
+        );
+
+        chargeinterest(msg.sender, borrowToken, amount, false);
+
+        Datahub.addMaintenanceMarginRequirement(
+            msg.sender,
+            collateralToken, // USDT
+            borrowToken, // matic 
+            REX_LIBRARY.calculateMaintenanceRequirementForTrade(
+                returnAssetLogs(borrowToken),
+                amount
+            )
+        );
+    }
+ 
+
+ Comments: We have basically mapped this out, our sticking points where how to adjust mmr because mmr is pair based for storage, 
+ but in the case of a borrow they are borrowing one asset, we figured just store it in the usdt-borrowAsset pair but in the end, we figured this
+ is a non-neccessary feature because users can just short on the exchange. We may want to introduce a borrow, and repay function when we address this.
+
+
+
+
+
+
+ Liquidations: 
+
+ Only feature we cut was being able to liquidate with margin
+ This feature was cut due to it relying on the same thread of thought as the above function
+
+

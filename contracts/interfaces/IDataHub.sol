@@ -5,49 +5,68 @@ interface IDataHub {
     struct UserData {
         mapping(address => uint256) asset_info; // tracks their portfolio (margined, and depositted)
         mapping(address => uint256) liability_info; // tracks what they owe per token * price
+        mapping(address => mapping(address => uint256)) maintenance_margin_requirement; // tracks the MMR per token the user has in liabilities
+        mapping(address => mapping(address => uint256)) initial_margin_requirement;
         mapping(address => uint256) pending_balances;
         mapping(address => uint256) interestRateIndex;
-        mapping(address => uint256) earningIndex;
+        mapping(address => uint256) earningRateIndex;
         bool margined; // if user has open margin positions this is true
         address[] tokens; // these are the tokens that comprise their portfolio ( assets, and liabilites, margined funds)
     }
 
-    //= [P (1 + i)n] – P
-    // (liabilities * ( 1+ average_interest rate in the periods) ^ number of periods) - liabilities.
-    // boom jackpot
-
     struct AssetData {
-        uint256 collateralMultiplier; // used to check on borrow if they have proper coll to borrow
-        uint256 initialMarginFee; // assigned in function Ex
-        // inital margin fee -> add and charge on insuance of libilities -> goes to TINO + CONNER + WAKAKKIIIIII and maybe some to dao
+        bool initialized;
+        uint256[2] tradeFees; // first in the array is taker fee, next is maker fee
+        uint256 collateralMultiplier;
         uint256 assetPrice;
-        uint256 liquidationFee;
-        uint256 initialMarginRequirement; // not for potantial removal - unnessecary
-        uint256 MaintenanceMarginRequirement;
-        uint256 totalAssetSupply;
-        uint256 totalBorrowedAmount;
-        uint256 optimalBorrowProportion; // need to brainsotrm on how to set this information
-        uint256 maximumBorrowProportion; // we need an on the fly function for the current maximum borrowable AMOUNT  -- cant borrow the max available supply
+        uint256[3] feeInfo; // 0 -> initialMarginFee, 1 -> liquidationFee, 2 -> tokenTransferFee
+        // uint256 initialMarginFee; // assigned in function Ex
+        // uint256 liquidationFee;
+        // uint256 tokenTransferFee;  // add zero for normal token, add transfer fee amount if there is fee on transfer 
+        uint256[2] marginRequirement; // 0 -> initialMarginRequirement, 1 -> MaintenanceMarginRequirement
+        // uint256 initialMarginRequirement; // not for potantial removal - unnessecary
+        // uint256 MaintenanceMarginRequirement;
+        uint256[2] assetInfo; // 0 -> totalAssetSupply, 1 -> totalBorrowedAmount
+        // uint256 totalAssetSupply;
+        // uint256 totalBorrowedAmount;
+        uint256[2] borrowPosition; // 0 -> optimalBorrowProportion, 1 -> maximumBorrowProportion
+        // uint256 optimalBorrowProportion; // need to brainsotrm on how to set this information
+        // uint256 maximumBorrowProportion; // we need an on the fly function for the current maximum borrowable AMOUNT  -- cant borrow the max available supply
         uint256 totalDepositors;
     }
 
     function addAssets(address user, address token, uint256 amount) external;
+
+    function fetchTotalAssetSupply(
+        address token
+    ) external view returns (uint256);
+
+    function tradeFee(
+        address token,
+        uint256 feeType
+    ) external view returns (uint256);
+
     function calculateAIMRForUser(
         address user,
         address trade_token,
         uint256 trade_amount
     ) external view returns (uint256);
+
     function removeAssets(address user, address token, uint256 amount) external;
 
     function alterUsersInterestRateIndex(address user, address token) external;
+
+    function viewUsersEarningRateIndex(
+        address user,
+        address token
+    ) external view returns (uint256);
+
+    function alterUsersEarningRateIndex(address user, address token) external;
 
     function viewUsersInterestRateIndex(
         address user,
         address token
     ) external view returns (uint256);
-
-
-function fetchTotalBorrowedAmount(address token) external view returns(uint256);
 
     function alterLiabilities(
         address user,
@@ -56,6 +75,13 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
     ) external;
 
     function alterMMR(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
+
+    function alterIMR(
         address user,
         address in_token,
         address out_token,
@@ -88,6 +114,32 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
         uint256 amount
     ) external;
 
+    function addInitialMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
+
+    function removeInitialMarginRequirement(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
+
+    function returnPairMMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) external view returns (uint256);
+
+    function returnPairIMROfUser(
+        address user,
+        address in_token,
+        address out_token
+    ) external view returns (uint256);
+
     function addPendingBalances(
         address user,
         address token,
@@ -101,9 +153,8 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
     ) external;
 
     function SetMarginStatus(address user, bool onOrOff) external;
-       function calculateAIMRForUser(
-        address user
-    ) external view returns (uint256) ;
+
+    function calculateAIMRForUser(address user) external view returns (uint256);
 
     function checkIfAssetIsPresent(
         address[] memory users,
@@ -117,10 +168,7 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
 
     function removeAssetToken(address user, address token) external;
 
-    function settotalAssetSupply(
-        address token,
-        uint256 amount,
-        bool pos_neg
+    function setAssetInfo(uint8 id,  address token, uint256 amount, bool pos_neg
     ) external;
 
     function updateInterestIndex(address token, uint256 value) external;
@@ -132,12 +180,6 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
     function FetchAssetInitilizationStatus(
         address token
     ) external view returns (bool);
-
-    function setTotalBorrowedAmount(
-        address token,
-        uint256 amount,
-        bool pos_neg
-    ) external;
 
     function toggleAssetPrice(address token, uint256 value) external;
 
@@ -171,9 +213,18 @@ function fetchTotalBorrowedAmount(address token) external view returns(uint256);
         address user
     ) external view returns (address[] memory);
 
-    function returnPairMMROfUser(
-        address user,
-        address in_token,
-        address out_token
+    function calculateCollateralValue(
+        address user
     ) external view returns (uint256);
+
+    function calculatePendingCollateralValue(
+        address user
+    ) external view returns (uint256);
+
+    function setTokenTransferFee(
+        address token,
+        uint256 value
+    ) external ;
+
+    function tokenTransferFees(address token)external returns(uint256);
 }

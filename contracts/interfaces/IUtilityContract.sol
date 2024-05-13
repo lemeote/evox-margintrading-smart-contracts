@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity =0.8.20;
-import "../interfaces/IDataHub.sol";
+
 
 interface IUtilityContract {
     function validateMarginStatus(
@@ -15,13 +15,11 @@ interface IUtilityContract {
         uint256 userAssets
     ) external view returns (bool);
 
-        function calculateAIMRRequirement(
+    function calculateAIMRRequirement(
         address user,
         address token,
         uint256 BalanceToLeave
     ) external view returns (bool);
-
-    function AlterExchange(address _executor) external;
 
     function calculateTradeLiabilityAddtions(
         address[2] memory pair,
@@ -33,14 +31,7 @@ interface IUtilityContract {
         address user,
         address token
     ) external view returns (uint256);
-/*
-    function chargeInterest(
-        address token,
-        uint256 liabilities,
-        uint256 amount_to_be_added, 
-        uint256 rateIndex
-    ) external view returns (uint256);
-*/
+
     function calculateAmountToAddToLiabilities(
         address user,
         address token,
@@ -56,6 +47,7 @@ interface IUtilityContract {
         address[] memory users,
         address token
     ) external view returns (uint256);
+
     function returnliabilities(
         address user,
         address token
@@ -66,4 +58,48 @@ interface IUtilityContract {
         uint256 amount
     ) external view returns (uint256);
 
+    function processMargin(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) external returns (bool);
+
+    function fetchBorrowProportionList(
+        uint256 dimension,
+        uint256 startingIndex,
+        uint256 endingIndex,
+        address token
+    ) external view returns (uint256[] memory);
+
+    function fetchRatesList(
+        uint256 dimension,
+        uint256 startingIndex,
+        uint256 endingIndex,
+        address token
+    ) external view returns (uint256[] memory);
+
+    function chargeStaticLiabilityInterest(
+        address token,
+        uint256 index
+    ) external view returns (uint256);
+
+    function maxBorrowCheck(
+        address[2] memory pair,
+        address[][2] memory participants,
+        uint256[][2] memory trade_amounts
+    ) external view returns (bool);
+
+    function Modifymmr(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
+
+    function Modifyimr(
+        address user,
+        address in_token,
+        address out_token,
+        uint256 amount
+    ) external;
 }
